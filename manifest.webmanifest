@@ -1,0 +1,12 @@
+{
+  "name": "BHA Rules Search",
+  "short_name": "BHA Rules",
+  "description": "Fast search for the BHA Rules of Racing — by rule code, keyword or fuzzy match.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a3d2c",
+  "theme_color": "#0a3d2c",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "360x360", "type": "image/png", "purpose": "any" }
+  ]
+}

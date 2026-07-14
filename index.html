@@ -42,11 +42,22 @@ body {
   background: var(--bg);
 }
 
+#beta {
+  background: #b45309;
+  color: #fff;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  /* keep clear of the status bar when installed to an iPad/iPhone home screen */
+  padding: calc(6px + env(safe-area-inset-top)) 14px 6px;
+}
+#beta a { color: #ffe4bf; text-underline-offset: 2px; }
+
 header {
   background: linear-gradient(180deg, var(--green) 0%, var(--green-dark) 100%);
   color: #fff;
-  /* keep clear of the status bar when installed to an iPad/iPhone home screen */
-  padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -355,6 +366,8 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 </style>
 </head>
 <body>
+
+<div id="beta">BETA — this tool is under testing. Verify anything critical against the <a href="https://rules.britishhorseracing.com" target="_blank" rel="noopener">official BHA rulebook</a>.</div>
 
 <header>
   <h1>BHA <span class="thin">Rules Search</span></h1>

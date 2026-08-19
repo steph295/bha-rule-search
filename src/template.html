@@ -36,6 +36,16 @@
   </div>
 </div>
 
+<nav id="tabs" role="tablist" aria-label="Filter results by source">
+  <button class="tab active" data-tab="all" role="tab" aria-selected="true">All</button>
+  <button class="tab" data-tab="rules" role="tab" aria-selected="false">Rules</button>
+  <button class="tab" data-tab="guides" role="tab" aria-selected="false">Guides</button>
+</nav>
+<nav id="subtabs" role="tablist" aria-label="Filter guides" hidden>
+  <button class="subtab active" data-sub="all" role="tab" aria-selected="true">All guides</button>
+  <button class="subtab" data-sub="bhagi" role="tab" aria-selected="false">BHAGIs</button>
+</nav>
+
 <main>
   <div id="meta" role="status"></div>
   <div id="results"></div>

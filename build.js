@@ -68,6 +68,20 @@ async function main() {
   fs.writeFileSync(path.join(ROOT, 'index.html'), html);
   const kb = (fs.statSync(path.join(ROOT, 'index.html')).size / 1024).toFixed(0);
   console.log(`index.html built — ${kb} KB, ${parsed.entries.length} entries, rules v${parsed.version}`);
+
+  // The guide library (PDF extracts) ships as a sibling file the app fetches
+  // after first paint, so the rulebook stays instantly searchable.
+  const guidesSrc = path.join(DATA, 'guides.json');
+  if (fs.existsSync(guidesSrc)) {
+    fs.copyFileSync(guidesSrc, path.join(ROOT, 'guides.json'));
+    const g = JSON.parse(fs.readFileSync(guidesSrc, 'utf8'));
+    const gkb = (fs.statSync(guidesSrc).size / 1024).toFixed(0);
+    const bh = g.entries.filter(e => e.kind === 'bhagi').length;
+    console.log(`guides.json copied — ${gkb} KB, ${g.entries.length} entries ` +
+      `(${bh} BHAGI instructions) from ${g.documents} documents`);
+  } else {
+    console.log('guides.json not found — run: python3 tools/extract_guides.py');
+  }
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

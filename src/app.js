@@ -9,6 +9,9 @@
   var CHECK_EVERY_MS = 6 * 60 * 60 * 1000; // background version check throttle
   var PAGE = 50;
 
+  var GUIDES_URL = 'guides.json';
+  var LS_GUIDES = 'bha-guides-v1';
+
   var state = {
     data: null,        // {version, publishedAt, manuals, entries, sourceUpdatedAt}
     source: 'none',    // snapshot | cache | live | pasted
@@ -17,8 +20,25 @@
     shown: PAGE,
     activeIdx: -1,
     lastResults: [],
-    lastTerms: []
+    lastTerms: [],
+    guides: null,      // {source, documents, entries}
+    guidesState: 'idle', // idle | loading | ready | failed
+    tab: 'all',        // all | rules | guides
+    sub: 'all'         // all | bhagi  (within the guides tab)
   };
+
+  // Which tab an entry belongs to. Rulebook entries (manual/code/guide) come
+  // from rules.britishhorseracing.com; bhagi/guidedoc come from the PDF library.
+  function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
+
+  function inTab(e, tab, sub) {
+    if (tab === 'rules') return !isGuideEntry(e);
+    if (tab === 'guides') {
+      if (!isGuideEntry(e)) return false;
+      return sub === 'bhagi' ? e.kind === 'bhagi' : true;
+    }
+    return true;
+  }
 
   var $ = function (id) { return document.getElementById(id); };
   var q = $('q'), results = $('results'), meta = $('meta'), status = $('status');
@@ -54,20 +74,92 @@
   }
 
   function adopt(data, source) {
-    // derive the search text + display text for each entry if absent
-    data.entries.forEach(function (e) {
-      if (!e.plain) e.plain = P.toText(e.html);
-      if (!e.text) {
-        e.text = (e.title + ' ' + (e.path || []).join(' ') + ' ' + e.doc + ' ' + e.plain)
-          .toLowerCase().replace(/\s+/g, ' ').trim();
-      } else {
-        e.text = e.text.toLowerCase();
-      }
-    });
     state.data = data;
     state.source = source;
-    buildVocab();
+    // keep any already-loaded guides alongside the (re)loaded rulebook
+    if (state.guides) {
+      mergeGuides();
+    } else {
+      prepareEntries(data.entries);
+      buildVocab();
+    }
     renderStatus();
+    renderTabs();
+    runSearch();
+  }
+
+  // ---- guides (PDF library) -------------------------------------------
+
+  // Merge the guide entries into the searchable set. Ids must stay equal to
+  // array indices — expanding a card looks the entry up by index.
+  function mergeGuides() {
+    if (!state.data || !state.guides) return;
+    var base = state.data.entries.filter(function (e) { return !isGuideEntry(e); });
+    var merged = base.concat(state.guides.entries.map(function (g) {
+      return {
+        code: g.code || null,
+        num: null,
+        kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc',
+        doc: g.doc,
+        cat: g.cat,
+        letter: null,
+        title: g.title,
+        dated: g.dated || '',
+        url: g.url,
+        page: g.page || 1,
+        path: [g.cat],
+        html: g.html
+      };
+    }));
+    state.data.entries = merged;
+    prepareEntries(merged);
+    buildVocab();
+  }
+
+  function prepareEntries(entries) {
+    entries.forEach(function (e, i) {
+      e.id = i;
+      if (!e.plain) e.plain = P.toText(e.html);
+      e.text = (e.title + ' ' + (e.path || []).join(' ') + ' ' + e.doc + ' ' +
+        (e.code || '') + ' ' + e.plain).toLowerCase().replace(/\s+/g, ' ').trim();
+    });
+  }
+
+  function loadGuides() {
+    if (state.guidesState === 'loading' || state.guidesState === 'ready') return;
+    state.guidesState = 'loading';
+
+    var cached = null;
+    try {
+      var raw = localStorage.getItem(LS_GUIDES);
+      if (raw) cached = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+
+    if (cached && cached.entries && cached.entries.length) {
+      state.guides = cached;
+      state.guidesState = 'ready';
+      mergeGuides();
+      refreshView();
+    }
+
+    fetch(GUIDES_URL, { cache: 'no-cache' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (!j || !j.entries || !j.entries.length) throw new Error('empty guides file');
+        state.guides = j;
+        state.guidesState = 'ready';
+        mergeGuides();
+        refreshView();
+        try { localStorage.setItem(LS_GUIDES, JSON.stringify(j)); } catch (e) { /* quota */ }
+      })
+      .catch(function () {
+        if (state.guidesState !== 'ready') state.guidesState = 'failed';
+        renderTabs();
+      });
+  }
+
+  function refreshView() {
+    renderTabs();
     runSearch();
   }
 
@@ -175,10 +267,44 @@
     var terms = [];
     var scored = [];
 
-    var code = parseCodeQuery(tokens);
     var pool = entries;
     var codeMatched = false;
     var exactHit = false;
+
+    // ---- BHAGI codes: "BHAGI 1.2", "bhagi1.2", "bhagi 4" (whole section),
+    // "bhagi" (all), and a bare "1.2" which also matches BHAGI 1.2.
+    var bhagiOnly = /^bhagis?\b/.test(qs);
+    var bm = /^bhagis?\s*(\d+)(?:\.(\d+))?$/.exec(qs);
+    if (!bm && bhagiOnly && /^bhagis?$/.test(qs.trim())) bm = ['', null, null];
+    if (!bm && !bhagiOnly) {
+      var bare = /^(\d+)\.(\d+)$/.exec(qs.trim());
+      if (bare) bm = ['', bare[1], bare[2]];
+    }
+    if (bm) {
+      var sec = bm[1], sub = bm[2];
+      var hits = entries.filter(function (e) {
+        if (e.kind !== 'bhagi' || !e.code) return false;
+        if (sec == null) return true;
+        var c = /^BHAGI\s+(\d+)\.(\d+)$/.exec(e.code);
+        if (!c) return false;
+        if (c[1] !== String(sec)) return false;
+        return sub == null || c[2] === String(sub);
+      }).sort(function (a, b) {
+        var ca = /(\d+)\.(\d+)/.exec(a.code), cb = /(\d+)\.(\d+)/.exec(b.code);
+        return (+ca[1] - +cb[1]) || (+ca[2] - +cb[2]);
+      });
+      if (hits.length) {
+        codeMatched = true;
+        exactHit = bhagiOnly && sub != null && hits.length === 1;
+        if (sec != null) terms.push(sec + (sub != null ? '.' + sub : ''));
+        hits.forEach(function (e, i) { scored.push({ e: e, s: 20000 - i }); });
+        if (bhagiOnly) {
+          return { entries: hits, terms: terms, mode: 'code', exact: exactHit };
+        }
+      }
+    }
+
+    var code = parseCodeQuery(tokens);
 
     if (code && code.letter && code.num != null) {
       var exact = entries.filter(function (e) { return e.letter === code.letter && e.num === code.num; });
@@ -270,11 +396,19 @@
   // ------------------------------------------------------------- render
 
   function dispCode(e) {
+    if (e.kind === 'bhagi') return e.code || 'BHAGI';
+    if (e.kind === 'guidedoc') return e.cat === 'BHA General Instructions (BHAGIs)' ? 'BHAGI' : 'Guide';
     if (e.code) return '(' + e.letter + ')' + e.num;
     if (e.num != null) return '¶' + e.num;
     if (e.kind === 'code') return 'Code';
     if (e.kind === 'guide') return 'Guide';
     return 'Text';
+  }
+
+  function codeClass(e) {
+    if (e.kind === 'bhagi') return 'code bhagi';
+    if (e.kind === 'guidedoc') return 'code guidedoc';
+    return e.code ? 'code' : 'code kind';
   }
 
   function highlight(escaped, terms) {
@@ -322,55 +456,148 @@
       : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy — tap for details';
   }
 
+  function chipRow(items, onPick, render) {
+    var chips = document.createElement('div');
+    chips.className = 'chips';
+    items.forEach(function (it) {
+      var b = document.createElement('button');
+      b.className = 'chip';
+      if (render) b.innerHTML = render(it); else b.textContent = it;
+      b.addEventListener('click', function () { onPick(it); q.focus(); runSearch(); });
+      chips.appendChild(b);
+    });
+    return chips;
+  }
+
+  function heading(text) {
+    var h = document.createElement('h2');
+    h.textContent = text;
+    return h;
+  }
+
   function renderIdle() {
     var d = state.data;
     results.innerHTML = '';
-    meta.textContent = d ? d.entries.length + ' searchable rules and sections loaded' : 'Loading…';
-    if (!d) return;
+    if (!d) { meta.textContent = 'Loading…'; return; }
+
+    var tab = state.tab;
+    var counted = d.entries.filter(function (e) { return inTab(e, tab, state.sub); }).length;
+    meta.textContent = counted + ' searchable ' +
+      (tab === 'guides' ? 'guide sections' : tab === 'rules' ? 'rules and sections' : 'entries') +
+      ' loaded' +
+      (tab !== 'rules' && state.guidesState === 'loading' ? ' — guides loading…' : '');
+
     var home = document.createElement('div');
     home.className = 'home';
+
     var hint = document.createElement('p');
     hint.className = 'hint';
-    hint.innerHTML = 'Search by rule code — <code>F45</code>, <code>(H)6</code> — or by keyword: <code>whip</code>, <code>interference</code>, <code>non-runner</code>, <code>weighing in</code>. Results appear as you type.';
+    hint.innerHTML = tab === 'guides'
+      ? 'Search the BHA guide library — General Instructions (<code>BHAGI 1.2</code>), codes of practice and guidance notes. Try <code>bhagi</code>, <code>public order</code> or <code>weight for age</code>.'
+      : 'Search by rule code — <code>F45</code>, <code>(H)6</code>, <code>BHAGI 1.2</code> — or by keyword: <code>whip</code>, <code>interference</code>, <code>non-runner</code>, <code>weighing in</code>. Results appear as you type.';
     home.appendChild(hint);
 
-    var h2 = document.createElement('h2');
-    h2.textContent = 'Browse the rulebook';
-    home.appendChild(h2);
-    var chips = document.createElement('div');
-    chips.className = 'chips';
-    d.manuals.forEach(function (m) {
-      var b = document.createElement('button');
-      b.className = 'chip';
-      b.innerHTML = '<span class="cl">' + m.letter + '</span>' + P.escapeHtml(m.title);
-      b.addEventListener('click', function () { q.value = m.letter; q.focus(); runSearch(); });
-      chips.appendChild(b);
-    });
-    home.appendChild(chips);
+    if (tab !== 'guides') {
+      home.appendChild(heading('Browse the rulebook'));
+      home.appendChild(chipRow(d.manuals,
+        function (m) { q.value = m.letter; },
+        function (m) { return '<span class="cl">' + m.letter + '</span>' + P.escapeHtml(m.title); }));
 
-    // codes + guides by document name
-    var docs = {};
-    d.entries.forEach(function (e) {
-      if (e.kind === 'code' || e.kind === 'guide') docs[e.doc] = e.kind;
-    });
-    var names = Object.keys(docs);
-    if (names.length) {
-      var h3 = document.createElement('h2');
-      h3.textContent = 'Codes & guides';
-      home.appendChild(h3);
-      var chips2 = document.createElement('div');
-      chips2.className = 'chips';
-      names.forEach(function (n) {
-        var b = document.createElement('button');
-        b.className = 'chip';
-        b.textContent = n;
-        b.addEventListener('click', function () { q.value = n.toLowerCase(); q.focus(); runSearch(); });
-        chips2.appendChild(b);
+      var docs = {};
+      d.entries.forEach(function (e) {
+        if (e.kind === 'code' || e.kind === 'guide') docs[e.doc] = 1;
       });
-      home.appendChild(chips2);
+      var names = Object.keys(docs);
+      if (names.length) {
+        home.appendChild(heading('Codes & guides'));
+        home.appendChild(chipRow(names, function (n) { q.value = n.toLowerCase(); }));
+      }
     }
+
+    if (tab !== 'rules' && state.guidesState === 'ready') {
+      home.appendChild(heading(tab === 'guides' ? 'BHA General Instructions' : 'Guide library'));
+      if (tab === 'guides') {
+        // BHAGI sections 1..12
+        var secs = {};
+        d.entries.forEach(function (e) {
+          var m = e.kind === 'bhagi' && e.code && /^BHAGI\s+(\d+)\./.exec(e.code);
+          if (m) secs[m[1]] = (secs[m[1]] || 0) + 1;
+        });
+        var nums = Object.keys(secs).sort(function (a, b) { return a - b; });
+        home.appendChild(chipRow(nums,
+          function (n) { q.value = 'bhagi ' + n; },
+          function (n) { return '<span class="cl">' + n + '</span>Section ' + n + ' (' + secs[n] + ')'; }));
+      }
+      var cats = {};
+      d.entries.forEach(function (e) { if (isGuideEntry(e)) cats[e.cat] = (cats[e.cat] || 0) + 1; });
+      var catNames = Object.keys(cats).sort();
+      if (catNames.length) {
+        home.appendChild(heading(tab === 'guides' ? 'Guide categories' : 'From the guide library'));
+        home.appendChild(chipRow(catNames, function (c) { q.value = c.toLowerCase(); }));
+      }
+    }
+
     results.appendChild(home);
   }
+
+  // Tab counts come from the current (unfiltered) result set, so switching
+  // tabs never re-runs the search.
+  function renderTabs(res) {
+    var subtabs = $('subtabs');
+    var counts = null;
+    if (res) {
+      counts = { all: res.entries.length, rules: 0, guides: 0, bhagi: 0 };
+      res.entries.forEach(function (e) {
+        if (isGuideEntry(e)) {
+          counts.guides++;
+          if (e.kind === 'bhagi') counts.bhagi++;
+        } else counts.rules++;
+      });
+    }
+    var haveGuides = state.guidesState === 'ready';
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (t) {
+      var key = t.dataset.tab;
+      var on = state.tab === key;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      var label = key === 'all' ? 'All' : key === 'rules' ? 'Rules' : 'Guides';
+      var n = counts ? counts[key] : null;
+      t.innerHTML = label + (n != null ? '<span class="n">' + n + '</span>' : '');
+      t.disabled = (key === 'guides' && !haveGuides);
+      if (key === 'guides' && !haveGuides) {
+        t.innerHTML = label + '<span class="n">' +
+          (state.guidesState === 'failed' ? '—' : '…') + '</span>';
+      }
+    });
+    subtabs.hidden = state.tab !== 'guides';
+    Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
+      var on = state.sub === t.dataset.sub;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      var label = t.dataset.sub === 'bhagi' ? 'BHAGIs' : 'All guides';
+      var n = counts ? counts[t.dataset.sub === 'bhagi' ? 'bhagi' : 'guides'] : null;
+      t.innerHTML = label + (n != null ? ' <span class="n">' + n + '</span>' : '');
+    });
+  }
+
+  function selectTab(tab) {
+    if (state.tab === tab) return;
+    state.tab = tab;
+    state.shown = PAGE;
+    runSearch();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (t) {
+    t.addEventListener('click', function () { if (!t.disabled) selectTab(t.dataset.tab); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
+    t.addEventListener('click', function () {
+      if (state.sub === t.dataset.sub) return;
+      state.sub = t.dataset.sub;
+      state.shown = PAGE;
+      runSearch();
+    });
+  });
 
   function renderResults(res) {
     results.innerHTML = '';
@@ -415,10 +642,14 @@
     var head = document.createElement('button');
     head.className = 'rhead';
     head.setAttribute('aria-expanded', 'false');
-    var codeHtml = e.code
-      ? '<span class="code">' + dispCode(e) + '</span>'
-      : '<span class="code kind">' + dispCode(e) + '</span>';
-    var pathBits = [e.doc].concat((e.path || []).slice(0, -1));
+    var codeHtml = '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>';
+    var pathBits;
+    if (isGuideEntry(e)) {
+      pathBits = [e.cat, e.doc];
+      if (e.dated) pathBits.push('dated ' + e.dated);
+    } else {
+      pathBits = [e.doc].concat((e.path || []).slice(0, -1));
+    }
     head.innerHTML = codeHtml +
       '<span class="rtitle">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
       '<span class="rpath">' + P.escapeHtml(pathBits.join(' › ')) + '</span>';
@@ -451,6 +682,16 @@
     full = document.createElement('div');
     full.className = 'rfull';
     full.innerHTML = highlightHtml(e.html, state.lastTerms);
+    if (isGuideEntry(e) && e.url) {
+      var a = document.createElement('a');
+      a.className = 'srclink';
+      a.href = e.url + (e.page > 1 ? '#page=' + e.page : '');
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Open source PDF' + (e.page > 1 ? ' (p.' + e.page + ')' : '') + ' ↗';
+      a.addEventListener('click', function (ev) { ev.stopPropagation(); });
+      full.appendChild(a);
+    }
     div.appendChild(full);
     if (ex) ex.style.display = 'none';
     head.setAttribute('aria-expanded', 'true');
@@ -462,11 +703,23 @@
   function runSearch() {
     var raw = q.value;
     $('clear').classList.toggle('show', !!raw.trim());
-    if (!raw.trim()) { state.lastResults = []; state.lastTerms = []; state.shown = PAGE; renderIdle(); return; }
-    var res = search(raw);
-    state.lastResults = res.entries;
+    if (!raw.trim()) {
+      state.lastResults = []; state.lastTerms = [];
+      renderTabs();
+      renderIdle();
+      return;
+    }
+    var res = search(raw);          // searched across everything
+    renderTabs(res);                // counts reflect the full result set
+    var shown = {
+      entries: res.entries.filter(function (e) { return inTab(e, state.tab, state.sub); }),
+      terms: res.terms,
+      mode: res.mode,
+      exact: res.exact && state.tab !== 'rules'
+    };
+    state.lastResults = shown.entries;
     state.lastTerms = res.terms;
-    renderResults(res);
+    renderResults(shown);
   }
 
   q.addEventListener('input', function () {
@@ -680,7 +933,8 @@
   else if (snap) { initial = snap; source = 'snapshot'; }
 
   if (initial) adopt(initial, source);
-  else renderIdle();
+  else { renderTabs(); renderIdle(); }
   q.focus();
+  loadGuides();
   refresh(!initial);
 })();

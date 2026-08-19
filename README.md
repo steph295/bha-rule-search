@@ -1,24 +1,35 @@
 # BHA Rules Search
 
-A fast, single-file search tool for the British Horseracing Authority
-[Rules of Racing](https://rules.britishhorseracing.com), built for stewards who
-need to find a rule in seconds during a live inquiry.
+A fast search tool for the British Horseracing Authority
+[Rules of Racing](https://rules.britishhorseracing.com) **and** the
+[rules & guides PDF library](https://www.britishhorseracing.com/regulation/rules-guides/),
+built for stewards who need to find a rule in seconds during a live inquiry.
 
 The official site's search can't find rule codes like `F45` and needs exact
 phrases. This app fixes that:
 
 - **Rule codes** — `F45`, `h6`, `(F)34`, `f 45`, `F45A`, even a bare `45`
   (shows rule 45 in every manual) or a bare `F` (browses the whole manual).
+- **BHAGI codes** — `BHAGI 1.2`, `bhagi 4` (a whole section), or `bhagi`
+  (every General Instruction).
 - **Keywords & partial matches** — `whip`, `weighing in`, `non-runner`.
 - **Fuzzy matching** — `wieghing`, `interferance`, `non runer` all work.
 - Results appear instantly as you type; an exact code match auto-expands the
-  full rule text with its numbered sub-clauses (45.1, 45.1.1 …).
+  full text with its numbered sub-clauses (45.1, 45.1.1 …).
+- **Tabs** — *All*, *Rules* (the rulebook) and *Guides* (the PDF library, with
+  a *BHAGIs* sub-filter). Counts on each tab come from the same search, so
+  switching tabs is instant. Guide results link straight to the source PDF at
+  the right page.
 
 ## Hosting
 
-Everything lives in **`index.html`** — CSS, JS and a pre-parsed snapshot of the
-complete rulebook are inline. Drop it on GitHub Pages (or any static host) as
-is; no build step, no server.
+Static files, no server and no build step at deploy time. Upload:
+
+- **`index.html`** — CSS, JS and a pre-parsed snapshot of the complete rulebook,
+  all inline, so the rules are searchable the moment the page paints.
+- **`guides.json`** — the extracted guide/BHAGI library, fetched just after
+  first paint and cached locally.
+- `apple-touch-icon.png`, `manifest.webmanifest` — home-screen install.
 
 ## How it gets the rules
 
@@ -51,15 +62,38 @@ The status pill in the header shows the rulebook version; a green dot means
 it has been verified against the live site recently. Tap it for details,
 a manual "check for updates", and the paste fallback.
 
+## The guide library
+
+The second source is a page of ~50 PDFs, not an API. `tools/extract_guides.py`
+scrapes the link list (keeping each PDF's category heading), downloads them,
+pulls out the text layer and chunks it:
+
+- **BHAGI sections** split into one entry per instruction, keyed on the
+  `BHAGI n.m` code and titled from the instruction's `Subject:` line — that's
+  how they're cited, so it's how they're searched.
+- **Everything else** is chunked into ~2.5k-character blocks, titled by their
+  opening line when it reads like a heading.
+
+Every entry keeps its source URL and page number for the deep link. All 52 PDFs
+have real text layers — none needed OCR.
+
+> The pre-2019 Rules of Racing PDF on that page is deliberately **excluded**:
+> it is superseded by the live rulebook the app already indexes, and surfacing
+> withdrawn rules mid-inquiry is a hazard. Remove it from `SKIP_URL_PARTS` in
+> the script to include it.
+
 ## Development
 
 ```
-src/parser.js     book JSON → searchable entries (shared by build + browser)
-src/app.js        search, ranking, fuzzy matching, UI
-src/styles.css    styles
-src/template.html page shell
-build.js          inlines everything into index.html
-data/book*.json   raw rulebook (input to the snapshot)
+src/parser.js          book JSON → searchable entries (shared by build + browser)
+src/app.js             search, ranking, fuzzy matching, tabs, UI
+src/styles.css         styles
+src/template.html      page shell
+build.js               inlines everything into index.html, copies guides.json
+tools/extract_guides.py PDF library → data/guides.json  (needs `pip install pypdf`)
+data/book*.json        raw rulebook (input to the snapshot)
+data/guides.json       extracted guide library
+data/guide-pdfs/       downloaded PDFs (cache; safe to delete)
 ```
 
 Rebuild after editing sources:
@@ -67,6 +101,12 @@ Rebuild after editing sources:
 ```sh
 node build.js          # from the checked-in data/book34.json
 node build.js --fetch  # refetch the latest rulebook from the BHA API first
+```
+
+Refresh the guide library (re-downloads only what's missing):
+
+```sh
+python3 tools/extract_guides.py && node build.js
 ```
 
 The baked snapshot only matters for first paint — visitors get live updates

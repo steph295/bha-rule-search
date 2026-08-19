@@ -120,6 +120,62 @@ header h1 .thin { font-weight: 300; opacity: 0.85; }
 }
 #clear.show { display: block; }
 
+/* ---- source tabs ---- */
+
+#tabs, #subtabs {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#tabs::-webkit-scrollbar, #subtabs::-webkit-scrollbar { display: none; }
+
+#tabs { border-bottom: 1px solid var(--line); padding-top: 10px; }
+
+.tab {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink-soft);
+  padding: 9px 14px 10px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab:hover { color: var(--green-dark); }
+.tab.active { color: var(--green-dark); font-weight: 650; border-bottom-color: var(--green-mid); }
+.tab .n { font-size: 13px; color: var(--ink-soft); font-weight: 400; margin-left: 5px; }
+.tab.active .n { color: var(--green-mid); }
+.tab[disabled] { opacity: 0.4; cursor: default; }
+
+#subtabs { padding-top: 10px; }
+#subtabs[hidden] { display: none; }
+
+.subtab {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 5px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.subtab.active {
+  background: var(--green-pale);
+  border-color: var(--green-mid);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
 main {
   max-width: 760px;
   margin: 0 auto;
@@ -220,6 +276,27 @@ main {
   font-weight: 600;
   font-size: 13px;
 }
+.code.bhagi { background: #1d4ed8; }
+.code.guidedoc {
+  background: #eef2f7;
+  color: #33415c;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.srclink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--green-mid);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 11px;
+}
+.srclink:hover { border-color: var(--green-mid); background: var(--green-pale); }
 
 .rtitle { font-weight: 650; font-size: 18px; }
 .rpath { color: var(--ink-soft); font-size: 13.5px; width: 100%; }

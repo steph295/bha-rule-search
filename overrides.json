@@ -1,1 +1,10 @@
-{"overrides":{}}
+{
+ "overrides": {
+  "B1": {
+   "title": "Licensing Requirements lol",
+   "html": "<p class=\"l0\">(B)1A person cannot be a Trainer, a Jockey, a Valet or a Jockey’s Agent without having a Licence permitting them to do so issued by the BHA, or equivalent licence issued by another Recognised Racing Authority.</p>",
+   "updatedAt": "2026-08-24T14:47:49.631Z"
+  }
+ },
+ "updatedAt": "2026-08-24T14:47:49.631Z"
+}

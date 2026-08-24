@@ -1,0 +1,116 @@
+:root {
+  --green: #0a3d2c;
+  --green-dark: #072b1f;
+  --green-mid: #14573f;
+  --green-pale: #e7f1ec;
+  --ink: #1b1f1d;
+  --ink-soft: #5a6660;
+  --line: #dde4e0;
+  --bg: #f6f8f7;
+  --card: #ffffff;
+  --amber: #d97706;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+header {
+  background: linear-gradient(180deg, var(--green) 0%, var(--green-dark) 100%);
+  color: #fff;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+header h1 { font-size: 18px; font-weight: 700; margin: 0; }
+header h1 .thin { font-weight: 300; opacity: .85; }
+header .right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+header button {
+  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+}
+
+/* ---- login ---- */
+.login-wrap { max-width: 360px; margin: 90px auto; padding: 0 20px; }
+.login-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 28px; }
+.login-card h2 { margin: 0 0 6px; font-size: 20px; color: var(--green-dark); }
+.login-card p { color: var(--ink-soft); font-size: 14px; margin: 0 0 18px; }
+.login-card input {
+  width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 9px; margin-bottom: 12px;
+}
+.login-card button {
+  width: 100%; background: var(--green); color: #fff; border: 0; border-radius: 9px;
+  padding: 11px 0; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.login-error { color: #b42318; font-size: 13.5px; margin-top: 10px; min-height: 1.2em; }
+
+/* ---- editor ---- */
+main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex; gap: 18px; }
+.list-pane { width: 360px; flex: none; }
+.list-pane input {
+  width: 100%; box-sizing: border-box; font-size: 15px; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: 9px; margin-bottom: 10px;
+}
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabs button {
+  border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+  padding: 5px 13px; font-size: 13px; cursor: pointer; color: var(--ink-soft);
+}
+.tabs button.active { background: var(--green-pale); border-color: var(--green-mid); color: var(--green-dark); font-weight: 600; }
+.result-list { max-height: 70vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.result-row {
+  padding: 10px 14px; border-bottom: 1px solid #eef2ef; cursor: pointer; font-size: 14px;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row:hover { background: var(--green-pale); }
+.result-row.active { background: var(--green-pale); border-left: 3px solid var(--green-mid); }
+.result-row .code { display: inline-block; background: var(--green); color: #fff; font-weight: 700; font-size: 12px; border-radius: 5px; padding: 1px 7px; margin-right: 8px; }
+.result-row .code.bhagi { background: #1d4ed8; }
+.result-row .code.guidedoc { background: #eef2f7; color: #33415c; }
+.result-row .edited-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); margin-left: 6px; vertical-align: middle; }
+.result-row .title { font-weight: 550; }
+.result-row .doc { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+
+.editor-pane { flex: 1; min-width: 0; }
+.editor-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+.editor-card .code-badge { display: inline-block; background: var(--green); color: #fff; font-weight: 700; font-size: 13px; border-radius: 6px; padding: 3px 10px; margin-bottom: 12px; }
+.editor-card label { display: block; font-size: 13px; font-weight: 600; color: #3c4540; margin: 14px 0 5px; }
+.editor-card label:first-of-type { margin-top: 0; }
+.editor-card input[type=text] {
+  width: 100%; box-sizing: border-box; font-size: 15px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 9px;
+}
+.editor-card textarea {
+  width: 100%; box-sizing: border-box; font-size: 14.5px; line-height: 1.6; padding: 11px 12px;
+  border: 1px solid var(--line); border-radius: 9px; min-height: 220px; font-family: inherit; resize: vertical;
+}
+.hint { font-size: 12px; color: var(--ink-soft); margin-top: 5px; line-height: 1.5; }
+.editor-actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.editor-actions button.save {
+  background: var(--green); color: #fff; border: 0; border-radius: 9px; padding: 10px 20px;
+  font-size: 14.5px; font-weight: 600; cursor: pointer;
+}
+.editor-actions button.save:disabled { opacity: .5; cursor: default; }
+.editor-actions button.revert {
+  background: var(--card); color: #b42318; border: 1px solid var(--line); border-radius: 9px;
+  padding: 10px 16px; font-size: 14px; cursor: pointer;
+}
+.save-msg { font-size: 13.5px; color: var(--ink-soft); }
+.save-msg.ok { color: #067647; }
+.save-msg.err { color: #b42318; }
+.empty-state { color: var(--ink-soft); font-size: 14.5px; padding: 40px 20px; text-align: center; }
+
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(7,43,31,.45); display: flex; align-items: center; justify-content: center; z-index: 20;
+}
+.confirm-box { background: #fff; border-radius: 14px; padding: 22px 24px; max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.confirm-box h3 { margin: 0 0 8px; font-size: 16px; color: var(--green-dark); }
+.confirm-box p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin: 0 0 16px; }
+.confirm-box .row { display: flex; gap: 10px; justify-content: flex-end; }
+.confirm-box button { border: 0; border-radius: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.confirm-box .cancel { background: var(--green-pale); color: var(--green-dark); }
+.confirm-box .confirm { background: var(--green); color: #fff; }

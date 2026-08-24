@@ -11,6 +11,11 @@
 
   var GUIDES_URL = 'guides.json';
   var LS_GUIDES = 'bha-guides-v1';
+  var OVERRIDES_URL = 'overrides.json';
+
+  // Same key logic as the admin tool (admin/admin.js) — must stay identical
+  // so an edit saved there lands on the right entry here.
+  function entryKey(e) { return e.code || (e.doc + '::' + e.title); }
 
   var state = {
     data: null,        // {version, publishedAt, manuals, entries, sourceUpdatedAt}
@@ -24,7 +29,8 @@
     guides: null,      // {source, documents, entries}
     guidesState: 'idle', // idle | loading | ready | failed
     tab: 'all',        // all | rules | guides
-    sub: 'all'         // all | bhagi  (within the guides tab)
+    sub: 'all',        // all | bhagi  (within the guides tab)
+    overrides: null    // {key: {title, html}} published by the admin tool, once loaded
   };
 
   // Which tab an entry belongs to. Rulebook entries (manual/code/guide) come
@@ -83,9 +89,39 @@
       prepareEntries(data.entries);
       buildVocab();
     }
+    applyOverrides();
     renderStatus();
     renderTabs();
     runSearch();
+  }
+
+  // ---- admin overrides (published by admin/admin.js) --------------------
+
+  // Overrides are a thin, public, unauthenticated patch layer: the admin
+  // tool commits {key: {title, html}} entries here, and every visitor's
+  // client applies them on top of whichever snapshot they already loaded.
+  // No build step, no redeploy — an edit is live as soon as this file is.
+  function loadOverrides() {
+    fetch(OVERRIDES_URL, { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : { overrides: {} }; })
+      .then(function (j) {
+        state.overrides = (j && j.overrides) || {};
+        applyOverrides();
+        if (Object.keys(state.overrides).length) refreshView();
+      })
+      .catch(function () { /* no overrides file yet — fine */ });
+  }
+
+  function applyOverrides() {
+    if (!state.overrides || !state.data) return;
+    state.data.entries.forEach(function (e) {
+      var o = state.overrides[entryKey(e)];
+      if (!o) return;
+      if (o.title) e.title = o.title;
+      if (o.html) { e.html = o.html; e.plain = undefined; }
+    });
+    prepareEntries(state.data.entries);
+    buildVocab();
   }
 
   // ---- guides (PDF library) -------------------------------------------
@@ -114,6 +150,7 @@
     state.data.entries = merged;
     prepareEntries(merged);
     buildVocab();
+    applyOverrides();
   }
 
   function prepareEntries(entries) {
@@ -936,5 +973,6 @@
   else { renderTabs(); renderIdle(); }
   q.focus();
   loadGuides();
+  loadOverrides();
   refresh(!initial);
 })();

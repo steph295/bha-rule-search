@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BHA Rules — Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<header>
+  <h1>BHA <span class="thin">Rules Admin</span></h1>
+  <div class="right" id="who" style="display:none">
+    <span id="whoText"></span>
+    <button id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<div id="loginView" class="login-wrap">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p>Edits publish straight to the live site — there is no draft or review step, so double-check before saving.</p>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password">
+    <button id="loginBtn">Sign in</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<main id="mainView" style="display:none">
+  <div class="list-pane">
+    <div class="tabs">
+      <button class="active" data-tab="all">All</button>
+      <button data-tab="rules">Rules</button>
+      <button data-tab="guides">Guides</button>
+      <button data-tab="edited">Edited</button>
+    </div>
+    <input id="search" type="text" placeholder="Search code or keyword…">
+    <div class="result-list" id="resultList"></div>
+  </div>
+  <div class="editor-pane" id="editorPane">
+    <div class="empty-state">Pick an entry on the left to edit it.</div>
+  </div>
+</main>
+
+<script src="admin.js"></script>
+</body>
+</html>

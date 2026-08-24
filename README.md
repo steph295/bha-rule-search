@@ -82,14 +82,33 @@ have real text layers — none needed OCR.
 > withdrawn rules mid-inquiry is a hazard. Remove it from `SKIP_URL_PARTS` in
 > the script to include it.
 
+## Admin — editing rule/guide text
+
+`/admin` is a small password-protected page for editing entry titles/text
+directly on the live site — no rebuild, no redeploy of `index.html`. See
+[ADMIN_SETUP.md](ADMIN_SETUP.md) for the one-time setup (a free Vercel
+project + a GitHub token, both things only you can create).
+
+How it works: an edit is saved into `overrides.json` in this repo (via the
+GitHub API, from a Vercel serverless function), and every visitor's copy of
+`app.js` fetches that file and applies it on top of whichever rulebook
+snapshot they already loaded — so a save is live everywhere within moments,
+without touching `index.html` at all. Every edit is a normal, revertible git
+commit. There is currently no draft/review step — publishing is immediate —
+and editing a rule's body collapses its numbered sub-clauses into plain
+paragraphs rather than preserving the original 45.1/45.2-style structure.
+
 ## Development
 
 ```
 src/parser.js          book JSON → searchable entries (shared by build + browser)
-src/app.js             search, ranking, fuzzy matching, tabs, UI
+src/app.js             search, ranking, fuzzy matching, tabs, UI, overrides
 src/styles.css         styles
 src/template.html      page shell
-build.js               inlines everything into index.html, copies guides.json
+build.js               inlines everything into index.html; also writes rules.json
+admin/                 password-protected editor UI (see ADMIN_SETUP.md)
+api/                   Vercel functions behind /admin: login, session, save-rule
+overrides.json         published edits — read by app.js, written by api/save-rule.js
 tools/extract_guides.py PDF library → data/guides.json  (needs `pip install pypdf`)
 data/book*.json        raw rulebook (input to the snapshot)
 data/guides.json       extracted guide library

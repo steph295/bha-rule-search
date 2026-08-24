@@ -69,6 +69,13 @@ async function main() {
   const kb = (fs.statSync(path.join(ROOT, 'index.html')).size / 1024).toFixed(0);
   console.log(`index.html built — ${kb} KB, ${parsed.entries.length} entries, rules v${parsed.version}`);
 
+  // Plain-JSON copy of the same rulebook snapshot embedded in index.html.
+  // Used by the admin tool (and anything else) that wants the parsed
+  // rulebook without scraping it out of the built page.
+  fs.writeFileSync(path.join(ROOT, 'rules.json'), JSON.stringify(snapshot));
+  const rkb = (fs.statSync(path.join(ROOT, 'rules.json')).size / 1024).toFixed(0);
+  console.log(`rules.json written — ${rkb} KB`);
+
   // The guide library (PDF extracts) ships as a sibling file the app fetches
   // after first paint, so the rulebook stays instantly searchable.
   const guidesSrc = path.join(DATA, 'guides.json');

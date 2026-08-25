@@ -75,8 +75,23 @@ header h1 {
 
 header h1 .thin { font-weight: 300; opacity: 0.85; }
 
-#status {
+#pdfBtn {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  cursor: pointer;
+  flex: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#pdfBtn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+#status {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -87,6 +102,7 @@ header h1 .thin { font-weight: 300; opacity: 0.85; }
   border-radius: 999px;
   padding: 4px 12px;
   cursor: pointer;
+  flex: none;
   -webkit-tap-highlight-color: transparent;
 }
 #status:hover { background: rgba(255,255,255,0.15); }
@@ -376,7 +392,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 /* ---- data panel ---- */
 
-#panel {
+#panel, #pdfPanel {
   border: none;
   border-radius: 14px;
   padding: 0;
@@ -384,10 +400,31 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   width: calc(100vw - 40px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
 }
-#panel::backdrop { background: rgba(7,43,31,0.55); }
+#panel::backdrop, #pdfPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
-#panel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
-#panel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#panel h2, #pdfPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
+#panel p, #pdfPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#pdfPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
+.pdf-chapter-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.pdf-chapter-list label, .pdf-check-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.pdf-check-row { margin-bottom: 4px; }
 #panel textarea {
   width: 100%;
   height: 130px;
@@ -450,6 +487,9 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 <header>
   <h1>BHA <span class="thin">Rules Search</span></h1>
+  <button id="pdfBtn" type="button" title="Download as PDF" aria-label="Download as PDF">
+    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
+  </button>
   <button id="status" type="button"><span class="dot"></span><span class="stxt">Loading…</span></button>
 </header>
 
@@ -491,6 +531,23 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       <button id="panelclose" class="btn ghost">Close</button>
     </div>
     <div id="panelmsg"></div>
+  </div>
+</dialog>
+
+<dialog id="pdfPanel">
+  <div class="panel-inner">
+    <h2>Download as PDF</h2>
+    <p>Opens your browser's print dialog — choose <b>Save as PDF</b> as the destination. Handy for building a printed hearing bundle.</p>
+    <button id="pdfWholeBtn" class="btn" style="width:100%;margin-bottom:14px">Download whole rulebook (PDF)</button>
+    <p class="hint" style="margin:0 0 8px">Or choose specific sections:</p>
+    <div id="pdfChapterList" class="pdf-chapter-list"></div>
+    <div class="pdf-check-row"><label><input type="checkbox" id="pdfCodes"> Codes &amp; Guides</label></div>
+    <div class="pdf-check-row"><label><input type="checkbox" id="pdfGuides"> General Instructions &amp; Guide Library</label></div>
+    <div class="panel-btns">
+      <button id="pdfGenerate" class="btn">Generate PDF</button>
+      <button id="pdfPanelClose" class="btn ghost">Close</button>
+    </div>
+    <div id="pdfMsg" class="hint"></div>
   </div>
 </dialog>
 
@@ -815,6 +872,144 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
   return { parseBook: parseBook, cleanHtml: cleanHtml, toText: toText, escapeHtml: escapeHtml };
 });
+
+</script>
+<script>
+/*
+ * BHA Rules — PDF export.
+ *
+ * Every entry's `.html` already carries the site's own numbering markup
+ * (<p class="l1"><span class="rn">45</span>…</p> etc, from parser.js /
+ * extract_guides.py), so exporting is just: filter entries, wrap them with
+ * headings, print-style the same l0–l3/rn classes, and hand the result to
+ * the browser's native print-to-PDF — no PDF library, no server, works
+ * identically on the public static site and the admin tool.
+ */
+(function (root) {
+  'use strict';
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
+
+  var PRINT_CSS = [
+    '@page { margin: 2.1cm 1.9cm; }',
+    'body { font-family: Georgia, "Times New Roman", serif; color: #16201b; font-size: 11.2pt; line-height: 1.55; margin: 0; }',
+    '.cover { text-align: center; padding-top: 34vh; page-break-after: always; }',
+    '.cover .mark { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 12pt; letter-spacing: .16em; color: #0a3d2c; font-weight: 700; }',
+    '.cover h1 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 25pt; margin: 10px 0 4px; color: #0a3d2c; }',
+    '.cover .sub { font-size: 13pt; color: #3c4540; margin-top: 6px; }',
+    '.cover .meta { font-size: 10pt; color: #7a8580; margin-top: 60px; }',
+    '.group { page-break-before: always; }',
+    '.group:first-of-type { page-break-before: avoid; }',
+    '.group h2 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 17pt; color: #0a3d2c; border-bottom: 2px solid #0a3d2c; padding-bottom: 7px; margin: 0 0 6px; }',
+    '.doc-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 13pt; font-weight: 700; color: #14573f; margin: 20px 0 4px; }',
+    '.entry { margin: 14px 0; }',
+    '.entry-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }',
+    '.code-badge { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 10.5pt; color: #fff; background: #0a3d2c; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }',
+    '.entry-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 12pt; color: #16201b; }',
+    'p { margin: 7px 0; position: relative; }',
+    '.l1 { padding-left: 40px; }',
+    '.l2 { padding-left: 72px; }',
+    '.l3 { padding-left: 104px; }',
+    '.l0 { color: #2b332e; }',
+    '.rn { position: absolute; left: 0; color: #14573f; font-weight: 700; }',
+    '.l2 .rn { left: 36px; } .l3 .rn { left: 68px; }',
+    'table { border-collapse: collapse; margin: 8px 0; font-size: 10pt; }',
+    'th, td { border: 1px solid #9db3a8; padding: 4px 8px; text-align: left; vertical-align: top; }',
+    'th { background: #e7f1ec; color: #0a3d2c; }',
+    'ul { margin: 6px 0; padding-left: 22px; }',
+    '.footer-note { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 8.5pt; color: #8a958f; margin-top: 40px; }'
+  ].join('\n');
+
+  function renderGroup(title, entries) {
+    if (!entries.length) return '';
+    var html = '<div class="group"><h2>' + esc(title) + '</h2>';
+    var lastDoc = null;
+    entries.forEach(function (e) {
+      if (e.doc && e.doc !== lastDoc && (isGuideEntry(e) || e.kind === 'code' || e.kind === 'guide')) {
+        html += '<div class="doc-title">' + esc(e.doc) + '</div>';
+        lastDoc = e.doc;
+      }
+      var badge = (e.letter && e.num != null) ? '(' + e.letter + ')' + e.num : (e.code || (e.kind === 'bhagi' ? 'BHAGI' : e.kind === 'guidedoc' ? 'Guide' : ''));
+      html += '<div class="entry">' +
+        '<div class="entry-head">' + (badge ? '<span class="code-badge">' + esc(badge) + '</span>' : '') +
+        '<span class="entry-title">' + esc(e.title) + '</span></div>' +
+        (e.html || '') + '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // opts: { chapters: ['A','F',...], includeCodes: bool, includeGuides: bool,
+  //         version, dateLabel, title }
+  function buildHtml(entries, manuals, opts) {
+    opts = opts || {};
+    var chapters = opts.chapters || [];
+    var manualByLetter = {};
+    (manuals || []).forEach(function (m) { manualByLetter[m.letter] = m; });
+
+    var body = '';
+    chapters.forEach(function (letter) {
+      var m = manualByLetter[letter];
+      var chEntries = entries.filter(function (e) { return e.letter === letter; })
+        .sort(function (a, b) { return (a.num || 0) - (b.num || 0); });
+      body += renderGroup(letter + ' — ' + (m ? m.title : 'Chapter ' + letter), chEntries);
+    });
+    if (opts.includeCodes) {
+      var codeEntries = entries.filter(function (e) { return e.kind === 'code' || e.kind === 'guide'; });
+      body += renderGroup('Codes & Guides', codeEntries);
+    }
+    if (opts.includeGuides) {
+      var guideEntries = entries.filter(isGuideEntry);
+      body += renderGroup('BHA General Instructions & Guide Library', guideEntries);
+    }
+
+    var chapterLabel = chapters.length ? chapters.join(', ') : 'none';
+    var included = [];
+    if (chapters.length) included.push('Chapters ' + chapterLabel);
+    if (opts.includeCodes) included.push('Codes & Guides');
+    if (opts.includeGuides) included.push('General Instructions & Guide Library');
+
+    return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(opts.title || 'BHA Rules of Racing') +
+      '</title><style>' + PRINT_CSS + '</style></head><body>' +
+      '<div class="cover"><div class="mark">BRITISH HORSERACING AUTHORITY</div>' +
+      '<h1>' + esc(opts.title || 'Rules of Racing') + '</h1>' +
+      '<div class="sub">Version ' + esc(opts.version || '') + (opts.dateLabel ? ' · ' + esc(opts.dateLabel) : '') + '</div>' +
+      '<div class="meta">Generated from rules.britishhorseracing.com data · ' + esc(included.join(' + ') || 'no sections selected') +
+      '<br>This export reflects the data loaded in your browser at generation time.</div></div>' +
+      body +
+      '<div class="footer-note">Unofficial export — always verify against the official BHA Rules of Racing.</div>' +
+      '</body></html>';
+  }
+
+  // A hidden same-page iframe rather than window.open: it can't be blocked
+  // by a pop-up blocker (there's no new window to block), which matters
+  // more than the tiny extra complexity when this needs to work reliably
+  // on whatever browser/extensions a steward happens to have tomorrow.
+  var printFrame = null;
+  function openAndPrint(html) {
+    if (printFrame) printFrame.remove();
+    printFrame = document.createElement('iframe');
+    printFrame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    printFrame.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(printFrame);
+    var fired = false;
+    var go = function () {
+      if (fired) return;
+      fired = true;
+      try { printFrame.contentWindow.focus(); printFrame.contentWindow.print(); }
+      catch (e) { alert('Could not open the print dialog: ' + e.message); }
+    };
+    printFrame.addEventListener('load', function () { setTimeout(go, 150); });
+    printFrame.srcdoc = html;
+    setTimeout(go, 1200); // fallback if load already fired
+  }
+
+  root.BHAPdfExport = { buildHtml: buildHtml, openAndPrint: openAndPrint };
+})(typeof window !== 'undefined' ? window : this);
 
 </script>
 <script>
@@ -1765,6 +1960,53 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     });
     return { bookId: 0, version: 'pasted', publishedAt: null, year: null, manuals: [], entries: entries };
   }
+
+  // ---------------------------------------------------------- pdf export
+
+  var pdfPanel = $('pdfPanel');
+  function populatePdfChapters() {
+    var list = $('pdfChapterList');
+    if (!state.data || !state.data.manuals.length) {
+      list.innerHTML = '<div class="hint">No chapters loaded yet.</div>';
+      return;
+    }
+    list.innerHTML = state.data.manuals.map(function (m) {
+      return '<label><input type="checkbox" value="' + m.letter + '"> ' + m.letter + ' — ' + P.escapeHtml(m.title) + '</label>';
+    }).join('');
+  }
+  function openPdfPanel() {
+    populatePdfChapters();
+    $('pdfMsg').textContent = '';
+    if (typeof pdfPanel.showModal === 'function') pdfPanel.showModal();
+    else pdfPanel.setAttribute('open', '');
+  }
+  $('pdfBtn').addEventListener('click', openPdfPanel);
+  $('pdfPanelClose').addEventListener('click', function () { pdfPanel.close ? pdfPanel.close() : pdfPanel.removeAttribute('open'); });
+
+  function generatePdf(chapters, includeCodes, includeGuides) {
+    if (!state.data || !state.data.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; return; }
+    var html = BHAPdfExport.buildHtml(state.data.entries, state.data.manuals, {
+      chapters: chapters, includeCodes: includeCodes, includeGuides: includeGuides,
+      version: state.data.version, dateLabel: state.data.year, title: 'BHA Rules of Racing'
+    });
+    BHAPdfExport.openAndPrint(html);
+  }
+
+  $('pdfWholeBtn').addEventListener('click', function () {
+    if (!state.data) return;
+    generatePdf(state.data.manuals.map(function (m) { return m.letter; }), true, true);
+  });
+
+  $('pdfGenerate').addEventListener('click', function () {
+    var chapters = Array.prototype.map.call($('pdfChapterList').querySelectorAll('input:checked'), function (i) { return i.value; });
+    var includeCodes = $('pdfCodes').checked;
+    var includeGuides = $('pdfGuides').checked;
+    if (!chapters.length && !includeCodes && !includeGuides) {
+      $('pdfMsg').textContent = 'Pick at least one chapter, or Codes & Guides, or the Guide Library.';
+      return;
+    }
+    generatePdf(chapters, includeCodes, includeGuides);
+  });
 
   // -------------------------------------------------------------- toast
 

@@ -62,6 +62,7 @@ async function main() {
   const html = read('template.html')
     .replace('{{STYLES}}', () => read('styles.css'))
     .replace('{{PARSER}}', () => read('parser.js'))
+    .replace('{{PDFEXPORT}}', () => read('pdf-export.js'))
     .replace('{{APP}}', () => read('app.js'))
     .replace('{{SNAPSHOT}}', () => snapJson);
 

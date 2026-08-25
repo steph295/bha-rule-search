@@ -12,7 +12,10 @@
 <header>
   <h1>BHA <span class="thin">Rules Admin</span></h1>
   <div class="right" id="who" style="display:none">
-    <span id="whoText"></span>
+    <button id="pdfBtn" class="icon-btn" title="Download as PDF" aria-label="Download as PDF">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
+    </button>
+    <a id="viewPublic" href="https://steph295.github.io/bha-rule-search/" target="_blank" rel="noopener">View public site ↗</a>
     <button id="logoutBtn">Sign out</button>
   </div>
 </header>
@@ -27,22 +30,112 @@
   </div>
 </div>
 
-<main id="mainView" style="display:none">
-  <div class="list-pane">
-    <div class="tabs">
-      <button class="active" data-tab="all">All</button>
-      <button data-tab="rules">Rules</button>
-      <button data-tab="guides">Guides</button>
-      <button data-tab="edited">Edited</button>
+<div id="appShell" style="display:none">
+  <nav class="sidebar">
+    <div class="navitem active" data-view="manuals">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8.5A1.5 1.5 0 0 1 13 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H13"></path></svg>
+      Manuals
     </div>
-    <input id="search" type="text" placeholder="Search code or keyword…">
-    <div class="result-list" id="resultList"></div>
-  </div>
-  <div class="editor-pane" id="editorPane">
-    <div class="empty-state">Pick an entry on the left to edit it.</div>
-  </div>
-</main>
+    <div class="navitem" data-view="media">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1.5"></rect><circle cx="6" cy="6.5" r="1.1"></circle><path d="M13.2 10.5L10 7.5l-5 5"></path></svg>
+      Media Library
+    </div>
+    <div class="navitem" data-view="structure">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"></path><path d="M5.5 8H13"></path><path d="M8 12.5h5"></path></svg>
+      Master Sections
+    </div>
+    <div class="navitem" data-view="admin">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.8" r="2.1"></circle><path d="M2.4 13c.4-2.1 1.7-3.2 3.1-3.2S8.2 10.9 8.6 13"></path><circle cx="10.8" cy="6" r="1.7"></circle><path d="M10.8 9.8c1.3 0 2.5 1.1 2.8 3.2"></path></svg>
+      Admin
+    </div>
+    <div class="sidebar-foot">Public site:<br>steph295.github.io/bha-rule-search</div>
+  </nav>
 
+  <div class="content">
+
+    <section id="view-manuals" class="view">
+      <main>
+        <div class="list-pane">
+          <div class="tabs">
+            <button class="active" data-tab="all">All</button>
+            <button data-tab="rules">Rules</button>
+            <button data-tab="guides">Guides</button>
+            <button data-tab="edited">Edited</button>
+          </div>
+          <input id="search" type="text" placeholder="Search code or keyword…">
+          <div class="result-list" id="resultList"></div>
+        </div>
+        <div class="editor-pane" id="editorPane">
+          <div class="empty-state">Pick an entry on the left to edit it.</div>
+        </div>
+      </main>
+    </section>
+
+    <section id="view-media" class="view" hidden>
+      <div class="soon-panel">
+        <div class="soon-icon">
+          <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1.5"></rect><circle cx="6" cy="6.5" r="1.1"></circle><path d="M13.2 10.5L10 7.5l-5 5"></path></svg>
+        </div>
+        <h2>Media Library</h2>
+        <p>Uploading and managing images and PDF snapshots from this screen is planned but not built yet. For now, files are managed directly in the <code>bha-rule-search</code> GitHub repo.</p>
+      </div>
+    </section>
+
+    <section id="view-structure" class="view" hidden>
+      <div class="soon-panel">
+        <div class="soon-icon">
+          <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"></path><path d="M5.5 8H13"></path><path d="M8 12.5h5"></path></svg>
+        </div>
+        <h2>Master Sections</h2>
+        <p>Reordering chapters and sections, and adding new ones, is planned but not built yet. The chapter structure (A–M, plus Codes &amp; Guides) is currently fixed by the source rulebook.</p>
+      </div>
+    </section>
+
+    <section id="view-admin" class="view" hidden>
+      <div class="soon-panel wide">
+        <h2>Admin</h2>
+        <div class="admin-info-grid">
+          <div class="admin-info-card">
+            <div class="admin-info-label">Signed in as</div>
+            <div class="admin-info-value">Admin (shared password)</div>
+            <div class="admin-info-note">One trusted editor tier — no separate user accounts yet.</div>
+          </div>
+          <div class="admin-info-card">
+            <div class="admin-info-label">Publishing</div>
+            <div class="admin-info-value">Immediate — no review step</div>
+            <div class="admin-info-note">Every save commits straight to the live site. Revert via git history if needed.</div>
+          </div>
+          <div class="admin-info-card">
+            <div class="admin-info-label">Storage</div>
+            <div class="admin-info-value">overrides.json in GitHub</div>
+            <div class="admin-info-note">Edits are plain git commits to the bha-rule-search repo — fully auditable.</div>
+          </div>
+        </div>
+        <p class="soon-note">User accounts, roles and permissions management are planned but not built yet.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<dialog id="pdfPanel">
+  <div class="panel-inner">
+    <h2>Download as PDF</h2>
+    <p>Opens your browser's print dialog — choose <b>Save as PDF</b> as the destination. Handy for building a printed hearing bundle.</p>
+    <button id="pdfWholeBtn" class="btn" style="width:100%;margin-bottom:14px">Download whole rulebook (PDF)</button>
+    <p class="hint" style="margin:0 0 8px">Or choose specific sections:</p>
+    <div id="pdfChapterList" class="pdf-chapter-list"></div>
+    <div class="pdf-check-row"><label><input type="checkbox" id="pdfCodes"> Codes &amp; Guides</label></div>
+    <div class="pdf-check-row"><label><input type="checkbox" id="pdfGuides"> General Instructions &amp; Guide Library</label></div>
+    <div class="panel-btns">
+      <button id="pdfGenerate" class="btn">Generate PDF</button>
+      <button id="pdfPanelClose" class="btn ghost">Close</button>
+    </div>
+    <div id="pdfMsg" class="hint"></div>
+  </div>
+</dialog>
+
+<script src="../src/pdf-export.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

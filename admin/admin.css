@@ -27,11 +27,51 @@ header {
 }
 header h1 { font-size: 18px; font-weight: 700; margin: 0; }
 header h1 .thin { font-weight: 300; opacity: .85; }
-header .right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+header .right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; }
+header .right a { color: rgba(255,255,255,.85); text-decoration: none; }
+header .right a:hover { color: #fff; text-decoration: underline; }
 header button {
   background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
   border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
 }
+
+/* ---- app shell: sidebar + content ---- */
+#appShell { display: flex; min-height: calc(100vh - 49px); }
+.sidebar {
+  width: 210px; flex: none; background: var(--green); color: #fff;
+  padding: 16px 10px; display: flex; flex-direction: column; gap: 2px;
+}
+.navitem {
+  display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px;
+  font-size: 14.5px; color: rgba(255,255,255,.78); cursor: pointer;
+}
+.navitem:hover { background: rgba(255,255,255,.08); }
+.navitem.active { background: rgba(255,255,255,.16); color: #fff; font-weight: 600; }
+.sidebar-foot { margin-top: auto; font-size: 11px; color: rgba(255,255,255,.45); padding: 8px 11px 2px; line-height: 1.5; }
+
+.content { flex: 1; min-width: 0; }
+.view { display: none; }
+.view.active { display: block; }
+
+/* ---- coming-soon panels ---- */
+.soon-panel {
+  max-width: 480px; margin: 60px auto; text-align: center; padding: 0 20px;
+}
+.soon-panel.wide { max-width: 780px; text-align: left; }
+.soon-icon {
+  width: 56px; height: 56px; border-radius: 14px; background: var(--green-pale); color: var(--green-mid);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+}
+.soon-panel h2 { font-size: 20px; color: var(--green-dark); margin: 0 0 10px; }
+.soon-panel.wide h2 { text-align: center; }
+.soon-panel p { color: var(--ink-soft); font-size: 14.5px; line-height: 1.6; margin: 0; }
+.soon-panel code { background: var(--green-pale); border-radius: 5px; padding: 1px 6px; font-size: 13.5px; color: var(--green-dark); }
+.admin-info-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin: 24px 0; }
+.admin-info-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.admin-info-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 600; margin-bottom: 6px; }
+.admin-info-value { font-size: 15px; font-weight: 650; color: var(--green-dark); margin-bottom: 6px; }
+.admin-info-note { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+.soon-note { text-align: center; color: var(--ink-soft); font-size: 13.5px; }
 
 /* ---- login ---- */
 .login-wrap { max-width: 360px; margin: 90px auto; padding: 0 20px; }
@@ -114,3 +154,37 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .confirm-box button { border: 0; border-radius: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .confirm-box .cancel { background: var(--green-pale); color: var(--green-dark); }
 .confirm-box .confirm { background: var(--green); color: #fff; }
+
+/* ---- header icon button + shared dialog/btn (pdf export) ---- */
+.icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0;
+  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 999px; cursor: pointer;
+}
+.icon-btn:hover { background: rgba(255,255,255,.2); }
+
+.btn {
+  border: 0; background: var(--green); color: #fff; border-radius: 9px;
+  padding: 9px 16px; font-size: 15px; cursor: pointer;
+}
+.btn.ghost { background: var(--green-pale); color: var(--green-dark); }
+
+#pdfPanel {
+  border: none; border-radius: 14px; padding: 0; max-width: 560px;
+  width: calc(100vw - 40px); max-height: calc(100vh - 60px); overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+#pdfPanel::backdrop { background: rgba(7,43,31,.55); }
+#pdfPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
+#pdfPanel p { margin: 8px 0; font-size: 14px; color: var(--ink-soft); }
+.pdf-chapter-list {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+  margin-bottom: 10px; max-height: 220px; overflow-y: auto;
+}
+.pdf-chapter-list label, .pdf-check-row label {
+  display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 0; cursor: pointer;
+}
+.pdf-check-row { margin-bottom: 4px; }
+.panel-btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }

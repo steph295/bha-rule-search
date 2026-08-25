@@ -103,14 +103,18 @@
     ]).then(function (res) {
       var rules = res[0], guides = res[1], overrides = res[2];
       var entries = (rules.entries || []).map(function (e) {
-        return { kind: e.kind, code: e.code, doc: e.doc, title: e.title, html: e.html, path: e.path || [] };
+        return { kind: e.kind, code: e.code, letter: e.letter, num: e.num, doc: e.doc, title: e.title, html: e.html, path: e.path || [] };
       }).concat((guides.entries || []).map(function (g) {
-        return { kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc', code: g.code, doc: g.doc, title: g.title, html: g.html, path: [g.cat] };
+        return { kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc', code: g.code, letter: null, num: null, doc: g.doc, title: g.title, html: g.html, path: [g.cat] };
       }));
       entries.forEach(function (e) { e.key = computeKey(e); });
       state.entries = entries;
       state.overrides = overrides.overrides || {};
+      state.manuals = rules.manuals || [];
+      state.version = rules.version;
+      state.year = rules.year;
       renderList();
+      populatePdfChapters();
     }).catch(function (e) {
       $('resultList').innerHTML = '<div class="empty-state">Could not load rule data: ' + escapeHtml(e.message) + '</div>';
     });
@@ -244,10 +248,75 @@
 
   function render() {
     $('loginView').style.display = state.loggedIn ? 'none' : '';
-    $('mainView').style.display = state.loggedIn ? 'flex' : 'none';
+    $('appShell').style.display = state.loggedIn ? 'flex' : 'none';
     $('who').style.display = state.loggedIn ? 'flex' : 'none';
-    if (state.loggedIn) $('whoText').textContent = 'Signed in';
   }
+
+  // ---- sidebar navigation ---------------------------------------------
+
+  Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function (item) {
+    item.addEventListener('click', function () {
+      var view = item.dataset.view;
+      Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function (x) {
+        x.classList.toggle('active', x === item);
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.view'), function (x) {
+        x.classList.toggle('active', x.id === 'view-' + view);
+      });
+    });
+  });
+  // "Manuals" is the working screen and the default view.
+  document.getElementById('view-manuals').classList.add('active');
+
+  // ---- pdf export -------------------------------------------------------
+
+  var pdfPanel = $('pdfPanel');
+  function populatePdfChapters() {
+    var list = $('pdfChapterList');
+    if (!list) return;
+    if (!state.manuals || !state.manuals.length) { list.innerHTML = '<div class="hint">No chapters loaded yet.</div>'; return; }
+    list.innerHTML = state.manuals.map(function (m) {
+      return '<label><input type="checkbox" value="' + m.letter + '"> ' + m.letter + ' — ' + escapeHtml(m.title) + '</label>';
+    }).join('');
+  }
+  function openPdfPanel() {
+    $('pdfMsg').textContent = '';
+    if (typeof pdfPanel.showModal === 'function') pdfPanel.showModal();
+    else pdfPanel.setAttribute('open', '');
+  }
+  if ($('pdfBtn')) $('pdfBtn').addEventListener('click', openPdfPanel);
+  if ($('pdfPanelClose')) $('pdfPanelClose').addEventListener('click', function () { pdfPanel.close ? pdfPanel.close() : pdfPanel.removeAttribute('open'); });
+
+  function effectiveEntries() {
+    return state.entries.map(function (e) {
+      var eff = effective(e);
+      return { kind: e.kind, code: e.code, letter: e.letter, num: e.num, doc: e.doc, path: e.path, title: eff.title, html: eff.html };
+    });
+  }
+
+  function generatePdf(chapters, includeCodes, includeGuides) {
+    if (!state.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; return; }
+    var html = BHAPdfExport.buildHtml(effectiveEntries(), state.manuals, {
+      chapters: chapters, includeCodes: includeCodes, includeGuides: includeGuides,
+      version: state.version, dateLabel: state.year, title: 'BHA Rules of Racing'
+    });
+    BHAPdfExport.openAndPrint(html);
+  }
+
+  if ($('pdfWholeBtn')) $('pdfWholeBtn').addEventListener('click', function () {
+    generatePdf((state.manuals || []).map(function (m) { return m.letter; }), true, true);
+  });
+
+  if ($('pdfGenerate')) $('pdfGenerate').addEventListener('click', function () {
+    var chapters = Array.prototype.map.call($('pdfChapterList').querySelectorAll('input:checked'), function (i) { return i.value; });
+    var includeCodes = $('pdfCodes').checked;
+    var includeGuides = $('pdfGuides').checked;
+    if (!chapters.length && !includeCodes && !includeGuides) {
+      $('pdfMsg').textContent = 'Pick at least one chapter, or Codes & Guides, or the Guide Library.';
+      return;
+    }
+    generatePdf(chapters, includeCodes, includeGuides);
+  });
 
   checkSession();
 })();

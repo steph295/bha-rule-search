@@ -946,6 +946,53 @@
     return { bookId: 0, version: 'pasted', publishedAt: null, year: null, manuals: [], entries: entries };
   }
 
+  // ---------------------------------------------------------- pdf export
+
+  var pdfPanel = $('pdfPanel');
+  function populatePdfChapters() {
+    var list = $('pdfChapterList');
+    if (!state.data || !state.data.manuals.length) {
+      list.innerHTML = '<div class="hint">No chapters loaded yet.</div>';
+      return;
+    }
+    list.innerHTML = state.data.manuals.map(function (m) {
+      return '<label><input type="checkbox" value="' + m.letter + '"> ' + m.letter + ' — ' + P.escapeHtml(m.title) + '</label>';
+    }).join('');
+  }
+  function openPdfPanel() {
+    populatePdfChapters();
+    $('pdfMsg').textContent = '';
+    if (typeof pdfPanel.showModal === 'function') pdfPanel.showModal();
+    else pdfPanel.setAttribute('open', '');
+  }
+  $('pdfBtn').addEventListener('click', openPdfPanel);
+  $('pdfPanelClose').addEventListener('click', function () { pdfPanel.close ? pdfPanel.close() : pdfPanel.removeAttribute('open'); });
+
+  function generatePdf(chapters, includeCodes, includeGuides) {
+    if (!state.data || !state.data.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; return; }
+    var html = BHAPdfExport.buildHtml(state.data.entries, state.data.manuals, {
+      chapters: chapters, includeCodes: includeCodes, includeGuides: includeGuides,
+      version: state.data.version, dateLabel: state.data.year, title: 'BHA Rules of Racing'
+    });
+    BHAPdfExport.openAndPrint(html);
+  }
+
+  $('pdfWholeBtn').addEventListener('click', function () {
+    if (!state.data) return;
+    generatePdf(state.data.manuals.map(function (m) { return m.letter; }), true, true);
+  });
+
+  $('pdfGenerate').addEventListener('click', function () {
+    var chapters = Array.prototype.map.call($('pdfChapterList').querySelectorAll('input:checked'), function (i) { return i.value; });
+    var includeCodes = $('pdfCodes').checked;
+    var includeGuides = $('pdfGuides').checked;
+    if (!chapters.length && !includeCodes && !includeGuides) {
+      $('pdfMsg').textContent = 'Pick at least one chapter, or Codes & Guides, or the Guide Library.';
+      return;
+    }
+    generatePdf(chapters, includeCodes, includeGuides);
+  });
+
   // -------------------------------------------------------------- toast
 
   var toastTimer = null;

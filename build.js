@@ -90,6 +90,13 @@ async function main() {
   } else {
     console.log('guides.json not found — run: python3 tools/extract_guides.py');
   }
+
+  // Glossary: real defined terms + definitions parsed straight out of the
+  // rulebook's own "Definitions" chapter (see parser.js extractDefinitions).
+  const definitions = P.extractDefinitions(book);
+  fs.writeFileSync(path.join(ROOT, 'definitions.json'), JSON.stringify({ bookId: parsed.bookId, terms: definitions }));
+  const dkb = (fs.statSync(path.join(ROOT, 'definitions.json')).size / 1024).toFixed(0);
+  console.log(`definitions.json written — ${dkb} KB, ${definitions.length} terms`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

@@ -13,6 +13,8 @@
   var LS_GUIDES = 'bha-guides-v1';
   var OVERRIDES_URL = 'overrides.json';
   var LS_HISTORY = 'bha-history-v1';
+  var GLOSSARY_URL = 'definitions.json';
+  var LS_GLOSSARY = 'bha-glossary-v1';
 
   // Same key logic as the admin tool (admin/admin.js) — must stay identical
   // so an edit saved there lands on the right entry here.
@@ -32,10 +34,16 @@
     tab: 'all',        // all | rules | guides | new
     sub: 'all',        // all | bhagi  (within the guides tab)
     overrides: null,   // {key: {title, html}} published by the admin tool, once loaded
+    definitionOverrides: null, // {termId: {html}} published edits to glossary definitions
     history: null,     // [{label, url}] dated rulebook snapshots, newest first
     historyState: 'idle', // idle | loading | ready | failed
     mode: 'search',    // search | reader
-    readerBook: null   // 'rules' | 'guides' — which book the reader is showing
+    readerBook: null,  // 'rules' | 'guides' | 'bhagi' — which book the reader is showing
+    glossary: null,      // {bookId, terms: [{id, term, html, slug}]}
+    glossaryState: 'idle', // idle | loading | ready | failed
+    glossaryRe: null,      // compiled longest-match-first regex over every term
+    glossaryByLower: null, // lowercased term -> term object
+    activeDefTerm: null    // id of the term currently shown in the reader's definitions panel
   };
 
   // Which tab an entry belongs to. Rulebook entries (manual/code/guide) come
@@ -111,13 +119,24 @@
   // No build step, no redeploy — an edit is live as soon as this file is.
   function loadOverrides() {
     fetch(OVERRIDES_URL, { cache: 'no-cache' })
-      .then(function (r) { return r.ok ? r.json() : { overrides: {} }; })
+      .then(function (r) { return r.ok ? r.json() : { overrides: {}, definitionOverrides: {} }; })
       .then(function (j) {
         state.overrides = (j && j.overrides) || {};
+        state.definitionOverrides = (j && j.definitionOverrides) || {};
         applyOverrides();
+        applyDefinitionOverrides();
         if (Object.keys(state.overrides).length) refreshView();
+        if (Object.keys(state.definitionOverrides).length && state.mode === 'reader') renderIdle();
       })
       .catch(function () { /* no overrides file yet — fine */ });
+  }
+
+  function applyDefinitionOverrides() {
+    if (!state.definitionOverrides || !state.glossary) return;
+    state.glossary.terms.forEach(function (t) {
+      var o = state.definitionOverrides[t.id];
+      if (o && o.html) t.html = o.html;
+    });
   }
 
   function applyOverrides() {
@@ -206,6 +225,66 @@
   function refreshView() {
     renderTabs();
     runSearch();
+  }
+
+  // ---- glossary (real defined terms, parsed from the rulebook's own
+  // "Definitions" chapter — see parser.js extractDefinitions) -----------
+
+  function buildGlossaryMatcher() {
+    var terms = state.glossary.terms;
+    var byLower = {};
+    terms.forEach(function (t) { byLower[t.term.toLowerCase()] = t; });
+    // longest-first so "Recognised Racing Authority" wins over "Authority"
+    var sorted = terms.slice().sort(function (a, b) { return b.term.length - a.term.length; });
+    var pattern = sorted.map(function (t) { return escRe(t.term); }).join('|');
+    state.glossaryRe = pattern ? new RegExp('\\b(' + pattern + ')\\b', 'gi') : null;
+    state.glossaryByLower = byLower;
+  }
+
+  // Wraps every occurrence of a known defined term in matching text nodes
+  // with a clickable span — safe against the surrounding markup because it
+  // only ever touches text between ">" and "<", same trick as highlightHtml.
+  function glossarize(html) {
+    var re = state.glossaryRe;
+    if (!re) return html;
+    return html.replace(/>([^<]+)</g, function (_, txt) {
+      return '>' + txt.replace(re, function (match) {
+        var t = state.glossaryByLower[match.toLowerCase()];
+        return t ? '<span class="defterm" data-term-id="' + t.id + '">' + match + '</span>' : match;
+      }) + '<';
+    });
+  }
+
+  function loadGlossary() {
+    if (state.glossaryState === 'loading' || state.glossaryState === 'ready') return;
+    state.glossaryState = 'loading';
+
+    var cached = null;
+    try {
+      var raw = localStorage.getItem(LS_GLOSSARY);
+      if (raw) cached = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (cached && cached.terms && cached.terms.length) {
+      state.glossary = cached;
+      state.glossaryState = 'ready';
+      buildGlossaryMatcher();
+      applyDefinitionOverrides();
+    }
+
+    fetch(GLOSSARY_URL, { cache: 'no-cache' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (!j || !j.terms || !j.terms.length) throw new Error('empty glossary file');
+        state.glossary = j;
+        state.glossaryState = 'ready';
+        buildGlossaryMatcher();
+        applyDefinitionOverrides();
+        if (state.mode === 'reader') renderIdle();
+        try { localStorage.setItem(LS_GLOSSARY, JSON.stringify(j)); } catch (e) { /* quota */ }
+      })
+      .catch(function () {
+        if (state.glossaryState !== 'ready') state.glossaryState = 'failed';
+      });
   }
 
   function buildVocab() {
@@ -740,7 +819,7 @@
         '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
         (e.isNew ? NEW_PILL : '') +
         '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
-        '<div class="rfull reader-body">' + highlightHtml(e.html, terms) + '</div>';
+        '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>';
       frag.appendChild(block);
     });
     n.children.forEach(function (c) { frag.appendChild(renderReaderSection(c, depth + 1, terms)); });
@@ -887,13 +966,79 @@
     row.appendChild(nav);
     row.appendChild(content);
 
+    if (state.glossaryState === 'ready') {
+      state.activeDefTerm = null;
+      var defPanel = document.createElement('div');
+      defPanel.className = 'def-panel';
+      defPanel.id = 'defPanel';
+      row.appendChild(defPanel);
+    }
+
     wrap.appendChild(back);
     wrap.appendChild(row);
     results.appendChild(wrap);
 
     document.body.classList.add('reader-mode');
     renderReaderBody(navList, entriesEl, countEl, titleText, '');
+    if (state.glossaryState === 'ready') renderDefPanel();
   }
+
+  function renderDefPanel() {
+    var panel = $('defPanel');
+    if (!panel) return;
+    if (state.activeDefTerm == null) {
+      panel.innerHTML = '<div class="def-panel-hint">Click any <span class="defterm-sample">underlined term</span> in the text to see its definition here.</div>';
+      return;
+    }
+    var t = state.glossary.terms.filter(function (x) { return x.id === state.activeDefTerm; })[0];
+    if (!t) return;
+    panel.innerHTML = '<div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
+      '<div class="rfull">' + t.html + '</div>';
+  }
+
+  var defPopover = null;
+  function closeDefPopover() {
+    if (defPopover) { defPopover.remove(); defPopover = null; }
+    document.removeEventListener('click', outsideDefPopoverClick, true);
+  }
+  function outsideDefPopoverClick(ev) {
+    if (defPopover && !defPopover.contains(ev.target) && !(ev.target.closest && ev.target.closest('.defterm'))) closeDefPopover();
+  }
+  function showDefPopover(t, anchorEl) {
+    closeDefPopover();
+    var pop = document.createElement('div');
+    pop.className = 'def-popover';
+    pop.innerHTML = '<div class="def-popover-head">' + P.escapeHtml(t.term) +
+      '<button type="button" class="def-popover-close" aria-label="Close">✕</button></div>' +
+      '<div class="rfull">' + t.html + '</div>';
+    document.body.appendChild(pop);
+    var rect = anchorEl.getBoundingClientRect();
+    var top = rect.bottom + window.scrollY + 6;
+    var left = Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - pop.offsetWidth - 16));
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+    pop.querySelector('.def-popover-close').addEventListener('click', closeDefPopover);
+    defPopover = pop;
+    setTimeout(function () { document.addEventListener('click', outsideDefPopoverClick, true); }, 0);
+  }
+
+  // Defined terms are clickable everywhere they're glossarized (reader
+  // entries and expanded search cards) — a single delegated listener
+  // covers both, since the spans are created in many different places.
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest && ev.target.closest('.defterm');
+    if (!el) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var t = state.glossary && state.glossary.terms.filter(function (x) { return x.id === +el.dataset.termId; })[0];
+    if (!t) return;
+    if (state.mode === 'reader' && $('defPanel')) {
+      state.activeDefTerm = t.id;
+      renderDefPanel();
+    } else {
+      showDefPopover(t, el);
+    }
+  });
 
   // ---- version history panel --------------------------------------------
 
@@ -1237,7 +1382,7 @@
     var e = state.data.entries[+div.dataset.id];
     full = document.createElement('div');
     full.className = 'rfull';
-    full.innerHTML = highlightHtml(e.html, state.lastTerms);
+    full.innerHTML = highlightHtml(glossarize(e.html), state.lastTerms);
     if (isGuideEntry(e) && e.url) {
       var a = document.createElement('a');
       a.className = 'srclink';
@@ -1688,5 +1833,6 @@
   loadGuides();
   loadOverrides();
   loadHistory();
+  loadGlossary();
   refresh(!initial);
 })();

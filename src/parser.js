@@ -325,5 +325,55 @@
     };
   }
 
-  return { parseBook: parseBook, cleanHtml: cleanHtml, toText: toText, escapeHtml: escapeHtml };
+  // ---- glossary --------------------------------------------------------
+  //
+  // The rulebook has a real "Definitions" chapter (one flat list of terms,
+  // no child sections) where every entry is a single textblock shaped as
+  // "<b>Term</b> means/is …", occasionally followed by plain continuation
+  // paragraphs or a bullet list for multi-part definitions. This walks
+  // that chapter once and turns it into {term, html} pairs — the same
+  // real BHA text the official site uses for its own defined-term
+  // tooltips, just re-parsed rather than invented.
+  function extractDefinitions(book) {
+    var sections = book.sections || [];
+    var defsChapter = sections.filter(function (s) {
+      return s.type === 'chapter' && String(s.title || '').trim().toLowerCase() === 'definitions';
+    })[0];
+    if (!defsChapter) return [];
+
+    function getComps(s) {
+      var c = s.components;
+      if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { c = []; } }
+      return Array.isArray(c) ? c : [];
+    }
+
+    var blocks = [];
+    flattenComponents(getComps(defsChapter), blocks);
+
+    var termRe = /^\s*<b>([^<]+?)<\/b>\s*([\s\S]*)$/;
+    var terms = [];
+    var current = null;
+    blocks.forEach(function (b) {
+      var m = termRe.exec(b.html);
+      var term = m && decodeEntities(m[1]).replace(/\s+/g, ' ').trim();
+      // a handful of bolded notes aren't defined terms at all (e.g. the
+      // "(For the purposes of these Rules…)" preamble) — those start with
+      // "(" or run long, unlike a real term, which is a short noun phrase
+      if (m && term && term.length < 90 && term.charAt(0) !== '(') {
+        if (current) terms.push(current);
+        current = { term: term, html: m[2] ? '<p class="l0">' + m[2] + '</p>' : '' };
+      } else if (current) {
+        current.html += '<p class="l0">' + b.html + '</p>';
+      }
+    });
+    if (current) terms.push(current);
+
+    terms.forEach(function (t, i) {
+      t.id = i;
+      t.slug = t.term.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    });
+    return terms;
+  }
+
+  return { parseBook: parseBook, extractDefinitions: extractDefinitions, cleanHtml: cleanHtml, toText: toText, escapeHtml: escapeHtml };
 });

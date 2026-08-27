@@ -44,6 +44,10 @@
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"></path><path d="M5.5 8H13"></path><path d="M8 12.5h5"></path></svg>
       Master Sections
     </div>
+    <div class="navitem" data-view="definitions">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h6.5A1.5 1.5 0 0 1 12 4v9.5H5.5A1.5 1.5 0 0 1 4 12V2.5z"></path><path d="M6.2 5.5h3.6M6.2 8h3.6"></path></svg>
+      Word Definitions
+    </div>
     <div class="navitem" data-view="admin">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.8" r="2.1"></circle><path d="M2.4 13c.4-2.1 1.7-3.2 3.1-3.2S8.2 10.9 8.6 13"></path><circle cx="10.8" cy="6" r="1.7"></circle><path d="M10.8 9.8c1.3 0 2.5 1.1 2.8 3.2"></path></svg>
       Admin
@@ -54,21 +58,47 @@
   <div class="content">
 
     <section id="view-manuals" class="view">
-      <main>
+      <div class="manuals-toolbar" id="manualsToolbar">
+        <div class="tabs">
+          <button class="active" data-tab="all">All</button>
+          <button data-tab="rules">Rules</button>
+          <button data-tab="guides">Guides</button>
+          <button data-tab="edited">Edited</button>
+        </div>
+        <input id="search" type="text" placeholder="Search code or keyword…">
+      </div>
+
+      <div class="docs" id="homeCards"></div>
+
+      <main id="listAndEditor" hidden>
         <div class="list-pane">
-          <div class="tabs">
-            <button class="active" data-tab="all">All</button>
-            <button data-tab="rules">Rules</button>
-            <button data-tab="guides">Guides</button>
-            <button data-tab="edited">Edited</button>
-          </div>
-          <input id="search" type="text" placeholder="Search code or keyword…">
           <div class="result-list" id="resultList"></div>
         </div>
         <div class="editor-pane" id="editorPane">
           <div class="empty-state">Pick an entry on the left to edit it.</div>
         </div>
       </main>
+
+      <div class="manuals-reader" id="readerView" hidden>
+        <button class="reader-back" id="readerBack" type="button">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3L4.5 8l5 5"></path></svg>
+          Back
+        </button>
+        <div class="reader-row">
+          <nav class="outline" id="readerOutline">
+            <div class="reader-search-wrap">
+              <input id="readerSearch" type="search" placeholder="Search within…" aria-label="Search within this document">
+              <div class="reader-search-count" id="readerCount" hidden></div>
+            </div>
+            <div class="outline-list" id="readerOutlineList"></div>
+          </nav>
+          <div class="reader-content" id="readerContent">
+            <div class="reader-title" id="readerTitle"></div>
+            <div class="reader-entries" id="readerEntries"></div>
+          </div>
+          <div class="editor-pane" id="readerEditorSlot"></div>
+        </div>
+      </div>
     </section>
 
     <section id="view-media" class="view" hidden>
@@ -89,6 +119,21 @@
         <h2>Master Sections</h2>
         <p>Reordering chapters and sections, and adding new ones, is planned but not built yet. The chapter structure (A–M, plus Codes &amp; Guides) is currently fixed by the source rulebook.</p>
       </div>
+    </section>
+
+    <section id="view-definitions" class="view" hidden>
+      <div class="manuals-toolbar">
+        <input id="defSearch" type="text" placeholder="Search terms…">
+        <span class="hint" id="defCount" style="margin:0"></span>
+      </div>
+      <main>
+        <div class="list-pane">
+          <div class="result-list" id="defResultList"></div>
+        </div>
+        <div class="editor-pane" id="defEditorPane">
+          <div class="empty-state">Pick a term on the left to edit its definition.</div>
+        </div>
+      </main>
     </section>
 
     <section id="view-admin" class="view" hidden>

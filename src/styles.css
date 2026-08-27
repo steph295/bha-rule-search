@@ -432,6 +432,52 @@ main {
 .reader-entry-title { font-weight: 650; font-size: 16px; }
 .reader-body.rfull { padding: 0; border-top: 0; }
 
+/* ---- defined-terms glossary ---- */
+
+.defterm {
+  border-bottom: 1px dotted var(--green-mid);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.defterm:hover { background: var(--green-pale); }
+
+.def-panel {
+  flex: 0 0 300px;
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.def-panel-hint { color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.defterm-sample { border-bottom: 1px dotted var(--green-mid); }
+.def-panel-term { font-size: 17px; font-weight: 750; color: var(--green-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+
+.def-popover {
+  position: absolute;
+  z-index: 40;
+  width: min(340px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+.def-popover-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 15.5px; font-weight: 750; color: var(--green-dark);
+  margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.def-popover-close {
+  flex: none; border: 0; background: #eef2f0; color: var(--ink-soft);
+  width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer;
+}
+
 @media (max-width: 820px) {
   .reader-row { flex-direction: column; }
   .outline {
@@ -443,6 +489,7 @@ main {
     margin-bottom: 10px;
     border-bottom: 1px solid var(--line);
   }
+  .def-panel { position: static; max-height: none; width: 100%; flex-basis: auto; }
 }
 
 /* ---- version history panel ---- */

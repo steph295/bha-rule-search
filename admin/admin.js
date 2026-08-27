@@ -163,6 +163,7 @@
     $('homeCards').style.display = v === 'home' ? '' : 'none';
     $('listAndEditor').style.display = v === 'list' ? 'flex' : 'none';
     $('readerView').hidden = v !== 'reader';
+    document.body.classList.toggle('reader-mode', v === 'reader');
   }
 
   function updateManualsViewFromFilters() {
@@ -347,19 +348,31 @@
     return frag;
   }
 
-  var readerScrollHandler = null;
+  // Desktop gives the outline / content / editor columns their own scroll
+  // instead of the page's (see the min-width:981px block in admin.css), so
+  // the scroll-spy has to watch whichever pane actually has the overflow
+  // and measure headings relative to IT. Below that breakpoint the page
+  // scrolls as a whole and window-scroll still covers it, same as before.
+  var readerScrollHandler = null, readerScrollTarget = null;
   function teardownScrollSpy() {
-    if (readerScrollHandler) { window.removeEventListener('scroll', readerScrollHandler); readerScrollHandler = null; }
+    if (readerScrollHandler && readerScrollTarget) readerScrollTarget.removeEventListener('scroll', readerScrollHandler);
+    readerScrollHandler = null;
+    readerScrollTarget = null;
   }
-  function setupScrollSpy(container) {
+  function setupScrollSpy(entriesEl) {
     teardownScrollSpy();
+    var pane = entriesEl.parentElement; // .reader-content on desktop
+    var scrollsInternally = pane && pane.scrollHeight > pane.clientHeight + 4;
+    var target = scrollsInternally ? pane : window;
     var ticking = false;
     function update() {
       ticking = false;
-      var headings = Array.prototype.slice.call(container.querySelectorAll('[data-outline-id]'));
+      var refTop = scrollsInternally ? pane.getBoundingClientRect().top : 0;
+      var offset = scrollsInternally ? 10 : 90;
+      var headings = Array.prototype.slice.call(entriesEl.querySelectorAll('[data-outline-id]'));
       var activeId = headings.length ? headings[0].dataset.outlineId : null;
       for (var i = 0; i < headings.length; i++) {
-        if (headings[i].getBoundingClientRect().top - 90 <= 0) activeId = headings[i].dataset.outlineId;
+        if (headings[i].getBoundingClientRect().top - refTop - offset <= 0) activeId = headings[i].dataset.outlineId;
         else break;
       }
       Array.prototype.forEach.call(document.querySelectorAll('.outline-link'), function (a) {
@@ -367,9 +380,22 @@
       });
     }
     readerScrollHandler = function () { if (ticking) return; ticking = true; window.requestAnimationFrame(update); };
-    window.addEventListener('scroll', readerScrollHandler, { passive: true });
+    readerScrollTarget = target;
+    target.addEventListener('scroll', readerScrollHandler, { passive: true });
     update();
   }
+
+  function syncReaderChromeOffsets() {
+    var headerEl = document.querySelector('header'), backEl = $('readerBack');
+    var headerH = headerEl ? headerEl.offsetHeight : 49;
+    var backH = backEl ? backEl.offsetHeight : 0;
+    var root = document.documentElement.style;
+    root.setProperty('--rd-header-h', headerH + 'px');
+    root.setProperty('--rd-backrow-h', backH + 'px');
+  }
+  window.addEventListener('resize', function () {
+    if (state.manualsView === 'reader') syncReaderChromeOffsets();
+  });
 
   function renderReaderBody(rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -421,6 +447,7 @@
     state.readerBook = book;
     state.selectedKey = null;
     renderManualsView();
+    syncReaderChromeOffsets();
     renderReader();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

@@ -826,19 +826,33 @@
     return frag;
   }
 
-  var readerScrollHandler = null;
+  // On desktop the reader gives each column (outline / content / defs) its
+  // own scroll instead of the page's, so the scroll-spy has to watch the
+  // scrollable pane itself and measure headings relative to IT, not the
+  // viewport. On the mobile fallback layout (see the min-width:821px guard
+  // in styles.css) that same pane has no overflow of its own — the page
+  // scrolls as a whole there instead, so watching window scroll still
+  // covers it exactly the same way this always used to work.
+  var readerScrollHandler = null, readerScrollTarget = null;
   function teardownScrollSpy() {
-    if (readerScrollHandler) { window.removeEventListener('scroll', readerScrollHandler); readerScrollHandler = null; }
+    if (readerScrollHandler && readerScrollTarget) readerScrollTarget.removeEventListener('scroll', readerScrollHandler);
+    readerScrollHandler = null;
+    readerScrollTarget = null;
   }
-  function setupScrollSpy(content) {
+  function setupScrollSpy(entriesEl) {
     teardownScrollSpy();
+    var pane = entriesEl.parentElement; // .reader-content — the scrollable pane on desktop
+    var scrollsInternally = pane && pane.scrollHeight > pane.clientHeight + 4;
+    var target = scrollsInternally ? pane : window;
     var ticking = false;
     function update() {
       ticking = false;
-      var headings = Array.prototype.slice.call(content.querySelectorAll('[data-outline-id]'));
+      var refTop = scrollsInternally ? pane.getBoundingClientRect().top : 0;
+      var offset = scrollsInternally ? 10 : 90;
+      var headings = Array.prototype.slice.call(entriesEl.querySelectorAll('[data-outline-id]'));
       var activeId = headings.length ? headings[0].dataset.outlineId : null;
       for (var i = 0; i < headings.length; i++) {
-        if (headings[i].getBoundingClientRect().top - 90 <= 0) activeId = headings[i].dataset.outlineId;
+        if (headings[i].getBoundingClientRect().top - refTop - offset <= 0) activeId = headings[i].dataset.outlineId;
         else break;
       }
       Array.prototype.forEach.call(document.querySelectorAll('.outline-link'), function (a) {
@@ -850,9 +864,28 @@
       ticking = true;
       window.requestAnimationFrame(update);
     };
-    window.addEventListener('scroll', readerScrollHandler, { passive: true });
+    readerScrollTarget = target;
+    target.addEventListener('scroll', readerScrollHandler, { passive: true });
     update();
   }
+
+  // Heights vary with content (the beta banner wraps to 1 or 2 lines) and
+  // viewport width, so they're measured rather than hardcoded, and re-synced
+  // on resize. Below the 821px breakpoint styles.css doesn't use these at
+  // all — the reader falls back to normal whole-page scrolling there.
+  function syncReaderChromeOffsets() {
+    var betaEl = $('beta'), headerEl = document.querySelector('header'), backEl = document.querySelector('.reader-back');
+    var betaH = betaEl ? betaEl.offsetHeight : 0;
+    var headerH = headerEl ? headerEl.offsetHeight : 0;
+    var backH = backEl ? backEl.offsetHeight : 0;
+    var root = document.documentElement.style;
+    root.setProperty('--rd-beta-h', betaH + 'px');
+    root.setProperty('--rd-topbar-h', (betaH + headerH) + 'px');
+    root.setProperty('--rd-backrow-h', backH + 'px');
+  }
+  window.addEventListener('resize', function () {
+    if (state.mode === 'reader') syncReaderChromeOffsets();
+  });
 
   function enterReader(book) {
     q.value = '';
@@ -979,6 +1012,7 @@
     results.appendChild(wrap);
 
     document.body.classList.add('reader-mode');
+    syncReaderChromeOffsets();
     renderReaderBody(navList, entriesEl, countEl, titleText, '');
     if (state.glossaryState === 'ready') renderDefPanel();
   }

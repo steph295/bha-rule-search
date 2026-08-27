@@ -242,6 +242,28 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 #readerEditorSlot { flex: 0 0 360px; }
 #readerEditorSlot .editor-card { position: sticky; top: 14px; }
 
+/* Desktop: pin the header and give the outline/content/editor columns
+   their own independent scroll instead of the page — so only "the doc nav"
+   and "the doc" (and the editor, which needs to stay put too) ever move.
+   --rd-header-h is measured in JS and re-synced on resize. */
+@media (min-width: 981px) {
+  body.reader-mode header { position: fixed; top: 0; left: 0; right: 0; z-index: 40; }
+  body.reader-mode #appShell { padding-top: var(--rd-header-h, 49px); }
+  body.reader-mode .reader-row {
+    height: calc(100vh - var(--rd-header-h, 49px) - var(--rd-backrow-h, 0px));
+    align-items: stretch;
+  }
+  body.reader-mode .outline,
+  body.reader-mode .reader-content,
+  body.reader-mode #readerEditorSlot {
+    height: 100%;
+    overflow-y: auto;
+    position: static;
+    max-height: none;
+  }
+  body.reader-mode #readerEditorSlot .editor-card { position: static; }
+}
+
 @media (max-width: 980px) {
   .reader-row { flex-direction: column; }
   .outline { position: static; max-height: none; width: 100%; }

@@ -55,7 +55,11 @@ header h1 {
   margin: 0;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  cursor: pointer;
+  border-radius: 6px;
+  -webkit-tap-highlight-color: transparent;
 }
+header h1:focus-visible { outline: 2px solid #7ec9a5; outline-offset: 3px; }
 
 header h1 .thin { font-weight: 300; opacity: 0.85; }
 
@@ -206,6 +210,43 @@ main {
 }
 
 /* ---- idle / home view ---- */
+
+.docs {
+  display: flex;
+  gap: 12px;
+  margin: 2px 4px 18px;
+  flex-wrap: wrap;
+}
+.doc-card {
+  flex: 1 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.doc-card:hover {
+  border-color: var(--green-mid);
+  box-shadow: 0 4px 14px rgba(10,61,44,0.1);
+  transform: translateY(-1px);
+}
+.doc-card.disabled { cursor: default; opacity: 0.6; }
+.doc-card.disabled:hover { border-color: var(--line); box-shadow: none; transform: none; }
+.doc-icon {
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--green-pale);
+  color: var(--green-mid);
+  display: flex; align-items: center; justify-content: center;
+}
+.doc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.doc-title { font-size: 16px; font-weight: 650; color: var(--ink); }
+.doc-meta { font-size: 13px; color: var(--ink-soft); }
 
 .home h2 {
   font-size: 14px;

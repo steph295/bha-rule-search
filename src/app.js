@@ -513,6 +513,57 @@
     return h;
   }
 
+  // The home hub: one card per top-level document, each opening straight
+  // into that document's browse view (via the existing tab filter).
+  function renderDocuments(d) {
+    var wrap = document.createElement('div');
+    wrap.className = 'docs';
+
+    var ruleCount = d.entries.filter(function (e) { return !isGuideEntry(e); }).length;
+    var ruleCard = documentCard({
+      icon: 'book',
+      title: 'Rules of Racing',
+      meta: 'v' + d.version + ' · ' + (d.year || '') + ' · ' + ruleCount + ' entries',
+      onClick: function () { selectTab('rules'); }
+    });
+    wrap.appendChild(ruleCard);
+
+    var guideCard;
+    if (state.guidesState === 'ready') {
+      var guideCount = d.entries.filter(isGuideEntry).length;
+      guideCard = documentCard({
+        icon: 'library',
+        title: 'Guide Library',
+        meta: state.guides.documents + ' documents · ' + guideCount + ' entries',
+        onClick: function () { selectTab('guides'); }
+      });
+    } else {
+      guideCard = documentCard({
+        icon: 'library',
+        title: 'Guide Library',
+        meta: state.guidesState === 'failed' ? 'Unavailable right now' : 'Loading…',
+        onClick: function () { if (state.guidesState === 'ready') selectTab('guides'); },
+        disabled: state.guidesState !== 'ready'
+      });
+    }
+    wrap.appendChild(guideCard);
+    return wrap;
+  }
+
+  var DOC_ICONS = {
+    book: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8.5A1.5 1.5 0 0 1 13 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H13"></path></svg>',
+    library: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5v9M6 3v9.5M9.5 3.5l3 9"></path></svg>'
+  };
+  function documentCard(opts) {
+    var card = document.createElement('div');
+    card.className = 'doc-card' + (opts.disabled ? ' disabled' : '');
+    card.innerHTML = '<span class="doc-icon">' + DOC_ICONS[opts.icon] + '</span>' +
+      '<span class="doc-info"><span class="doc-title">' + P.escapeHtml(opts.title) + '</span>' +
+      '<span class="doc-meta">' + P.escapeHtml(opts.meta) + '</span></span>';
+    if (!opts.disabled) card.addEventListener('click', opts.onClick);
+    return card;
+  }
+
   function renderIdle() {
     var d = state.data;
     results.innerHTML = '';
@@ -527,6 +578,10 @@
 
     var home = document.createElement('div');
     home.className = 'home';
+
+    if (tab === 'all' && !q.value.trim()) {
+      home.appendChild(renderDocuments(d));
+    }
 
     var hint = document.createElement('p');
     hint.className = 'hint';
@@ -770,6 +825,19 @@
     q.value = '';
     q.focus();
     runSearch();
+  });
+
+  function goHome() {
+    q.value = '';
+    state.tab = 'all';
+    state.sub = 'all';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    runSearch();
+    renderTabs();
+  }
+  $('homeBtn').addEventListener('click', goHome);
+  $('homeBtn').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); goHome(); }
   });
 
   document.addEventListener('keydown', function (ev) {

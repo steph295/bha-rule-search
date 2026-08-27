@@ -71,7 +71,11 @@ header h1 {
   margin: 0;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  cursor: pointer;
+  border-radius: 6px;
+  -webkit-tap-highlight-color: transparent;
 }
+header h1:focus-visible { outline: 2px solid #7ec9a5; outline-offset: 3px; }
 
 header h1 .thin { font-weight: 300; opacity: 0.85; }
 
@@ -222,6 +226,43 @@ main {
 }
 
 /* ---- idle / home view ---- */
+
+.docs {
+  display: flex;
+  gap: 12px;
+  margin: 2px 4px 18px;
+  flex-wrap: wrap;
+}
+.doc-card {
+  flex: 1 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.doc-card:hover {
+  border-color: var(--green-mid);
+  box-shadow: 0 4px 14px rgba(10,61,44,0.1);
+  transform: translateY(-1px);
+}
+.doc-card.disabled { cursor: default; opacity: 0.6; }
+.doc-card.disabled:hover { border-color: var(--line); box-shadow: none; transform: none; }
+.doc-icon {
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--green-pale);
+  color: var(--green-mid);
+  display: flex; align-items: center; justify-content: center;
+}
+.doc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.doc-title { font-size: 16px; font-weight: 650; color: var(--ink); }
+.doc-meta { font-size: 13px; color: var(--ink-soft); }
 
 .home h2 {
   font-size: 14px;
@@ -501,7 +542,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 <div id="beta">BETA — this tool is under testing. Verify anything critical against the official BHA sources: <a href="https://rules.britishhorseracing.com" target="_blank" rel="noopener">Rules of Racing</a> and <a href="https://www.britishhorseracing.com/regulation/rules-guides/" target="_blank" rel="noopener">Rules of Racing and guides</a>.</div>
 
 <header>
-  <h1>BHA <span class="thin">Rules Search</span></h1>
+  <h1 id="homeBtn" role="button" tabindex="0" title="Home">BHA <span class="thin">Rules Search</span></h1>
   <button id="pdfBtn" type="button" title="Download as PDF" aria-label="Download as PDF">
     <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
   </button>
@@ -1543,6 +1584,57 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     return h;
   }
 
+  // The home hub: one card per top-level document, each opening straight
+  // into that document's browse view (via the existing tab filter).
+  function renderDocuments(d) {
+    var wrap = document.createElement('div');
+    wrap.className = 'docs';
+
+    var ruleCount = d.entries.filter(function (e) { return !isGuideEntry(e); }).length;
+    var ruleCard = documentCard({
+      icon: 'book',
+      title: 'Rules of Racing',
+      meta: 'v' + d.version + ' · ' + (d.year || '') + ' · ' + ruleCount + ' entries',
+      onClick: function () { selectTab('rules'); }
+    });
+    wrap.appendChild(ruleCard);
+
+    var guideCard;
+    if (state.guidesState === 'ready') {
+      var guideCount = d.entries.filter(isGuideEntry).length;
+      guideCard = documentCard({
+        icon: 'library',
+        title: 'Guide Library',
+        meta: state.guides.documents + ' documents · ' + guideCount + ' entries',
+        onClick: function () { selectTab('guides'); }
+      });
+    } else {
+      guideCard = documentCard({
+        icon: 'library',
+        title: 'Guide Library',
+        meta: state.guidesState === 'failed' ? 'Unavailable right now' : 'Loading…',
+        onClick: function () { if (state.guidesState === 'ready') selectTab('guides'); },
+        disabled: state.guidesState !== 'ready'
+      });
+    }
+    wrap.appendChild(guideCard);
+    return wrap;
+  }
+
+  var DOC_ICONS = {
+    book: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8.5A1.5 1.5 0 0 1 13 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H13"></path></svg>',
+    library: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5v9M6 3v9.5M9.5 3.5l3 9"></path></svg>'
+  };
+  function documentCard(opts) {
+    var card = document.createElement('div');
+    card.className = 'doc-card' + (opts.disabled ? ' disabled' : '');
+    card.innerHTML = '<span class="doc-icon">' + DOC_ICONS[opts.icon] + '</span>' +
+      '<span class="doc-info"><span class="doc-title">' + P.escapeHtml(opts.title) + '</span>' +
+      '<span class="doc-meta">' + P.escapeHtml(opts.meta) + '</span></span>';
+    if (!opts.disabled) card.addEventListener('click', opts.onClick);
+    return card;
+  }
+
   function renderIdle() {
     var d = state.data;
     results.innerHTML = '';
@@ -1557,6 +1649,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
     var home = document.createElement('div');
     home.className = 'home';
+
+    if (tab === 'all' && !q.value.trim()) {
+      home.appendChild(renderDocuments(d));
+    }
 
     var hint = document.createElement('p');
     hint.className = 'hint';
@@ -1800,6 +1896,19 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     q.value = '';
     q.focus();
     runSearch();
+  });
+
+  function goHome() {
+    q.value = '';
+    state.tab = 'all';
+    state.sub = 'all';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    runSearch();
+    renderTabs();
+  }
+  $('homeBtn').addEventListener('click', goHome);
+  $('homeBtn').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); goHome(); }
   });
 
   document.addEventListener('keydown', function (ev) {

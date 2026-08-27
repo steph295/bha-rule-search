@@ -278,19 +278,35 @@ main {
 
 .rhead {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   width: 100%;
   border: 0;
   background: none;
-  padding: 13px 16px 4px;
+  padding: 11px 16px 4px;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
-  flex-wrap: wrap;
   -webkit-tap-highlight-color: transparent;
 }
+
+.crumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.crumb-sep { color: #b7c4bd; }
+.crumb-part { white-space: normal; }
+.crumb-part:last-child { color: var(--green-dark); font-weight: 600; }
+.crumb-dated { margin-left: auto; color: var(--ink-soft); font-style: italic; }
+
+.rmain { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
 .code {
   font-weight: 700;
@@ -331,7 +347,6 @@ main {
 .srclink:hover { border-color: var(--green-mid); background: var(--green-pale); }
 
 .rtitle { font-weight: 650; font-size: 18px; }
-.rpath { color: var(--ink-soft); font-size: 13.5px; width: 100%; }
 
 .rex {
   padding: 2px 16px 13px;
@@ -1063,6 +1078,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
   var $ = function (id) { return document.getElementById(id); };
   var q = $('q'), results = $('results'), meta = $('meta'), status = $('status');
+  var HOME_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L8 2.5l5.5 5"></path><path d="M4 6.5V13h8V6.5"></path></svg>';
 
   // ---------------------------------------------------------------- boot
 
@@ -1695,16 +1711,16 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     head.className = 'rhead';
     head.setAttribute('aria-expanded', 'false');
     var codeHtml = '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>';
-    var pathBits;
-    if (isGuideEntry(e)) {
-      pathBits = [e.cat, e.doc];
-      if (e.dated) pathBits.push('dated ' + e.dated);
-    } else {
-      pathBits = [e.doc].concat((e.path || []).slice(0, -1));
-    }
-    head.innerHTML = codeHtml +
-      '<span class="rtitle">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
-      '<span class="rpath">' + P.escapeHtml(pathBits.join(' › ')) + '</span>';
+    var crumbBits = isGuideEntry(e)
+      ? [e.cat, e.doc]
+      : [e.letter ? e.letter + ' — ' + e.doc : e.doc].concat((e.path || []).slice(0, -1));
+    var crumbHtml = '<span class="crumb">' + HOME_ICON +
+      crumbBits.map(function (b) { return '<span class="crumb-sep">›</span><span class="crumb-part">' + P.escapeHtml(b) + '</span>'; }).join('') +
+      (isGuideEntry(e) && e.dated ? '<span class="crumb-dated">dated ' + P.escapeHtml(e.dated) + '</span>' : '') +
+      '</span>';
+    head.innerHTML = crumbHtml +
+      '<span class="rmain">' + codeHtml +
+      '<span class="rtitle">' + highlight(P.escapeHtml(e.title), terms) + '</span></span>';
     div.appendChild(head);
 
     var ex = document.createElement('div');

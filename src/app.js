@@ -48,6 +48,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var q = $('q'), results = $('results'), meta = $('meta'), status = $('status');
+  var HOME_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L8 2.5l5.5 5"></path><path d="M4 6.5V13h8V6.5"></path></svg>';
 
   // ---------------------------------------------------------------- boot
 
@@ -680,16 +681,16 @@
     head.className = 'rhead';
     head.setAttribute('aria-expanded', 'false');
     var codeHtml = '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>';
-    var pathBits;
-    if (isGuideEntry(e)) {
-      pathBits = [e.cat, e.doc];
-      if (e.dated) pathBits.push('dated ' + e.dated);
-    } else {
-      pathBits = [e.doc].concat((e.path || []).slice(0, -1));
-    }
-    head.innerHTML = codeHtml +
-      '<span class="rtitle">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
-      '<span class="rpath">' + P.escapeHtml(pathBits.join(' › ')) + '</span>';
+    var crumbBits = isGuideEntry(e)
+      ? [e.cat, e.doc]
+      : [e.letter ? e.letter + ' — ' + e.doc : e.doc].concat((e.path || []).slice(0, -1));
+    var crumbHtml = '<span class="crumb">' + HOME_ICON +
+      crumbBits.map(function (b) { return '<span class="crumb-sep">›</span><span class="crumb-part">' + P.escapeHtml(b) + '</span>'; }).join('') +
+      (isGuideEntry(e) && e.dated ? '<span class="crumb-dated">dated ' + P.escapeHtml(e.dated) + '</span>' : '') +
+      '</span>';
+    head.innerHTML = crumbHtml +
+      '<span class="rmain">' + codeHtml +
+      '<span class="rtitle">' + highlight(P.escapeHtml(e.title), terms) + '</span></span>';
     div.appendChild(head);
 
     var ex = document.createElement('div');

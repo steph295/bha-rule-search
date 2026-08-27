@@ -51,7 +51,7 @@ async function main() {
     manuals: parsed.manuals,
     entries: parsed.entries.map(e => ({
       id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc,
-      letter: e.letter, title: e.title, path: e.path, html: e.html
+      letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false
     }))
   };
 

@@ -188,6 +188,16 @@
         return chain.map(function (s) { return tidyTitle(s.title); }).filter(Boolean);
       }
 
+      // The BHA's CMS lets editors flag a section as newly added/changed for
+      // the current version (`highlighted === 'new'`) — that's what renders
+      // as the grey "new" pill on the official site's contents list. A rule
+      // inherits it from its own section or any ancestor, including the
+      // top-level document itself.
+      function chainIsNew(chain) {
+        if (top.highlighted === 'new') return true;
+        return chain.some(function (s) { return s.highlighted === 'new'; });
+      }
+
       function visit(sec, chain) {
         var blocks = [];
         flattenComponents(getComps(sec), blocks);
@@ -215,6 +225,7 @@
               letter: letter || null,
               title: tidyTitle(sec.title),
               path: leafPath(chain),
+              isNew: chainIsNew(chain),
               html: '',
               text: ''
             };
@@ -249,6 +260,7 @@
             letter: letter || null,
             title: tidyTitle(sec.title),
             path: leafPath(chain),
+            isNew: chainIsNew(chain),
             html: '',
             text: ''
           };

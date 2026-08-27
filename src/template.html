@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BHA Rules Search</title>
 <meta name="description" content="Fast search for the British Horseracing Authority Rules of Racing — by rule code, keyword or fuzzy match.">
-<meta name="theme-color" content="#0a3d2c">
+<meta name="theme-color" content="#222d71">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BHA Rules">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230a3d2c'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23222d71'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
 <style>
 {{STYLES}}
 </style>
@@ -29,21 +29,24 @@
   <button id="status" type="button"><span class="dot"></span><span class="stxt">Loading…</span></button>
 </header>
 
-<div class="searchwrap">
-  <div class="searchbox">
-    <input id="q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
-           spellcheck="false" enterkeyhint="search" autofocus
-           placeholder="Rule code or keyword — F45, whip, non-runner…"
-           aria-label="Search the Rules of Racing">
-    <button id="clear" type="button" aria-label="Clear search">✕</button>
+<div class="pagehead">
+  <h2 class="page-title">Rules of Racing</h2>
+  <div class="pagehead-row">
+    <nav id="tabs" role="tablist" aria-label="Other views">
+      <button class="tab active" data-tab="all" role="tab" aria-selected="true">All</button>
+      <button class="tab" data-tab="new" role="tab" aria-selected="false">New</button>
+      <button class="tab" data-tab="changelog" role="tab" aria-selected="false">Changelog</button>
+      <a class="tab tab-link" href="https://www.britishhorseracing.com/news-media/press-releases/" target="_blank" rel="noopener">Press ↗</a>
+    </nav>
+    <div class="searchbox">
+      <input id="q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
+             spellcheck="false" enterkeyhint="search" readonly
+             placeholder="Rule code or keyword…"
+             aria-label="Search the Rules of Racing">
+      <button id="clear" type="button" aria-label="Clear search">✕</button>
+    </div>
   </div>
 </div>
-
-<nav id="tabs" role="tablist" aria-label="Filter results by source">
-  <button class="tab active" data-tab="all" role="tab" aria-selected="true">All</button>
-  <button class="tab" data-tab="rules" role="tab" aria-selected="false">Rules</button>
-  <button class="tab" data-tab="guides" role="tab" aria-selected="false">Guides</button>
-</nav>
 <nav id="subtabs" role="tablist" aria-label="Filter guides" hidden>
   <button class="subtab active" data-sub="all" role="tab" aria-selected="true">All guides</button>
   <button class="subtab" data-sub="bhagi" role="tab" aria-selected="false">BHAGIs</button>
@@ -53,6 +56,33 @@
   <div id="meta" role="status"></div>
   <div id="results"></div>
 </main>
+
+<dialog id="searchModal" class="search-modal">
+  <div class="sm-top">
+    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
+    <div class="sm-scope-wrap">
+      <select id="smScope" aria-label="Search scope">
+        <option value="all">All</option>
+        <option value="rules">Rules</option>
+        <option value="guides">Guides</option>
+        <option value="bhagi">BHAGIs</option>
+      </select>
+      <svg class="scope-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5L5 6.5L8 3.5"></path></svg>
+    </div>
+    <input id="smInput" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
+           spellcheck="false" placeholder="Search rules, guides…" aria-label="Search">
+    <button id="smClose" type="button" aria-label="Close search">✕</button>
+  </div>
+  <div class="sm-body">
+    <div id="smList" class="sm-list"></div>
+    <div id="smPreview" class="sm-preview"></div>
+  </div>
+  <div class="sm-footer">
+    <span><span class="sm-key">↑↓</span>Navigate</span>
+    <span><span class="sm-key">↵</span>Open</span>
+    <span><span class="sm-key">Esc</span>Close</span>
+  </div>
+</dialog>
 
 <dialog id="panel">
   <div class="panel-inner">
@@ -67,6 +97,17 @@
       <button id="panelclose" class="btn ghost">Close</button>
     </div>
     <div id="panelmsg"></div>
+  </div>
+</dialog>
+
+<dialog id="historyPanel">
+  <div class="panel-inner">
+    <h2>Version history</h2>
+    <p id="historydesc">Dated snapshots of the published Rules of Racing, as archived by the BHA. Each links to that period's actual PDF.</p>
+    <div id="historyList" class="history-list"></div>
+    <div class="panel-btns">
+      <button id="historyPanelClose" class="btn ghost">Close</button>
+    </div>
   </div>
 </dialog>
 

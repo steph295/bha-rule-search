@@ -12,6 +12,7 @@
   var GUIDES_URL = 'guides.json';
   var LS_GUIDES = 'bha-guides-v1';
   var OVERRIDES_URL = 'overrides.json';
+  var LS_HISTORY = 'bha-history-v1';
 
   // Same key logic as the admin tool (admin/admin.js) — must stay identical
   // so an edit saved there lands on the right entry here.
@@ -28,9 +29,13 @@
     lastTerms: [],
     guides: null,      // {source, documents, entries}
     guidesState: 'idle', // idle | loading | ready | failed
-    tab: 'all',        // all | rules | guides
+    tab: 'all',        // all | rules | guides | new
     sub: 'all',        // all | bhagi  (within the guides tab)
-    overrides: null    // {key: {title, html}} published by the admin tool, once loaded
+    overrides: null,   // {key: {title, html}} published by the admin tool, once loaded
+    history: null,     // [{label, url}] dated rulebook snapshots, newest first
+    historyState: 'idle', // idle | loading | ready | failed
+    mode: 'search',    // search | reader
+    readerBook: null   // 'rules' | 'guides' — which book the reader is showing
   };
 
   // Which tab an entry belongs to. Rulebook entries (manual/code/guide) come
@@ -38,7 +43,9 @@
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
 
   function inTab(e, tab, sub) {
+    if (tab === 'new') return !!e.isNew;
     if (tab === 'rules') return !isGuideEntry(e);
+    if (tab === 'bhagi') return e.kind === 'bhagi';
     if (tab === 'guides') {
       if (!isGuideEntry(e)) return false;
       return sub === 'bhagi' ? e.kind === 'bhagi' : true;
@@ -73,7 +80,7 @@
         bookId: data.bookId, version: data.version, publishedAt: data.publishedAt,
         year: data.year, sourceUpdatedAt: data.sourceUpdatedAt, manuals: data.manuals,
         entries: data.entries.map(function (e) {
-          return { id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc, letter: e.letter, title: e.title, path: e.path, html: e.html };
+          return { id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc, letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false };
         })
       };
       localStorage.setItem(LS_KEY, JSON.stringify(slim));
@@ -494,25 +501,6 @@
       : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy — tap for details';
   }
 
-  function chipRow(items, onPick, render) {
-    var chips = document.createElement('div');
-    chips.className = 'chips';
-    items.forEach(function (it) {
-      var b = document.createElement('button');
-      b.className = 'chip';
-      if (render) b.innerHTML = render(it); else b.textContent = it;
-      b.addEventListener('click', function () { onPick(it); q.focus(); runSearch(); });
-      chips.appendChild(b);
-    });
-    return chips;
-  }
-
-  function heading(text) {
-    var h = document.createElement('h2');
-    h.textContent = text;
-    return h;
-  }
-
   // The home hub: one card per top-level document, each opening straight
   // into that document's browse view (via the existing tab filter).
   function renderDocuments(d) {
@@ -520,11 +508,13 @@
     wrap.className = 'docs';
 
     var ruleCount = d.entries.filter(function (e) { return !isGuideEntry(e); }).length;
+    var newCount = d.entries.filter(function (e) { return e.isNew; }).length;
     var ruleCard = documentCard({
       icon: 'book',
       title: 'Rules of Racing',
-      meta: 'v' + d.version + ' · ' + (d.year || '') + ' · ' + ruleCount + ' entries',
-      onClick: function () { selectTab('rules'); }
+      meta: 'v' + d.version + ' · ' + (d.year || '') + ' · ' + ruleCount + ' entries' +
+        (newCount ? ' · ' + newCount + ' new' : ''),
+      onClick: function () { enterReader('rules'); }
     });
     wrap.appendChild(ruleCard);
 
@@ -535,24 +525,67 @@
         icon: 'library',
         title: 'Guide Library',
         meta: state.guides.documents + ' documents · ' + guideCount + ' entries',
-        onClick: function () { selectTab('guides'); }
+        onClick: function () { enterReader('guides'); }
       });
     } else {
       guideCard = documentCard({
         icon: 'library',
         title: 'Guide Library',
         meta: state.guidesState === 'failed' ? 'Unavailable right now' : 'Loading…',
-        onClick: function () { if (state.guidesState === 'ready') selectTab('guides'); },
+        onClick: function () { if (state.guidesState === 'ready') enterReader('guides'); },
         disabled: state.guidesState !== 'ready'
       });
     }
     wrap.appendChild(guideCard);
+
+    var bhagiCard;
+    if (state.guidesState === 'ready') {
+      var bhagiEntries = d.entries.filter(function (e) { return e.kind === 'bhagi'; });
+      var bhagiDocs = {};
+      bhagiEntries.forEach(function (e) { bhagiDocs[e.doc] = 1; });
+      bhagiCard = documentCard({
+        icon: 'bhagi',
+        title: 'BHAGIs',
+        meta: Object.keys(bhagiDocs).length + ' sections · ' + bhagiEntries.length + ' entries',
+        onClick: function () { enterReader('bhagi'); }
+      });
+    } else {
+      bhagiCard = documentCard({
+        icon: 'bhagi',
+        title: 'BHAGIs',
+        meta: state.guidesState === 'failed' ? 'Unavailable right now' : 'Loading…',
+        onClick: function () { if (state.guidesState === 'ready') enterReader('bhagi'); },
+        disabled: state.guidesState !== 'ready'
+      });
+    }
+    wrap.appendChild(bhagiCard);
+
+    var historyMeta;
+    if (state.historyState === 'ready') {
+      var oldest = state.history[state.history.length - 1];
+      var oldestYear = oldest && /((?:19|20)\d{2})/.exec(oldest.label);
+      historyMeta = state.history.length + ' dated snapshots' + (oldestYear ? ' · back to ' + oldestYear[1] : '');
+    } else if (state.historyState === 'failed') {
+      historyMeta = 'Unavailable right now';
+    } else {
+      historyMeta = 'Loading…';
+    }
+    var historyCard = documentCard({
+      icon: 'history',
+      title: 'Version History',
+      meta: historyMeta,
+      onClick: function () { if (state.historyState === 'ready') openHistoryPanel(); },
+      disabled: state.historyState !== 'ready'
+    });
+    wrap.appendChild(historyCard);
     return wrap;
   }
 
   var DOC_ICONS = {
     book: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8.5A1.5 1.5 0 0 1 13 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H13"></path></svg>',
-    library: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5v9M6 3v9.5M9.5 3.5l3 9"></path></svg>'
+    library: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5v9M6 3v9.5M9.5 3.5l3 9"></path></svg>',
+    history: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5V8l2.5 1.5"></path><circle cx="8" cy="8" r="5.5"></circle></svg>',
+    bhagi: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="10" height="11" rx="1.2"></rect><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"></path></svg>'
   };
   function documentCard(opts) {
     var card = document.createElement('div');
@@ -564,12 +597,492 @@
     return card;
   }
 
+  // ---- reader (Word/Docs-style document view with a navigable outline) --
+
+  function buildPathTree(entries, nextId) {
+    var root = { id: null, label: null, badge: null, isNew: false, children: [], entries: [], _map: {} };
+    entries.forEach(function (e) {
+      var segs = (e.path || []).slice(0, -1);
+      var node = root;
+      segs.forEach(function (seg) {
+        if (!seg) return;
+        if (!node._map[seg]) {
+          var child = { id: nextId(), label: seg, badge: null, isNew: false, children: [], entries: [], _map: {} };
+          node._map[seg] = child;
+          node.children.push(child);
+        }
+        node = node._map[seg];
+      });
+      node.entries.push(e);
+    });
+    return root;
+  }
+
+  function markTreeNew(node) {
+    var any = node.entries.some(function (e) { return e.isNew; });
+    node.children.forEach(function (c) { if (markTreeNew(c)) any = true; });
+    node.isNew = any;
+    return any;
+  }
+
+  // Rules of Racing: one top-level outline node per manual (A, B, C…) plus
+  // one per code/guide document, each holding its own path-based subtree —
+  // exactly the hierarchy the BHA site itself renders per document.
+  function buildRulesOutline(manuals, entries) {
+    var seq = 0;
+    function nextId() { return 'sec' + (seq++); }
+    var top = [];
+    manuals.forEach(function (m) {
+      var manEntries = entries.filter(function (e) { return e.letter === m.letter; });
+      if (!manEntries.length) return;
+      var node = buildPathTree(manEntries, nextId);
+      node.id = nextId();
+      node.label = m.title;
+      node.badge = m.letter;
+      markTreeNew(node);
+      top.push(node);
+    });
+    var codeDocs = {}, order = [];
+    entries.forEach(function (e) {
+      if (e.kind !== 'code' && e.kind !== 'guide') return;
+      if (!codeDocs[e.doc]) { codeDocs[e.doc] = []; order.push(e.doc); }
+      codeDocs[e.doc].push(e);
+    });
+    order.forEach(function (docName) {
+      var node = buildPathTree(codeDocs[docName], nextId);
+      node.id = nextId();
+      node.label = docName;
+      markTreeNew(node);
+      top.push(node);
+    });
+    return top;
+  }
+
+  // Guide Library: category → document, matching how the PDF export and
+  // BHAGI numbering already group these.
+  function buildGuidesOutline(entries) {
+    var seq = 0;
+    function nextId() { return 'gsec' + (seq++); }
+    var cats = {}, order = [];
+    entries.forEach(function (e) {
+      if (!cats[e.cat]) { cats[e.cat] = { id: nextId(), label: e.cat, badge: null, isNew: false, children: [], entries: [], _docs: {} }; order.push(e.cat); }
+      var catNode = cats[e.cat];
+      if (!catNode._docs[e.doc]) {
+        var docNode = { id: nextId(), label: e.doc, badge: null, isNew: false, children: [], entries: [] };
+        catNode._docs[e.doc] = docNode;
+        catNode.children.push(docNode);
+      }
+      catNode._docs[e.doc].entries.push(e);
+    });
+    return order.map(function (c) { markTreeNew(cats[c]); return cats[c]; });
+  }
+
+  var NEW_PILL = '<span class="pill-new">new</span>';
+
+  // A filter pass over the outline tree that keeps a node whenever it (or
+  // any descendant) still has matching entries — same shape as the source
+  // tree, so the nav and content renderers don't need to know about search
+  // at all. tokens=[] (no in-doc search active) passes every node through.
+  function filterOutlineTree(nodes, tokens) {
+    var out = [];
+    nodes.forEach(function (n) {
+      var matchedEntries = tokens.length
+        ? n.entries.filter(function (e) { return tokens.every(function (t) { return e.text.indexOf(t) !== -1; }); })
+        : n.entries;
+      var filteredChildren = filterOutlineTree(n.children, tokens);
+      if (!tokens.length || matchedEntries.length || filteredChildren.length) {
+        out.push({ id: n.id, label: n.label, badge: n.badge, isNew: n.isNew, entries: matchedEntries, children: filteredChildren });
+      }
+    });
+    return out;
+  }
+
+  function countOutlineEntries(nodes) {
+    var n = 0;
+    nodes.forEach(function (node) { n += node.entries.length + countOutlineEntries(node.children); });
+    return n;
+  }
+
+  function renderOutlineNav(nodes, depth) {
+    var wrap = document.createElement('div');
+    wrap.className = 'outline-level';
+    nodes.forEach(function (n) {
+      var row = document.createElement('a');
+      row.className = 'outline-link depth-' + depth;
+      row.href = '#';
+      row.dataset.target = n.id;
+      row.innerHTML = (n.badge ? '<span class="cl sm">' + P.escapeHtml(n.badge) + '</span>' : '') +
+        (n.isNew ? NEW_PILL : '') + '<span>' + P.escapeHtml(n.label) + '</span>';
+      row.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        var el = document.getElementById(n.id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      wrap.appendChild(row);
+      if (n.children.length) wrap.appendChild(renderOutlineNav(n.children, depth + 1));
+    });
+    return wrap;
+  }
+
+  function renderReaderSection(n, depth, terms) {
+    var frag = document.createDocumentFragment();
+    var head = document.createElement('div');
+    head.id = n.id;
+    head.dataset.outlineId = n.id;
+    head.className = 'reader-heading depth-' + depth;
+    head.innerHTML = (n.badge ? '<span class="cl">' + P.escapeHtml(n.badge) + '</span>' : '') +
+      (n.isNew ? NEW_PILL : '') + P.escapeHtml(n.label);
+    frag.appendChild(head);
+    n.entries.forEach(function (e) {
+      var block = document.createElement('div');
+      block.className = 'reader-entry';
+      block.innerHTML = '<div class="reader-entry-head">' +
+        '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
+        (e.isNew ? NEW_PILL : '') +
+        '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
+        '<div class="rfull reader-body">' + highlightHtml(e.html, terms) + '</div>';
+      frag.appendChild(block);
+    });
+    n.children.forEach(function (c) { frag.appendChild(renderReaderSection(c, depth + 1, terms)); });
+    return frag;
+  }
+
+  var readerScrollHandler = null;
+  function teardownScrollSpy() {
+    if (readerScrollHandler) { window.removeEventListener('scroll', readerScrollHandler); readerScrollHandler = null; }
+  }
+  function setupScrollSpy(content) {
+    teardownScrollSpy();
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var headings = Array.prototype.slice.call(content.querySelectorAll('[data-outline-id]'));
+      var activeId = headings.length ? headings[0].dataset.outlineId : null;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top - 90 <= 0) activeId = headings[i].dataset.outlineId;
+        else break;
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('.outline-link'), function (a) {
+        a.classList.toggle('active', a.dataset.target === activeId);
+      });
+    }
+    readerScrollHandler = function () {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', readerScrollHandler, { passive: true });
+    update();
+  }
+
+  function enterReader(book) {
+    q.value = '';
+    $('clear').classList.remove('show');
+    state.mode = 'reader';
+    state.readerBook = book;
+    state.tab = book;
+    renderTabs();
+    renderIdle();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function exitReader() {
+    if (state.mode !== 'reader') return;
+    state.mode = 'search';
+    document.body.classList.remove('reader-mode');
+    teardownScrollSpy();
+  }
+
+  // Re-renders just the outline list and the entries container from the
+  // full (unfiltered) tree cached on state.readerTree — used for the first
+  // paint and every keystroke in the in-doc search box. The search input
+  // and count live in a wrapper outside both of these and are never
+  // touched, so the input never loses focus while the user is typing.
+  function renderReaderBody(navListEl, entriesEl, countEl, titleText, rawQuery) {
+    var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    var filtered = filterOutlineTree(state.readerTree, tokens);
+
+    navListEl.innerHTML = '';
+    navListEl.appendChild(renderOutlineNav(filtered, 0));
+
+    entriesEl.innerHTML = '';
+    if (tokens.length) {
+      var n = countOutlineEntries(filtered);
+      countEl.textContent = n + (n === 1 ? ' match' : ' matches') + ' in ' + titleText;
+      countEl.hidden = false;
+    } else {
+      countEl.hidden = true;
+    }
+    if (tokens.length && !filtered.length) {
+      var none = document.createElement('div');
+      none.className = 'noresults';
+      none.textContent = 'Nothing in ' + titleText + ' matches that — try a different word.';
+      entriesEl.appendChild(none);
+    } else {
+      filtered.forEach(function (n) { entriesEl.appendChild(renderReaderSection(n, 0, tokens)); });
+    }
+
+    teardownScrollSpy();
+    if (!tokens.length) setupScrollSpy(entriesEl);
+  }
+
+  function renderReaderView() {
+    var d = state.data;
+    var book = state.readerBook;
+    var titleText = book === 'guides' ? 'Guide Library' : book === 'bhagi' ? 'BHAGIs' : 'Rules of Racing';
+    meta.textContent = '';
+
+    state.readerTree = book === 'guides'
+      ? buildGuidesOutline(d.entries.filter(isGuideEntry))
+      : book === 'bhagi'
+      ? buildGuidesOutline(d.entries.filter(function (e) { return e.kind === 'bhagi'; }))
+      : buildRulesOutline(d.manuals, d.entries.filter(function (e) { return !isGuideEntry(e); }));
+
+    var wrap = document.createElement('div');
+    wrap.className = 'reader';
+
+    var back = document.createElement('button');
+    back.className = 'reader-back';
+    back.type = 'button';
+    back.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3L4.5 8l5 5"></path></svg> Back';
+    back.addEventListener('click', goHome);
+
+    var nav = document.createElement('nav');
+    nav.className = 'outline';
+
+    var searchWrap = document.createElement('div');
+    searchWrap.className = 'reader-search-wrap';
+    searchWrap.innerHTML = '<input type="search" class="reader-search" placeholder="Search within ' +
+      P.escapeHtml(titleText) + '…" aria-label="Search within ' + P.escapeHtml(titleText) + '">' +
+      '<div class="reader-search-count" hidden></div>';
+    nav.appendChild(searchWrap);
+    var countEl = searchWrap.querySelector('.reader-search-count');
+
+    var navList = document.createElement('div');
+    navList.className = 'outline-list';
+    nav.appendChild(navList);
+
+    var content = document.createElement('div');
+    content.className = 'reader-content';
+
+    var title = document.createElement('div');
+    title.className = 'reader-title';
+    title.textContent = titleText;
+    content.appendChild(title);
+
+    var entriesEl = document.createElement('div');
+    entriesEl.className = 'reader-entries';
+    content.appendChild(entriesEl);
+
+    var searchInput = searchWrap.querySelector('.reader-search');
+    var debounce = null;
+    searchInput.addEventListener('input', function () {
+      clearTimeout(debounce);
+      var val = searchInput.value;
+      debounce = setTimeout(function () { renderReaderBody(navList, entriesEl, countEl, titleText, val); }, 80);
+    });
+
+    var row = document.createElement('div');
+    row.className = 'reader-row';
+    row.appendChild(nav);
+    row.appendChild(content);
+
+    wrap.appendChild(back);
+    wrap.appendChild(row);
+    results.appendChild(wrap);
+
+    document.body.classList.add('reader-mode');
+    renderReaderBody(navList, entriesEl, countEl, titleText, '');
+  }
+
+  // ---- version history panel --------------------------------------------
+
+  function parseHistory(historyField) {
+    var comps = (historyField && historyField.components) || [];
+    var out = [];
+    comps.forEach(function (c) {
+      if (!c || c.type !== 'textblock') return;
+      var html = c.html || '';
+      var m = /<a\s+href="([^"]+)"[^>]*>([^<]*)<\/a>/i.exec(html);
+      if (m) {
+        var label = P.toText(m[2]);
+        if (label) out.push({ label: label, url: m[1] });
+      } else {
+        var text = P.toText(html);
+        if (text) out.push({ label: text, url: null });
+      }
+    });
+    return out;
+  }
+
+  function loadHistory() {
+    if (!state.data || !state.data.bookId) return;
+    if (state.historyState === 'loading' || state.historyState === 'ready') return;
+    state.historyState = 'loading';
+
+    var cached = null;
+    try {
+      var raw = localStorage.getItem(LS_HISTORY);
+      if (raw) cached = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (cached && cached.bookId === state.data.bookId && cached.items && cached.items.length) {
+      state.history = cached.items;
+      state.historyState = 'ready';
+      refreshView();
+    }
+
+    getJSON('/api/books/' + state.data.bookId + '?with=history', 15000).then(function (full) {
+      var items = parseHistory(full.history);
+      if (!items.length) throw new Error('empty history');
+      state.history = items;
+      state.historyState = 'ready';
+      refreshView();
+      try { localStorage.setItem(LS_HISTORY, JSON.stringify({ bookId: state.data.bookId, items: items })); } catch (e) { /* quota */ }
+    }).catch(function () {
+      if (state.historyState !== 'ready') state.historyState = 'failed';
+      refreshView();
+    });
+  }
+
+  var historyPanel = $('historyPanel');
+  function renderHistoryList() {
+    var list = $('historyList');
+    if (!state.history || !state.history.length) { list.innerHTML = '<div class="hint">No version history loaded.</div>'; return; }
+    list.innerHTML = state.history.map(function (h) {
+      return '<div class="history-row"><span class="history-label">' + P.escapeHtml(h.label) + '</span>' +
+        (h.url
+          ? '<a class="history-link" href="' + API_HOST + h.url + '" target="_blank" rel="noopener">Download PDF ↗</a>'
+          : '<span class="history-missing">No archived copy</span>') +
+        '</div>';
+    }).join('');
+  }
+  function openHistoryPanel() {
+    renderHistoryList();
+    if (typeof historyPanel.showModal === 'function') historyPanel.showModal();
+    else historyPanel.setAttribute('open', '');
+  }
+  $('historyPanelClose').addEventListener('click', function () {
+    historyPanel.close ? historyPanel.close() : historyPanel.removeAttribute('open');
+  });
+
+  // ---- changelog tab (Linear-"Now"-style dated feed) ---------------------
+  //
+  // The only version we can genuinely describe is the current one — the
+  // BHA's own `highlighted: 'new'` flags tell us exactly what changed and
+  // where. Older entries only ever gave us a dated PDF (from the history
+  // panel above), so those render as plain archive rows rather than
+  // invented change notes.
+  function renderChangelog() {
+    var d = state.data;
+
+    if (state.historyState !== 'ready') {
+      meta.textContent = 'Version history';
+      var msg = document.createElement('div');
+      msg.className = 'hint';
+      msg.textContent = state.historyState === 'failed'
+        ? 'Version history is unavailable right now.'
+        : 'Loading version history…';
+      results.appendChild(msg);
+      return;
+    }
+
+    var newEntries = d.entries.filter(function (e) { return e.isNew; });
+    var groups = {}, order = [];
+    newEntries.forEach(function (e) {
+      var label = e.letter ? (e.letter + ' — ' + e.doc) : e.doc;
+      if (!groups[label]) { groups[label] = 0; order.push(label); }
+      groups[label]++;
+    });
+
+    var wrap = document.createElement('div');
+    wrap.className = 'changelog';
+
+    state.history.forEach(function (h, i) {
+      var row = document.createElement('div');
+      row.className = 'changelog-row';
+
+      var date = document.createElement('div');
+      date.className = 'changelog-date';
+      date.innerHTML = '<span class="changelog-dot' + (i === 0 ? ' current' : '') + '"></span>' + P.escapeHtml(h.label);
+      row.appendChild(date);
+
+      var body = document.createElement('div');
+      body.className = 'changelog-body';
+      var head = document.createElement('h3');
+
+      if (i === 0 && order.length) {
+        head.textContent = 'Current published version';
+        body.appendChild(head);
+        var p = document.createElement('p');
+        p.textContent = 'The BHA has flagged ' + newEntries.length + ' new or changed rule' +
+          (newEntries.length === 1 ? '' : 's') + ' in this version, across:';
+        body.appendChild(p);
+        var tags = document.createElement('div');
+        tags.className = 'changelog-tags';
+        order.forEach(function (label) {
+          var tag = document.createElement('button');
+          tag.className = 'changelog-tag';
+          tag.textContent = label + ' (' + groups[label] + ')';
+          tag.addEventListener('click', function () { selectTab('new'); });
+          tags.appendChild(tag);
+        });
+        body.appendChild(tags);
+      } else {
+        head.textContent = i === 0 ? 'Current published version' : 'Archived version';
+        body.appendChild(head);
+      }
+
+      if (h.url) {
+        var a = document.createElement('a');
+        a.className = 'changelog-link';
+        a.href = API_HOST + h.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Download PDF ↗';
+        body.appendChild(a);
+      } else {
+        var span = document.createElement('span');
+        span.className = 'history-missing';
+        span.textContent = 'No archived copy for this period';
+        body.appendChild(span);
+      }
+
+      row.appendChild(body);
+      wrap.appendChild(row);
+    });
+
+    results.appendChild(wrap);
+    meta.textContent = state.history.length + ' dated versions';
+  }
+
   function renderIdle() {
     var d = state.data;
     results.innerHTML = '';
     if (!d) { meta.textContent = 'Loading…'; return; }
 
+    if (state.mode === 'reader') { renderReaderView(); return; }
+    document.body.classList.remove('reader-mode');
+
     var tab = state.tab;
+
+    if (tab === 'new') {
+      var newEntries = d.entries.filter(function (e) { return e.isNew; });
+      state.lastTerms = [];
+      if (!newEntries.length) {
+        meta.textContent = 'No changes flagged in the current version';
+        var none = document.createElement('div');
+        none.className = 'noresults';
+        none.textContent = 'The BHA hasn\'t flagged anything as new or changed in this published version.';
+        results.appendChild(none);
+        return;
+      }
+      renderResults({ entries: newEntries, terms: [], mode: 'browse', exact: false });
+      meta.textContent = newEntries.length + (newEntries.length === 1 ? ' new entry' : ' new entries') + ' in the current version';
+      return;
+    }
+
+    if (tab === 'changelog') { renderChangelog(); return; }
+
     var counted = d.entries.filter(function (e) { return inTab(e, tab, state.sub); }).length;
     meta.textContent = counted + ' searchable ' +
       (tab === 'guides' ? 'guide sections' : tab === 'rules' ? 'rules and sections' : 'entries') +
@@ -583,53 +1096,6 @@
       home.appendChild(renderDocuments(d));
     }
 
-    var hint = document.createElement('p');
-    hint.className = 'hint';
-    hint.innerHTML = tab === 'guides'
-      ? 'Search the BHA guide library — General Instructions (<code>BHAGI 1.2</code>), codes of practice and guidance notes. Try <code>bhagi</code>, <code>public order</code> or <code>weight for age</code>.'
-      : 'Search by rule code — <code>F45</code>, <code>(H)6</code>, <code>BHAGI 1.2</code> — or by keyword: <code>whip</code>, <code>interference</code>, <code>non-runner</code>, <code>weighing in</code>. Results appear as you type.';
-    home.appendChild(hint);
-
-    if (tab !== 'guides') {
-      home.appendChild(heading('Browse the rulebook'));
-      home.appendChild(chipRow(d.manuals,
-        function (m) { q.value = m.letter; },
-        function (m) { return '<span class="cl">' + m.letter + '</span>' + P.escapeHtml(m.title); }));
-
-      var docs = {};
-      d.entries.forEach(function (e) {
-        if (e.kind === 'code' || e.kind === 'guide') docs[e.doc] = 1;
-      });
-      var names = Object.keys(docs);
-      if (names.length) {
-        home.appendChild(heading('Codes & guides'));
-        home.appendChild(chipRow(names, function (n) { q.value = n.toLowerCase(); }));
-      }
-    }
-
-    if (tab !== 'rules' && state.guidesState === 'ready') {
-      home.appendChild(heading(tab === 'guides' ? 'BHA General Instructions' : 'Guide library'));
-      if (tab === 'guides') {
-        // BHAGI sections 1..12
-        var secs = {};
-        d.entries.forEach(function (e) {
-          var m = e.kind === 'bhagi' && e.code && /^BHAGI\s+(\d+)\./.exec(e.code);
-          if (m) secs[m[1]] = (secs[m[1]] || 0) + 1;
-        });
-        var nums = Object.keys(secs).sort(function (a, b) { return a - b; });
-        home.appendChild(chipRow(nums,
-          function (n) { q.value = 'bhagi ' + n; },
-          function (n) { return '<span class="cl">' + n + '</span>Section ' + n + ' (' + secs[n] + ')'; }));
-      }
-      var cats = {};
-      d.entries.forEach(function (e) { if (isGuideEntry(e)) cats[e.cat] = (cats[e.cat] || 0) + 1; });
-      var catNames = Object.keys(cats).sort();
-      if (catNames.length) {
-        home.appendChild(heading(tab === 'guides' ? 'Guide categories' : 'From the guide library'));
-        home.appendChild(chipRow(catNames, function (c) { q.value = c.toLowerCase(); }));
-      }
-    }
-
     results.appendChild(home);
   }
 
@@ -639,30 +1105,25 @@
     var subtabs = $('subtabs');
     var counts = null;
     if (res) {
-      counts = { all: res.entries.length, rules: 0, guides: 0, bhagi: 0 };
+      counts = { all: res.entries.length, rules: 0, guides: 0, bhagi: 0, new: 0 };
       res.entries.forEach(function (e) {
         if (isGuideEntry(e)) {
           counts.guides++;
           if (e.kind === 'bhagi') counts.bhagi++;
         } else counts.rules++;
+        if (e.isNew) counts.new++;
       });
     }
-    var haveGuides = state.guidesState === 'ready';
-    Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (t) {
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button.tab'), function (t) {
       var key = t.dataset.tab;
-      var on = state.tab === key;
+      var on = state.tab === key && state.mode !== 'reader';
       t.classList.toggle('active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
-      var label = key === 'all' ? 'All' : key === 'rules' ? 'Rules' : 'Guides';
+      var label = key === 'all' ? 'All' : key === 'new' ? 'New' : 'Changelog';
       var n = counts ? counts[key] : null;
       t.innerHTML = label + (n != null ? '<span class="n">' + n + '</span>' : '');
-      t.disabled = (key === 'guides' && !haveGuides);
-      if (key === 'guides' && !haveGuides) {
-        t.innerHTML = label + '<span class="n">' +
-          (state.guidesState === 'failed' ? '—' : '…') + '</span>';
-      }
     });
-    subtabs.hidden = state.tab !== 'guides';
+    subtabs.hidden = state.tab !== 'guides' || state.mode === 'reader';
     Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
       var on = state.sub === t.dataset.sub;
       t.classList.toggle('active', on);
@@ -674,13 +1135,15 @@
   }
 
   function selectTab(tab) {
-    if (state.tab === tab) return;
+    var wasReader = state.mode === 'reader';
+    if (state.tab === tab && !wasReader) return;
+    exitReader();
     state.tab = tab;
     state.shown = PAGE;
     runSearch();
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (t) {
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs button.tab'), function (t) {
     t.addEventListener('click', function () { if (!t.disabled) selectTab(t.dataset.tab); });
   });
   Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
@@ -802,6 +1265,7 @@
       renderIdle();
       return;
     }
+    exitReader();
     var res = search(raw);          // searched across everything
     renderTabs(res);                // counts reflect the full result set
     var shown = {
@@ -823,14 +1287,147 @@
 
   $('clear').addEventListener('click', function () {
     q.value = '';
-    q.focus();
     runSearch();
+  });
+
+  // ------------------------------------------------------ search modal
+  //
+  // #q is a readonly trigger — the real typing happens in the modal's own
+  // input, Notion-search-style: live results on the left, full preview on
+  // the right, keyboard-navigable. Picking a result (click or Enter)
+  // applies the query to the main app and scrolls/expands that entry.
+
+  var searchModal = $('searchModal'), smInput = $('smInput'), smList = $('smList'), smPreview = $('smPreview');
+  var smResults = [], smTerms = [], smActive = -1, smDebounce = null;
+
+  function smRow(e, terms, idx) {
+    var row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'sm-row' + (idx === 0 ? ' active' : '');
+    var crumb = isGuideEntry(e) ? (e.cat || e.doc) : (e.letter ? e.letter + ' — ' + e.doc : e.doc);
+    row.innerHTML = '<span class="' + codeClass(e) + ' sm-row-code">' + P.escapeHtml(dispCode(e)) + '</span>' +
+      '<span class="sm-row-title">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
+      '<div class="sm-row-path">' + P.escapeHtml(crumb || '') + '</div>';
+    row.addEventListener('mouseenter', function () { setSmActive(idx); });
+    row.addEventListener('click', function () { setSmActive(idx); });
+    return row;
+  }
+
+  function renderSmPreview(e, terms) {
+    if (!e) { smPreview.innerHTML = ''; return; }
+    var crumb = isGuideEntry(e)
+      ? [e.cat, e.doc]
+      : [e.letter ? e.letter + ' — ' + e.doc : e.doc].concat((e.path || []).slice(0, -1));
+    smPreview.innerHTML = '<div class="sm-preview-path">' + crumb.filter(Boolean).map(P.escapeHtml).join(' › ') + '</div>' +
+      '<div class="sm-preview-title"><span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
+      '<span>' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
+      '<div class="rfull">' + highlightHtml(e.html, terms) + '</div>';
+  }
+
+  function setSmActive(idx) {
+    smActive = idx;
+    Array.prototype.forEach.call(smList.querySelectorAll('.sm-row'), function (r, i) {
+      r.classList.toggle('active', i === idx);
+    });
+    renderSmPreview(smResults[idx], smTerms);
+  }
+
+  function smMatchesScope(e, scope) {
+    if (scope === 'rules') return !isGuideEntry(e);
+    if (scope === 'guides') return isGuideEntry(e);
+    if (scope === 'bhagi') return e.kind === 'bhagi';
+    return true;
+  }
+
+  function renderSmResults(raw) {
+    var qs = raw.trim();
+    smList.innerHTML = '';
+    if (!qs) {
+      smResults = []; smTerms = []; smActive = -1;
+      smList.innerHTML = '<div class="sm-empty">Type to search the current version of the Rules of Racing and guide library.</div>';
+      smPreview.innerHTML = '';
+      return;
+    }
+    var res = search(raw);
+    var scope = $('smScope').value;
+    smResults = res.entries.filter(function (e) { return smMatchesScope(e, scope); }).slice(0, 40);
+    smTerms = res.terms;
+    if (!smResults.length) {
+      smActive = -1;
+      smList.innerHTML = '<div class="sm-empty">Nothing found for that — try a rule code like F45, or fewer / broader keywords.</div>';
+      smPreview.innerHTML = '';
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    smResults.forEach(function (e, i) { frag.appendChild(smRow(e, smTerms, i)); });
+    smList.appendChild(frag);
+    smActive = 0;
+    renderSmPreview(smResults[0], smTerms);
+  }
+
+  function scrollSmActiveIntoView() {
+    var el = smList.querySelector('.sm-row.active');
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }
+
+  function openSmResult(idx) {
+    var e = smResults[idx];
+    if (!e) return;
+    closeSearchModal();
+    q.value = smInput.value;
+    state.tab = 'all';
+    state.shown = PAGE;
+    runSearch();
+    setTimeout(function () {
+      var card = results.querySelector('.result[data-id="' + e.id + '"]');
+      if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); toggleCard(card, true); }
+    }, 30);
+  }
+
+  function openSearchModal() {
+    smInput.value = q.value;
+    renderSmResults(smInput.value);
+    if (typeof searchModal.showModal === 'function') searchModal.showModal();
+    else searchModal.setAttribute('open', '');
+    setTimeout(function () { smInput.focus(); smInput.select(); }, 0);
+  }
+
+  function closeSearchModal() {
+    searchModal.close ? searchModal.close() : searchModal.removeAttribute('open');
+  }
+
+  // click-only (not a bare `focus` listener): a readonly input can still
+  // receive focus from browser tab-restore / automated tooling with no
+  // real user interaction, which must never pop this modal on its own.
+  q.addEventListener('click', openSearchModal);
+  q.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openSearchModal(); }
+  });
+  $('smClose').addEventListener('click', closeSearchModal);
+  $('smScope').addEventListener('change', function () { renderSmResults(smInput.value); });
+
+  smInput.addEventListener('input', function () {
+    clearTimeout(smDebounce);
+    smDebounce = setTimeout(function () { renderSmResults(smInput.value); }, 60);
+  });
+  smInput.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      if (smResults.length) { setSmActive(Math.min(smActive + 1, smResults.length - 1)); scrollSmActiveIntoView(); }
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      if (smResults.length) { setSmActive(Math.max(smActive - 1, 0)); scrollSmActiveIntoView(); }
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      if (smActive >= 0) openSmResult(smActive);
+    }
   });
 
   function goHome() {
     q.value = '';
     state.tab = 'all';
     state.sub = 'all';
+    exitReader();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     runSearch();
     renderTabs();
@@ -1090,5 +1687,6 @@
   q.focus();
   loadGuides();
   loadOverrides();
+  loadHistory();
   refresh(!initial);
 })();

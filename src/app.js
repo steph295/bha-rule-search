@@ -35,6 +35,7 @@
     sub: 'all',        // all | bhagi  (within the guides tab)
     overrides: null,   // {key: {title, html}} published by the admin tool, once loaded
     definitionOverrides: null, // {termId: {html}} published edits to glossary definitions
+    bookOverrides: null, // {'rules'|'guides'|'bhagi': {title, whatsNew}} published book-level edits
     history: null,     // [{label, url}] dated rulebook snapshots, newest first
     historyState: 'idle', // idle | loading | ready | failed
     mode: 'search',    // search | reader
@@ -123,10 +124,12 @@
       .then(function (j) {
         state.overrides = (j && j.overrides) || {};
         state.definitionOverrides = (j && j.definitionOverrides) || {};
+        state.bookOverrides = (j && j.bookOverrides) || {};
         applyOverrides();
         applyDefinitionOverrides();
         if (Object.keys(state.overrides).length) refreshView();
         if (Object.keys(state.definitionOverrides).length && state.mode === 'reader') renderIdle();
+        if (Object.keys(state.bookOverrides).length && state.mode !== 'reader') renderIdle();
       })
       .catch(function () { /* no overrides file yet — fine */ });
   }
@@ -588,11 +591,13 @@
 
     var ruleCount = d.entries.filter(function (e) { return !isGuideEntry(e); }).length;
     var newCount = d.entries.filter(function (e) { return e.isNew; }).length;
+    var rulesMeta = (state.bookOverrides && state.bookOverrides.rules) || {};
     var ruleCard = documentCard({
       icon: 'book',
-      title: 'Rules of Racing',
+      title: rulesMeta.title || 'Rules of Racing',
       meta: 'v' + d.version + ' · ' + (d.year || '') + ' · ' + ruleCount + ' entries' +
         (newCount ? ' · ' + newCount + ' new' : ''),
+      whatsNew: rulesMeta.whatsNew,
       onClick: function () { enterReader('rules'); }
     });
     wrap.appendChild(ruleCard);
@@ -671,7 +676,9 @@
     card.className = 'doc-card' + (opts.disabled ? ' disabled' : '');
     card.innerHTML = '<span class="doc-icon">' + DOC_ICONS[opts.icon] + '</span>' +
       '<span class="doc-info"><span class="doc-title">' + P.escapeHtml(opts.title) + '</span>' +
-      '<span class="doc-meta">' + P.escapeHtml(opts.meta) + '</span></span>';
+      '<span class="doc-meta">' + P.escapeHtml(opts.meta) + '</span>' +
+      (opts.whatsNew ? '<span class="doc-whatsnew">What’s new: ' + P.escapeHtml(opts.whatsNew) + '</span>' : '') +
+      '</span>';
     if (!opts.disabled) card.addEventListener('click', opts.onClick);
     return card;
   }

@@ -21,7 +21,8 @@
     definitions: [],        // [{id, term, html, slug}] — ORIGINAL, pre-override
     definitionOverrides: {}, // termId -> {html, updatedAt}
     defQuery: '',
-    selectedDefId: null
+    selectedDefId: null,
+    bookOverrides: {} // 'rules'|'guides'|'bhagi' -> {title, whatsNew, updatedAt}
   };
 
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
@@ -127,6 +128,7 @@
       state.entries = entries;
       state.overrides = overrides.overrides || {};
       state.definitionOverrides = overrides.definitionOverrides || {};
+      state.bookOverrides = overrides.bookOverrides || {};
       state.definitions = definitions.terms || [];
       state.manuals = rules.manuals || [];
       state.version = rules.version;
@@ -142,6 +144,11 @@
   function effectiveDefinition(t) {
     var o = state.definitionOverrides[t.id];
     return { html: (o && o.html) || t.html, edited: !!o };
+  }
+
+  function effectiveBookMeta(key, fallbackTitle) {
+    var o = state.bookOverrides[key];
+    return { title: (o && o.title) || fallbackTitle, whatsNew: (o && o.whatsNew) || '', edited: !!o };
   }
 
   // ---- list / filter ----------------------------------------------------
@@ -179,13 +186,26 @@
     bhagi: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="10" height="11" rx="1.2"></rect><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"></path></svg>'
   };
 
-  function docCard(icon, title, meta, onClick) {
+  function docCard(icon, title, meta, onClick, opts) {
+    opts = opts || {};
     var card = document.createElement('div');
     card.className = 'doc-card';
     card.innerHTML = '<span class="doc-icon">' + DOC_ICONS[icon] + '</span>' +
       '<span class="doc-info"><span class="doc-title">' + escapeHtml(title) + '</span>' +
-      '<span class="doc-meta">' + escapeHtml(meta) + '</span></span>';
+      '<span class="doc-meta">' + escapeHtml(meta) + '</span>' +
+      (opts.whatsNew ? '<span class="doc-whatsnew">What’s new: ' + escapeHtml(opts.whatsNew) + '</span>' : '') +
+      '</span>';
     card.addEventListener('click', onClick);
+    if (opts.onEdit) {
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'doc-edit-btn';
+      editBtn.title = 'Edit book details';
+      editBtn.setAttribute('aria-label', 'Edit book details');
+      editBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
+      editBtn.addEventListener('click', function (ev) { ev.stopPropagation(); opts.onEdit(); });
+      card.appendChild(editBtn);
+    }
     return card;
   }
 
@@ -199,15 +219,95 @@
     var bhagiDocs = {};
     bhagiEntries.forEach(function (e) { bhagiDocs[e.doc] = 1; });
 
-    wrap.appendChild(docCard('book', 'Rules of Racing',
+    var rulesMeta = effectiveBookMeta('rules', 'Rules of Racing');
+    wrap.appendChild(docCard('book', rulesMeta.title,
       'v' + state.version + ' · ' + (state.year || '') + ' · ' + ruleEntries.length + ' entries',
-      function () { enterReader('rules'); }));
+      function () { enterReader('rules'); },
+      { whatsNew: rulesMeta.whatsNew, onEdit: function () { openBookMetaPanel('rules', 'Rules of Racing'); } }));
     wrap.appendChild(docCard('library', 'Guide Library',
       guideEntries.length + ' entries',
       function () { enterReader('guides'); }));
     wrap.appendChild(docCard('bhagi', 'BHAGIs',
       Object.keys(bhagiDocs).length + ' sections · ' + bhagiEntries.length + ' entries',
       function () { enterReader('bhagi'); }));
+  }
+
+  // ---- book metadata (title override + "what's new" blurb) --------------
+
+  var bookMetaPanel = $('bookMetaPanel');
+  function openBookMetaPanel(key, fallbackTitle) {
+    var meta = effectiveBookMeta(key, fallbackTitle);
+    var card = $('bookMetaCard');
+    card.innerHTML =
+      '<span class="code-badge">' + escapeHtml(fallbackTitle) + '</span>' +
+      '<label for="bmTitle">Title</label>' +
+      '<input type="text" id="bmTitle" value="' + escapeHtml(meta.title) + '">' +
+      '<label for="bmWhatsNew">What’s new message</label>' +
+      '<textarea id="bmWhatsNew" style="min-height:80px">' + escapeHtml(meta.whatsNew) + '</textarea>' +
+      '<div class="hint">Shown as a short line under this book’s card on the public site. Leave blank to hide it.</div>' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="bmSaveBtn">Publish change</button>' +
+      '<button class="revert" id="bmCancelBtn" type="button">Cancel</button>' +
+      (meta.edited ? '<span class="hint" style="margin:0">Edited ' + new Date(state.bookOverrides[key].updatedAt).toLocaleString() + '</span>' : '') +
+      '</div>' +
+      '<div class="save-msg" id="bmSaveMsg"></div>';
+    $('bmCancelBtn').addEventListener('click', closeBookMetaPanel);
+    $('bmSaveBtn').addEventListener('click', function () { confirmSaveBookMeta(key, fallbackTitle); });
+    if (typeof bookMetaPanel.showModal === 'function') bookMetaPanel.showModal();
+    else bookMetaPanel.setAttribute('open', '');
+  }
+
+  function closeBookMetaPanel() {
+    bookMetaPanel.close ? bookMetaPanel.close() : bookMetaPanel.removeAttribute('open');
+  }
+
+  function confirmSaveBookMeta(key, fallbackTitle) {
+    // Appended inside the <dialog> (not document.body): once a <dialog> is
+    // shown via showModal() it renders in the browser's top layer, above
+    // all regular DOM regardless of z-index — an overlay appended to body
+    // would be invisible/unclickable behind it.
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Publish this change?</h3>' +
+      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    bookMetaPanel.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doSaveBookMeta(key, fallbackTitle);
+    });
+  }
+
+  function doSaveBookMeta(key, fallbackTitle) {
+    var title = $('bmTitle').value.trim() || fallbackTitle;
+    var whatsNew = $('bmWhatsNew').value.trim();
+    var msg = $('bmSaveMsg');
+    var btn = $('bmSaveBtn');
+    btn.disabled = true;
+    msg.textContent = 'Publishing…';
+    msg.className = 'save-msg';
+
+    fetch('/api/save-book-meta', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookKey: key, title: title, whatsNew: whatsNew })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      state.bookOverrides[key] = { title: title, whatsNew: whatsNew, updatedAt: new Date().toISOString() };
+      msg.textContent = 'Published — live on the public site now.';
+      msg.className = 'save-msg ok';
+      btn.disabled = false;
+      renderHomeCards();
+    }).catch(function (err) {
+      msg.textContent = 'Could not publish: ' + err.message;
+      msg.className = 'save-msg err';
+      btn.disabled = false;
+    });
   }
 
   // ---- reader (outline + full text + inline edit) ------------------------
@@ -704,7 +804,7 @@
       });
     });
   });
-  // "Manuals" is the working screen and the default view.
+  // "Books" is the working screen and the default view.
   document.getElementById('view-manuals').classList.add('active');
 
   // ---- pdf export -------------------------------------------------------

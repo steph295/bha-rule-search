@@ -977,14 +977,30 @@
     var content = document.createElement('div');
     content.className = 'reader-content';
 
+    var scroll = document.createElement('div');
+    scroll.className = 'reader-scroll';
+    content.appendChild(scroll);
+
     var title = document.createElement('div');
     title.className = 'reader-title';
     title.textContent = titleText;
-    content.appendChild(title);
+    scroll.appendChild(title);
 
     var entriesEl = document.createElement('div');
     entriesEl.className = 'reader-entries';
-    content.appendChild(entriesEl);
+    scroll.appendChild(entriesEl);
+
+    var toTop = document.createElement('button');
+    toTop.type = 'button';
+    toTop.className = 'back-to-top';
+    toTop.title = 'Back to top';
+    toTop.setAttribute('aria-label', 'Back to top');
+    toTop.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V3.5"></path><path d="M4 7.5L8 3.5l4 4"></path></svg>';
+    toTop.addEventListener('click', function () { scroll.scrollTo({ top: 0, behavior: 'smooth' }); });
+    content.appendChild(toTop);
+    scroll.addEventListener('scroll', function () {
+      toTop.classList.toggle('show', scroll.scrollTop > 300);
+    }, { passive: true });
 
     var searchInput = searchWrap.querySelector('.reader-search');
     var debounce = null;

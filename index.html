@@ -373,13 +373,14 @@ main {
     align-items: stretch;
   }
   .reader-mode .outline,
-  .reader-mode .reader-content,
   .reader-mode .def-panel {
     height: 100%;
     overflow-y: auto;
     position: static;
     max-height: none;
   }
+  .reader-mode .reader-content { height: 100%; }
+  .reader-mode .reader-scroll { height: 100%; overflow-y: auto; }
 }
 
 .pill-new {
@@ -429,7 +430,30 @@ main {
 .outline-link .cl.sm { font-size: 11px; padding: 0 5px; margin-right: 4px; }
 .outline-link.depth-0 { font-weight: 600; color: var(--ink); margin-top: 4px; }
 
-.reader-content { flex: 1; min-width: 0; }
+.reader-content { flex: 1; min-width: 0; position: relative; }
+.reader-scroll { min-width: 0; }
+
+.back-to-top {
+  position: absolute;
+  right: 16px; bottom: 16px;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--green-mid);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.back-to-top.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.back-to-top:hover { border-color: var(--green-mid); background: var(--green-pale); }
+
 .reader-title {
   font-size: 27px;
   font-weight: 750;
@@ -2601,14 +2625,30 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     var content = document.createElement('div');
     content.className = 'reader-content';
 
+    var scroll = document.createElement('div');
+    scroll.className = 'reader-scroll';
+    content.appendChild(scroll);
+
     var title = document.createElement('div');
     title.className = 'reader-title';
     title.textContent = titleText;
-    content.appendChild(title);
+    scroll.appendChild(title);
 
     var entriesEl = document.createElement('div');
     entriesEl.className = 'reader-entries';
-    content.appendChild(entriesEl);
+    scroll.appendChild(entriesEl);
+
+    var toTop = document.createElement('button');
+    toTop.type = 'button';
+    toTop.className = 'back-to-top';
+    toTop.title = 'Back to top';
+    toTop.setAttribute('aria-label', 'Back to top');
+    toTop.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V3.5"></path><path d="M4 7.5L8 3.5l4 4"></path></svg>';
+    toTop.addEventListener('click', function () { scroll.scrollTo({ top: 0, behavior: 'smooth' }); });
+    content.appendChild(toTop);
+    scroll.addEventListener('scroll', function () {
+      toTop.classList.toggle('show', scroll.scrollTop > 300);
+    }, { passive: true });
 
     var searchInput = searchWrap.querySelector('.reader-search');
     var debounce = null;

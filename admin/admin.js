@@ -464,6 +464,11 @@
     readerSearchDebounce = setTimeout(function () { renderReaderBody(val); }, 80);
   });
 
+  $('backToTop').addEventListener('click', function () { $('readerScroll').scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('readerScroll').addEventListener('scroll', function () {
+    $('backToTop').classList.toggle('show', $('readerScroll').scrollTop > 300);
+  }, { passive: true });
+
   function matchesTab(e) {
     if (state.tab === 'rules') return !isGuideEntry(e);
     if (state.tab === 'guides') return isGuideEntry(e);

@@ -721,6 +721,17 @@
     if (state.manualsView === 'reader') syncReaderChromeOffsets();
   });
 
+  // Belt-and-braces against the outer page moving at all in desktop reader
+  // mode: an el.scrollIntoView() call (outline links etc.) can still
+  // cascade up and nudge document.documentElement.scrollTop directly even
+  // though html/body have overflow:hidden there — which shifts the fixed
+  // breadcrumb row up behind the fixed header, looking like it vanished.
+  // Snapping straight back to 0 neutralises that regardless of the cause.
+  var desktopReaderMQ = window.matchMedia('(min-width: 981px)');
+  window.addEventListener('scroll', function () {
+    if (state.manualsView === 'reader' && desktopReaderMQ.matches && window.scrollY !== 0) window.scrollTo(0, 0);
+  }, { passive: true });
+
   function renderReaderBody(rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
     var newOnly = !!state.readerNewOnly;

@@ -955,6 +955,21 @@
     if (state.mode === 'reader') syncReaderChromeOffsets();
   });
 
+  // Belt-and-braces against the outer page moving at all in desktop reader
+  // mode: html/body get overflow:hidden there specifically so only "the
+  // nav" and "the doc" (the independently-scrolling panes) ever move — but
+  // that only blocks user-driven wheel/touch scrolling. A programmatic
+  // el.scrollIntoView() call (outline links, "Find in document", the
+  // Penalty modal's "Visit section") can still cascade up and nudge
+  // document.documentElement.scrollTop directly, which shifts the fixed
+  // Back/breadcrumb row and the top of the row up behind the fixed header
+  // — looking like they vanished. Snapping straight back to 0 neutralises
+  // that regardless of what caused it, present or future.
+  var desktopReaderMQ = window.matchMedia('(min-width: 821px)');
+  window.addEventListener('scroll', function () {
+    if (state.mode === 'reader' && desktopReaderMQ.matches && window.scrollY !== 0) window.scrollTo(0, 0);
+  }, { passive: true });
+
   function enterReader(book) {
     q.value = '';
     $('clear').classList.remove('show');

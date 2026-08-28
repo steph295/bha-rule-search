@@ -186,13 +186,14 @@ header h1 .thin { font-weight: 300; opacity: 0.85; }
   margin-bottom: 8px;
 }
 .searchbox:focus-within { border-color: var(--green-mid); }
+.searchbox-icon { flex: none; color: var(--ink-soft); margin-left: 12px; align-self: center; }
 
 #q {
   flex: 1;
   min-width: 0;
   width: auto;
   font-size: 14.5px;
-  padding: 9px 38px 9px 12px;
+  padding: 9px 38px 9px 8px;
   border: 0;
   border-radius: 9px;
   outline: none;
@@ -1033,9 +1034,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       <a class="tab tab-link" href="https://www.britishhorseracing.com/news-media/press-releases/" target="_blank" rel="noopener">Press ↗</a>
     </nav>
     <div class="searchbox">
+      <svg class="searchbox-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
       <input id="q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
              spellcheck="false" enterkeyhint="search" readonly
-             placeholder="Rule code or keyword…"
+             placeholder="Search rule code or keyword…"
              aria-label="Search the Rules of Racing">
       <button id="clear" type="button" aria-label="Clear search">✕</button>
     </div>

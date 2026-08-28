@@ -170,13 +170,14 @@ header h1 .thin { font-weight: 300; opacity: 0.85; }
   margin-bottom: 8px;
 }
 .searchbox:focus-within { border-color: var(--green-mid); }
+.searchbox-icon { flex: none; color: var(--ink-soft); margin-left: 12px; align-self: center; }
 
 #q {
   flex: 1;
   min-width: 0;
   width: auto;
   font-size: 14.5px;
-  padding: 9px 38px 9px 12px;
+  padding: 9px 38px 9px 8px;
   border: 0;
   border-radius: 9px;
   outline: none;

@@ -319,21 +319,24 @@ main {
 .reader-mode #subtabs { display: none; }
 
 .reader-back {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 600;
-  font-size: 14.5px;
-  color: var(--green-mid);
+  font-size: 13.5px;
+  color: var(--ink-soft);
   padding: 0 0 18px;
   margin: 2px 4px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  flex-wrap: wrap;
 }
-.reader-back:hover { color: var(--green-dark); }
+.reader-back button {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: none; font: inherit; font-weight: 600;
+  font-size: inherit; color: var(--green-mid); padding: 0; margin: 0;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.reader-back button:hover { color: var(--green-dark); text-decoration: underline; }
+.reader-back .crumb-sep { color: var(--line); }
+.reader-back .crumb-section { color: var(--ink-soft); font-weight: 500; }
 
 /* Desktop: pin the beta banner + header, and give the outline/content/
    definitions columns their own independent scroll instead of the page —

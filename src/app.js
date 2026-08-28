@@ -1109,6 +1109,11 @@
     if (!t) return;
     panel.innerHTML = '<div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
       '<div class="rfull">' + t.html + '</div>';
+    // The panel keeps its own scroll position across re-renders (replacing
+    // innerHTML doesn't reset it) — without this, picking a short definition
+    // right after scrolling through a long one can leave it start out of
+    // view, looking like the panel "lost" the new term until scrolled back up.
+    panel.scrollTop = 0;
   }
 
   var defPopover = null;

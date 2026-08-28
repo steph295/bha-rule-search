@@ -3257,6 +3257,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     row.className = 'sm-row' + (idx === 0 ? ' active' : '');
     var crumb = isGuideEntry(e) ? (e.cat || e.doc) : (e.letter ? e.letter + ' — ' + e.doc : e.doc);
     row.innerHTML = '<span class="' + codeClass(e) + ' sm-row-code">' + P.escapeHtml(dispCode(e)) + '</span>' +
+      (e.isNew ? NEW_PILL : '') +
       '<span class="sm-row-title">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
       '<div class="sm-row-path">' + P.escapeHtml(crumb || '') + '</div>';
     row.addEventListener('click', function () { setSmActive(idx); });
@@ -3270,6 +3271,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       : [e.letter ? e.letter + ' — ' + e.doc : e.doc].concat((e.path || []).slice(0, -1));
     smPreview.innerHTML = '<div class="sm-preview-path">' + crumb.filter(Boolean).map(P.escapeHtml).join(' › ') + '</div>' +
       '<div class="sm-preview-title"><span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
+      (e.isNew ? NEW_PILL : '') +
       '<span>' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
       '<button type="button" class="sm-preview-open">' +
       '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h6.5A1.5 1.5 0 0 1 11 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H11"></path></svg>' +

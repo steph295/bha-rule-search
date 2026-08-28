@@ -37,6 +37,7 @@
     definitionOverrides: null, // {termId: {html}} published edits to glossary definitions
     bookOverrides: null, // {'rules'|'guides'|'bhagi': {title, whatsNew}} published book-level edits
     customDefinitions: null, // {id: {term, html}} admin-added glossary terms not in BHA's own chapter
+    uploadedGuides: null, // {id: {title, cat, dated, url, html}} admin-uploaded Guide Library PDFs
     history: null,     // [{label, url}] dated rulebook snapshots, newest first
     historyState: 'idle', // idle | loading | ready | failed
     mode: 'search',    // search | reader
@@ -127,9 +128,11 @@
         state.definitionOverrides = (j && j.definitionOverrides) || {};
         state.bookOverrides = (j && j.bookOverrides) || {};
         state.customDefinitions = (j && j.customDefinitions) || {};
+        state.uploadedGuides = (j && j.uploadedGuides) || {};
         applyOverrides();
         applyDefinitionOverrides();
         mergeCustomDefinitions();
+        if (mergeUploadedGuides() && state.guidesState === 'ready') { mergeGuides(); refreshView(); }
         if (Object.keys(state.overrides).length) refreshView();
         if ((Object.keys(state.definitionOverrides).length || Object.keys(state.customDefinitions).length) && state.mode === 'reader') renderIdle();
         if (Object.keys(state.bookOverrides).length && state.mode !== 'reader') renderIdle();
@@ -205,6 +208,34 @@
     applyOverrides();
   }
 
+  // Admin-uploaded PDFs, appended into the same guides.entries array
+  // mergeGuides() reads — additive and idempotent (tagged with _uploadId so
+  // it's safe to call again after either the glossary or the overrides file
+  // finishes loading, in either order). Not run through any rule-numbering
+  // parser: each upload becomes exactly one entry, matching what was chosen
+  // for this feature (a Guide Library document, not a structured book).
+  function mergeUploadedGuides() {
+    if (!state.uploadedGuides || !state.guides) return false;
+    var have = {};
+    state.guides.entries.forEach(function (g) { if (g._uploadId) have[g._uploadId] = true; });
+    var added = false;
+    Object.keys(state.uploadedGuides).forEach(function (id) {
+      if (have[id]) return;
+      var u = state.uploadedGuides[id];
+      state.guides.entries.push({
+        code: null, kind: 'guide', doc: u.title, cat: u.cat || 'Uploaded documents',
+        title: u.title, dated: u.dated || '', url: u.url, page: 1, html: u.html, _uploadId: id
+      });
+      added = true;
+    });
+    if (added) {
+      var docs = {};
+      state.guides.entries.forEach(function (g) { docs[g.doc] = 1; });
+      state.guides.documents = Object.keys(docs).length;
+    }
+    return added;
+  }
+
   function prepareEntries(entries) {
     entries.forEach(function (e, i) {
       e.id = i;
@@ -227,6 +258,7 @@
     if (cached && cached.entries && cached.entries.length) {
       state.guides = cached;
       state.guidesState = 'ready';
+      mergeUploadedGuides();
       mergeGuides();
       refreshView();
     }
@@ -237,6 +269,7 @@
         if (!j || !j.entries || !j.entries.length) throw new Error('empty guides file');
         state.guides = j;
         state.guidesState = 'ready';
+        mergeUploadedGuides();
         mergeGuides();
         refreshView();
         try { localStorage.setItem(LS_GUIDES, JSON.stringify(j)); } catch (e) { /* quota */ }

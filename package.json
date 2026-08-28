@@ -2,5 +2,8 @@
   "name": "bha-rule-search",
   "private": true,
   "description": "BHA Rules Search — static site + admin editing API (Vercel functions in /api)",
-  "engines": { "node": ">=18" }
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pdf-parse": "1.1.1"
+  }
 }

@@ -135,13 +135,26 @@ header button {
 }
 .doc-edit-btn:hover { background: var(--green-pale); color: var(--green-dark); border-color: var(--green-mid); }
 
-#bookMetaPanel {
+#bookMetaPanel, #uploadGuidePanel {
   border: none; border-radius: 14px; padding: 0; max-width: 480px;
   width: calc(100vw - 40px); max-height: calc(100vh - 60px); overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0,0,0,.3); background: transparent;
 }
-#bookMetaPanel::backdrop { background: rgba(7,43,31,.55); }
-#bookMetaPanel .editor-card { border-radius: 14px; }
+#bookMetaPanel::backdrop, #uploadGuidePanel::backdrop { background: rgba(7,43,31,.55); }
+#bookMetaPanel .editor-card, #uploadGuidePanel .editor-card { border-radius: 14px; }
+#uploadGuidePanel input[type=file] {
+  display: block; width: 100%; box-sizing: border-box; font-size: 13.5px;
+  border: 1px dashed var(--line); border-radius: 9px; padding: 10px; margin-top: 2px;
+}
+.uploaded-guide-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.uploaded-guide-row {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+  background: var(--green-pale); border-radius: 8px; padding: 6px 10px;
+}
+.uploaded-guide-row .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uploaded-guide-row button {
+  border: 0; background: none; color: #b42318; cursor: pointer; font-size: 13px; padding: 2px 4px;
+}
 
 /* ---- editor ---- */
 main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex; gap: 18px; }

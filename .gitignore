@@ -2,3 +2,4 @@
 .claude/
 data/guide-pdfs/
 design/
+node_modules/

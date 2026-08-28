@@ -23,7 +23,8 @@
     defQuery: '',
     selectedDefId: null,
     bookOverrides: {}, // 'rules'|'guides'|'bhagi' -> {title, whatsNew, updatedAt}
-    customDefinitions: {} // id -> {term, html, updatedAt} — admin-added terms not in BHA's own Definitions chapter
+    customDefinitions: {}, // id -> {term, html, updatedAt} — admin-added terms not in BHA's own Definitions chapter
+    uploadedGuides: {} // id -> {title, cat, dated, url, html, updatedAt} — admin-uploaded Guide Library PDFs
   };
 
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
@@ -120,17 +121,23 @@
       fetch('/definitions.json').then(function (r) { return r.json(); }).catch(function () { return { terms: [] }; })
     ]).then(function (res) {
       var rules = res[0], guides = res[1], overrides = res[2], definitions = res[3];
+      var uploadedGuides = overrides.uploadedGuides || {};
+      var uploadedGuideEntries = Object.keys(uploadedGuides).map(function (id) {
+        var u = uploadedGuides[id];
+        return { kind: 'guide', code: null, doc: u.title, cat: u.cat, title: u.title, html: u.html, _uploadId: id };
+      });
       var entries = (rules.entries || []).map(function (e) {
         return { kind: e.kind, code: e.code, letter: e.letter, num: e.num, doc: e.doc, title: e.title, html: e.html, path: e.path || [] };
-      }).concat((guides.entries || []).map(function (g) {
-        return { kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc', code: g.code, letter: null, num: null, doc: g.doc, title: g.title, html: g.html, path: [g.cat] };
+      }).concat((guides.entries || []).concat(uploadedGuideEntries).map(function (g) {
+        return { kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc', code: g.code, letter: null, num: null, doc: g.doc, title: g.title, html: g.html, path: [g.cat], _uploadId: g._uploadId };
       }));
-      entries.forEach(function (e) { e.key = computeKey(e); });
+      entries.forEach(function (e) { e.key = e._uploadId || computeKey(e); });
       state.entries = entries;
       state.overrides = overrides.overrides || {};
       state.definitionOverrides = overrides.definitionOverrides || {};
       state.bookOverrides = overrides.bookOverrides || {};
       state.customDefinitions = overrides.customDefinitions || {};
+      state.uploadedGuides = uploadedGuides;
       state.definitions = definitions.terms || [];
       state.manuals = rules.manuals || [];
       state.version = rules.version;
@@ -208,6 +215,16 @@
       editBtn.addEventListener('click', function (ev) { ev.stopPropagation(); opts.onEdit(); });
       card.appendChild(editBtn);
     }
+    if (opts.onUpload) {
+      var uploadBtn = document.createElement('button');
+      uploadBtn.type = 'button';
+      uploadBtn.className = 'doc-edit-btn';
+      uploadBtn.title = 'Upload a new document';
+      uploadBtn.setAttribute('aria-label', 'Upload a new document');
+      uploadBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3.5"></path><path d="M4.8 6.3L8 3l3.2 3.3"></path><path d="M3 11.5v1a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5v-1"></path></svg>';
+      uploadBtn.addEventListener('click', function (ev) { ev.stopPropagation(); opts.onUpload(); });
+      card.appendChild(uploadBtn);
+    }
     return card;
   }
 
@@ -228,7 +245,8 @@
       { whatsNew: rulesMeta.whatsNew, onEdit: function () { openBookMetaPanel('rules', 'Rules of Racing'); } }));
     wrap.appendChild(docCard('library', 'Guide Library',
       guideEntries.length + ' entries',
-      function () { enterReader('guides'); }));
+      function () { enterReader('guides'); },
+      { onUpload: openUploadGuidePanel }));
     wrap.appendChild(docCard('bhagi', 'BHAGIs',
       Object.keys(bhagiDocs).length + ' sections · ' + bhagiEntries.length + ' entries',
       function () { enterReader('bhagi'); }));
@@ -309,6 +327,171 @@
       msg.textContent = 'Could not publish: ' + err.message;
       msg.className = 'save-msg err';
       btn.disabled = false;
+    });
+  }
+
+  // ---- guide library uploads ---------------------------------------------
+
+  var UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
+
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result).split(',')[1] || ''); };
+      reader.onerror = function () { reject(new Error('could not read that file')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function titleFromFilename(name) {
+    return String(name || '').replace(/\.pdf$/i, '').replace(/[-_]+/g, ' ').trim();
+  }
+
+  var uploadGuidePanel = $('uploadGuidePanel');
+  function openUploadGuidePanel() {
+    var card = $('uploadGuideCard');
+    card.innerHTML =
+      '<span class="code-badge">Upload a guide document</span>' +
+      '<label for="ugFile">PDF file</label>' +
+      '<input type="file" id="ugFile" accept="application/pdf,.pdf">' +
+      '<label for="ugTitle">Title</label>' +
+      '<input type="text" id="ugTitle" placeholder="e.g. Stallion Sires Guidance 2026">' +
+      '<label for="ugCat">Category</label>' +
+      '<input type="text" id="ugCat" placeholder="e.g. Breeding (defaults to “Uploaded documents”)">' +
+      '<div class="hint">PDFs up to 3MB. Text is extracted as plain paragraphs only — there’s no rule-numbering parser, so it’ll read like a plain document, not a structured chapter like Rules of Racing.</div>' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="ugSaveBtn">Publish upload</button>' +
+      '<button class="revert" id="ugCancelBtn" type="button">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg" id="ugSaveMsg"></div>' +
+      '<label style="margin-top:20px">Already uploaded</label>' +
+      '<div id="ugExistingList" class="uploaded-guide-list"></div>';
+    $('ugFile').addEventListener('change', function () {
+      var f = $('ugFile').files[0];
+      if (f && !$('ugTitle').value.trim()) $('ugTitle').value = titleFromFilename(f.name);
+    });
+    $('ugCancelBtn').addEventListener('click', closeUploadGuidePanel);
+    $('ugSaveBtn').addEventListener('click', confirmUploadGuide);
+    renderUploadedGuidesList();
+    if (typeof uploadGuidePanel.showModal === 'function') uploadGuidePanel.showModal();
+    else uploadGuidePanel.setAttribute('open', '');
+  }
+
+  function closeUploadGuidePanel() {
+    uploadGuidePanel.close ? uploadGuidePanel.close() : uploadGuidePanel.removeAttribute('open');
+  }
+
+  function renderUploadedGuidesList() {
+    var list = $('ugExistingList');
+    if (!list) return;
+    var ids = Object.keys(state.uploadedGuides);
+    if (!ids.length) { list.innerHTML = '<div class="hint" style="margin:0">None yet.</div>'; return; }
+    list.innerHTML = '';
+    ids.forEach(function (id) {
+      var u = state.uploadedGuides[id];
+      var row = document.createElement('div');
+      row.className = 'uploaded-guide-row';
+      row.innerHTML = '<span class="title">' + escapeHtml(u.title) + '</span><button type="button">Delete</button>';
+      row.querySelector('button').addEventListener('click', function () { confirmDeleteUploadGuide(id); });
+      list.appendChild(row);
+    });
+  }
+
+  function confirmUploadGuide() {
+    var fileInput = $('ugFile');
+    var title = $('ugTitle').value.trim();
+    var cat = $('ugCat').value.trim();
+    var msg = $('ugSaveMsg');
+    var file = fileInput.files[0];
+
+    if (!file) { msg.textContent = 'Choose a PDF file first.'; msg.className = 'save-msg err'; return; }
+    if (!title) { msg.textContent = 'Give it a title first.'; msg.className = 'save-msg err'; return; }
+    if (file.size > UPLOAD_MAX_BYTES) { msg.textContent = 'That file is too large — this tool supports PDFs up to 3MB.'; msg.className = 'save-msg err'; return; }
+    if (file.type && file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+      msg.textContent = 'That doesn’t look like a PDF file.'; msg.className = 'save-msg err'; return;
+    }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Publish this upload?</h3>' +
+      '<p>This adds a new Guide Library document, live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    uploadGuidePanel.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doUploadGuide(file, title, cat);
+    });
+  }
+
+  function doUploadGuide(file, title, cat) {
+    var msg = $('ugSaveMsg');
+    var btn = $('ugSaveBtn');
+    btn.disabled = true;
+    msg.textContent = 'Uploading and extracting text…';
+    msg.className = 'save-msg';
+
+    fileToBase64(file).then(function (base64) {
+      return fetch('/api/upload-guide', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, title: title, cat: cat, fileBase64: base64 })
+      });
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'upload failed'); });
+      return r.json();
+    }).then(function (j) {
+      state.uploadedGuides[j.id] = { title: j.title, cat: j.cat, dated: j.dated, url: j.url, html: j.html, updatedAt: j.updatedAt };
+      state.entries.push({
+        kind: 'guidedoc', code: null, letter: null, num: null, doc: j.title, title: j.title,
+        html: j.html, path: [j.cat], key: j.id, _uploadId: j.id
+      });
+      msg.textContent = 'Published — live on the public site now.';
+      msg.className = 'save-msg ok';
+      btn.disabled = false;
+      renderUploadedGuidesList();
+      renderHomeCards();
+    }).catch(function (err) {
+      msg.textContent = 'Could not publish: ' + err.message;
+      msg.className = 'save-msg err';
+      btn.disabled = false;
+    });
+  }
+
+  function confirmDeleteUploadGuide(id) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Remove this document?</h3>' +
+      '<p>This removes it from the Guide Library on the public site immediately. The uploaded PDF file itself is left in the repo (harmless, and recoverable via git history).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Remove</button></div>' +
+      '</div>';
+    uploadGuidePanel.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doDeleteUploadGuide(id);
+    });
+  }
+
+  function doDeleteUploadGuide(id) {
+    fetch('/api/upload-guide', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, delete: true })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'delete failed'); });
+      return r.json();
+    }).then(function () {
+      delete state.uploadedGuides[id];
+      state.entries = state.entries.filter(function (e) { return e._uploadId !== id; });
+      renderUploadedGuidesList();
+      renderHomeCards();
+    }).catch(function (err) {
+      var msg = $('ugSaveMsg');
+      if (msg) { msg.textContent = 'Could not remove: ' + err.message; msg.className = 'save-msg err'; }
     });
   }
 

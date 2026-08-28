@@ -629,6 +629,7 @@
     var head = document.createElement('div');
     head.id = n.id;
     head.dataset.outlineId = n.id;
+    head.dataset.outlineLabel = n.label;
     head.className = 'reader-heading depth-' + depth;
     head.innerHTML = (n.badge ? '<span class="code">' + escapeHtml(n.badge) + '</span>' : '') + escapeHtml(n.label);
     frag.appendChild(head);
@@ -676,13 +677,18 @@
       var offset = scrollsInternally ? 10 : 90;
       var headings = Array.prototype.slice.call(entriesEl.querySelectorAll('[data-outline-id]'));
       var activeId = headings.length ? headings[0].dataset.outlineId : null;
+      var activeTopHeading = headings.length ? (headings[0].classList.contains('depth-0') ? headings[0] : null) : null;
       for (var i = 0; i < headings.length; i++) {
-        if (headings[i].getBoundingClientRect().top - refTop - offset <= 0) activeId = headings[i].dataset.outlineId;
-        else break;
+        if (headings[i].getBoundingClientRect().top - refTop - offset <= 0) {
+          activeId = headings[i].dataset.outlineId;
+          if (headings[i].classList.contains('depth-0')) activeTopHeading = headings[i];
+        } else break;
       }
       Array.prototype.forEach.call(document.querySelectorAll('.outline-link'), function (a) {
         a.classList.toggle('active', a.dataset.target === activeId);
       });
+      var crumbSection = $('readerCrumbSection');
+      if (crumbSection) crumbSection.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
     }
     readerScrollHandler = function () { if (ticking) return; ticking = true; window.requestAnimationFrame(update); };
     readerScrollTarget = target;
@@ -733,6 +739,8 @@
     var book = state.readerBook;
     var titleText = book === 'guides' ? 'Guide Library' : book === 'bhagi' ? 'BHAGIs' : 'Rules of Racing';
     $('readerTitle').textContent = titleText;
+    $('readerCrumbBook').textContent = titleText;
+    $('readerCrumbSection').textContent = '';
 
     var pool = book === 'guides' ? state.entries.filter(isGuideEntry)
       : book === 'bhagi' ? state.entries.filter(function (e) { return e.kind === 'bhagi'; })
@@ -757,9 +765,12 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  $('readerBack').addEventListener('click', function () {
+  $('readerCrumbHome').addEventListener('click', function () {
     teardownScrollSpy();
     updateManualsViewFromFilters();
+  });
+  $('readerCrumbBook').addEventListener('click', function () {
+    $('readerScroll').scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   var readerSearchDebounce = null;

@@ -82,10 +82,15 @@
       </main>
 
       <div class="manuals-reader" id="readerView" hidden>
-        <button class="reader-back" id="readerBack" type="button">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3L4.5 8l5 5"></path></svg>
-          Back
-        </button>
+        <nav class="reader-back" id="readerBack" aria-label="Breadcrumb">
+          <button type="button" class="crumb-home" id="readerCrumbHome" title="Home">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L8 2.5l5.5 5"></path><path d="M4 6.5V13h8V6.5"></path></svg>
+            Books</button>
+          <span class="crumb-sep">/</span>
+          <button type="button" class="crumb-book" id="readerCrumbBook"></button>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-section" id="readerCrumbSection"></span>
+        </nav>
         <div class="reader-row">
           <nav class="outline" id="readerOutline">
             <div class="reader-search-wrap">

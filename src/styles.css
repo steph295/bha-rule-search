@@ -279,14 +279,6 @@ main {
 }
 .doc-card.disabled { cursor: default; opacity: 0.6; }
 .doc-card.disabled:hover { border-color: var(--line); box-shadow: none; transform: none; }
-.doc-icon {
-  flex: none;
-  width: 40px; height: 40px;
-  border-radius: 10px;
-  background: var(--green-pale);
-  color: var(--green-mid);
-  display: flex; align-items: center; justify-content: center;
-}
 .doc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .doc-title { font-size: 16px; font-weight: 650; color: var(--ink); }
 .doc-meta { font-size: 13px; color: var(--ink-soft); }

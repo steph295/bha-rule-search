@@ -22,7 +22,8 @@
     definitionOverrides: {}, // termId -> {html, updatedAt}
     defQuery: '',
     selectedDefId: null,
-    bookOverrides: {} // 'rules'|'guides'|'bhagi' -> {title, whatsNew, updatedAt}
+    bookOverrides: {}, // 'rules'|'guides'|'bhagi' -> {title, whatsNew, updatedAt}
+    customDefinitions: {} // id -> {term, html, updatedAt} — admin-added terms not in BHA's own Definitions chapter
   };
 
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
@@ -129,6 +130,7 @@
       state.overrides = overrides.overrides || {};
       state.definitionOverrides = overrides.definitionOverrides || {};
       state.bookOverrides = overrides.bookOverrides || {};
+      state.customDefinitions = overrides.customDefinitions || {};
       state.definitions = definitions.terms || [];
       state.manuals = rules.manuals || [];
       state.version = rules.version;
@@ -686,17 +688,32 @@
 
   // ---- word definitions (glossary) --------------------------------------
 
+  // Official terms (state.definitions, from BHA's own Definitions chapter)
+  // plus admin-added custom ones (state.customDefinitions) rendered as one
+  // combined, always-fresh list — custom terms aren't merged into
+  // state.definitions itself so there's one source of truth for each.
+  function allDefinitionRows() {
+    var customRows = Object.keys(state.customDefinitions).map(function (id) {
+      var c = state.customDefinitions[id];
+      return { id: id, term: c.term, html: c.html, custom: true, updatedAt: c.updatedAt };
+    });
+    return state.definitions.concat(customRows);
+  }
+
   $('defSearch').addEventListener('input', function () {
     state.defQuery = $('defSearch').value.toLowerCase();
     renderDefinitionsList();
   });
 
+  if ($('defNewBtn')) $('defNewBtn').addEventListener('click', openNewDefinitionEditor);
+
   function renderDefinitionsList() {
     var q = state.defQuery;
-    var rows = state.definitions.filter(function (t) {
+    var all = allDefinitionRows();
+    var rows = all.filter(function (t) {
       return !q || t.term.toLowerCase().indexOf(q) !== -1;
     });
-    $('defCount').textContent = state.definitions.length ? rows.length + ' of ' + state.definitions.length + ' terms' : '';
+    $('defCount').textContent = all.length ? rows.length + ' of ' + all.length + ' terms' : '';
 
     var list = $('defResultList');
     list.innerHTML = '';
@@ -704,10 +721,11 @@
 
     var frag = document.createDocumentFragment();
     rows.forEach(function (t) {
-      var eff = effectiveDefinition(t);
+      var eff = t.custom ? { edited: false } : effectiveDefinition(t);
       var row = document.createElement('div');
       row.className = 'result-row' + (t.id === state.selectedDefId ? ' active' : '');
       row.innerHTML = '<span class="title">' + escapeHtml(t.term) + '</span>' +
+        (t.custom ? '<span class="custom-pill">Custom</span>' : '') +
         (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '');
       row.addEventListener('click', function () { selectDefinition(t.id); });
       frag.appendChild(row);
@@ -718,10 +736,33 @@
   function selectDefinition(id) {
     state.selectedDefId = id;
     renderDefinitionsList();
-    var t = state.definitions.filter(function (x) { return x.id === id; })[0];
+    var t = allDefinitionRows().filter(function (x) { return x.id === id; })[0];
     if (!t) return;
-    var eff = effectiveDefinition(t);
     var pane = $('defEditorPane');
+
+    if (t.custom) {
+      pane.innerHTML =
+        '<div class="editor-card">' +
+        '<span class="code-badge custom-badge">Custom term</span>' +
+        '<label for="defTerm">Term</label>' +
+        '<input type="text" id="defTerm" value="' + escapeHtml(t.term) + '">' +
+        '<label for="defBody">Definition</label>' +
+        '<textarea id="defBody"></textarea>' +
+        '<div class="hint">Plain text — blank lines start a new paragraph. Not part of BHA’s official Definitions chapter — matched (case-insensitively, whole word) wherever this exact term appears in rule text on the public site.</div>' +
+        '<div class="editor-actions">' +
+        '<button class="save" id="defSaveBtn">Publish change</button>' +
+        '<button class="revert" id="defDeleteBtn" type="button">Delete</button>' +
+        (t.updatedAt ? '<span class="hint" style="margin:0">Added ' + new Date(t.updatedAt).toLocaleString() + '</span>' : '') +
+        '</div>' +
+        '<div class="save-msg" id="defSaveMsg"></div>' +
+        '</div>';
+      $('defBody').value = stripHtml(t.html);
+      $('defSaveBtn').addEventListener('click', function () { confirmSaveCustomDefinition(id); });
+      $('defDeleteBtn').addEventListener('click', function () { confirmDeleteCustomDefinition(id); });
+      return;
+    }
+
+    var eff = effectiveDefinition(t);
     pane.innerHTML =
       '<div class="editor-card">' +
       '<span class="code-badge">' + escapeHtml(t.term) + '</span>' +
@@ -780,6 +821,123 @@
       msg.textContent = 'Could not publish: ' + err.message;
       msg.className = 'save-msg err';
       btn.disabled = false;
+    });
+  }
+
+  // ---- word definitions — admin-added custom terms -----------------------
+
+  function openNewDefinitionEditor() {
+    state.selectedDefId = null;
+    renderDefinitionsList();
+    var pane = $('defEditorPane');
+    pane.innerHTML =
+      '<div class="editor-card">' +
+      '<span class="code-badge custom-badge">New custom term</span>' +
+      '<label for="defTerm">Term</label>' +
+      '<input type="text" id="defTerm" placeholder="e.g. Photo Finish">' +
+      '<label for="defBody">Definition</label>' +
+      '<textarea id="defBody" placeholder="means…"></textarea>' +
+      '<div class="hint">Plain text — blank lines start a new paragraph. Not part of BHA’s official Definitions chapter — this adds a new glossary entry, matched (case-insensitively, whole word) wherever the exact term appears in rule text on the public site.</div>' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="defSaveBtn">Publish change</button>' +
+      '</div>' +
+      '<div class="save-msg" id="defSaveMsg"></div>' +
+      '</div>';
+    $('defSaveBtn').addEventListener('click', function () { confirmSaveCustomDefinition(null); });
+  }
+
+  function confirmSaveCustomDefinition(id) {
+    var term = $('defTerm').value.trim();
+    var bodyText = $('defBody').value;
+    var msg = $('defSaveMsg');
+    if (!term) { msg.textContent = 'Give the term some text first.'; msg.className = 'save-msg err'; return; }
+    if (!bodyText.trim()) { msg.textContent = 'Give the definition some text first.'; msg.className = 'save-msg err'; return; }
+    var dup = allDefinitionRows().some(function (t) {
+      return t.id !== id && t.term.toLowerCase() === term.toLowerCase();
+    });
+    if (dup) { msg.textContent = 'A term with that exact text already exists.'; msg.className = 'save-msg err'; return; }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Publish this definition?</h3>' +
+      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doSaveCustomDefinition(id, term, plainTextToHtml(bodyText));
+    });
+  }
+
+  function doSaveCustomDefinition(id, term, html) {
+    var msg = $('defSaveMsg');
+    var btn = $('defSaveBtn');
+    btn.disabled = true;
+    msg.textContent = 'Publishing…';
+    msg.className = 'save-msg';
+
+    fetch('/api/save-custom-definition', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, term: term, html: html })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function (j) {
+      var savedId = j.id || id;
+      state.customDefinitions[savedId] = { term: term, html: html, updatedAt: new Date().toISOString() };
+      state.selectedDefId = savedId;
+      renderDefinitionsList();
+      selectDefinition(savedId);
+      $('defSaveMsg').textContent = 'Published — live on the public site now.';
+      $('defSaveMsg').className = 'save-msg ok';
+    }).catch(function (err) {
+      msg.textContent = 'Could not publish: ' + err.message;
+      msg.className = 'save-msg err';
+      btn.disabled = false;
+    });
+  }
+
+  function confirmDeleteCustomDefinition(id) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Delete this definition?</h3>' +
+      '<p>This removes it from the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Delete</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doDeleteCustomDefinition(id);
+    });
+  }
+
+  function doDeleteCustomDefinition(id) {
+    var msg = $('defSaveMsg');
+    var btn = $('defDeleteBtn');
+    if (btn) btn.disabled = true;
+    if (msg) { msg.textContent = 'Deleting…'; msg.className = 'save-msg'; }
+
+    fetch('/api/save-custom-definition', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, delete: true })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'delete failed'); });
+      return r.json();
+    }).then(function () {
+      delete state.customDefinitions[id];
+      state.selectedDefId = null;
+      renderDefinitionsList();
+      $('defEditorPane').innerHTML = '<div class="empty-state">Pick a term on the left to edit its definition.</div>';
+    }).catch(function (err) {
+      if (msg) { msg.textContent = 'Could not delete: ' + err.message; msg.className = 'save-msg err'; }
+      if (btn) btn.disabled = false;
     });
   }
 

@@ -1702,6 +1702,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     overrides: null,   // {key: {title, html}} published by the admin tool, once loaded
     definitionOverrides: null, // {termId: {html}} published edits to glossary definitions
     bookOverrides: null, // {'rules'|'guides'|'bhagi': {title, whatsNew}} published book-level edits
+    customDefinitions: null, // {id: {term, html}} admin-added glossary terms not in BHA's own chapter
     history: null,     // [{label, url}] dated rulebook snapshots, newest first
     historyState: 'idle', // idle | loading | ready | failed
     mode: 'search',    // search | reader
@@ -1791,10 +1792,12 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
         state.overrides = (j && j.overrides) || {};
         state.definitionOverrides = (j && j.definitionOverrides) || {};
         state.bookOverrides = (j && j.bookOverrides) || {};
+        state.customDefinitions = (j && j.customDefinitions) || {};
         applyOverrides();
         applyDefinitionOverrides();
+        mergeCustomDefinitions();
         if (Object.keys(state.overrides).length) refreshView();
-        if (Object.keys(state.definitionOverrides).length && state.mode === 'reader') renderIdle();
+        if ((Object.keys(state.definitionOverrides).length || Object.keys(state.customDefinitions).length) && state.mode === 'reader') renderIdle();
         if (Object.keys(state.bookOverrides).length && state.mode !== 'reader') renderIdle();
       })
       .catch(function () { /* no overrides file yet — fine */ });
@@ -1806,6 +1809,25 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       var o = state.definitionOverrides[t.id];
       if (o && o.html) t.html = o.html;
     });
+  }
+
+  // Admin-added terms that aren't part of BHA's own Definitions chapter —
+  // appended to the same glossary term list so they're matched and shown
+  // exactly like an official term. Additive and idempotent: safe to call
+  // whenever either the glossary or the overrides file finishes loading,
+  // in either order.
+  function mergeCustomDefinitions() {
+    if (!state.customDefinitions || !state.glossary) return;
+    var have = {};
+    state.glossary.terms.forEach(function (t) { have[t.id] = true; });
+    var added = false;
+    Object.keys(state.customDefinitions).forEach(function (id) {
+      if (have[id]) return;
+      var c = state.customDefinitions[id];
+      state.glossary.terms.push({ id: id, term: c.term, html: c.html, slug: id });
+      added = true;
+    });
+    if (added) buildGlossaryMatcher();
   }
 
   function applyOverrides() {
@@ -1938,6 +1960,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       state.glossaryState = 'ready';
       buildGlossaryMatcher();
       applyDefinitionOverrides();
+      mergeCustomDefinitions();
     }
 
     fetch(GLOSSARY_URL, { cache: 'no-cache' })
@@ -1948,6 +1971,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
         state.glossaryState = 'ready';
         buildGlossaryMatcher();
         applyDefinitionOverrides();
+        mergeCustomDefinitions();
         if (state.mode === 'reader') renderIdle();
         try { localStorage.setItem(LS_GLOSSARY, JSON.stringify(j)); } catch (e) { /* quota */ }
       })
@@ -2754,7 +2778,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     if (!el) return;
     ev.preventDefault();
     ev.stopPropagation();
-    var t = state.glossary && state.glossary.terms.filter(function (x) { return x.id === +el.dataset.termId; })[0];
+    var t = state.glossary && state.glossary.terms.filter(function (x) { return String(x.id) === el.dataset.termId; })[0];
     if (!t) return;
     if (state.mode === 'reader' && $('defPanel')) {
       state.activeDefTerm = t.id;

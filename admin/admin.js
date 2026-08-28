@@ -18,6 +18,7 @@
     manualsView: 'home', // home | list | reader
     readerBook: null,    // 'rules' | 'guides' | 'bhagi'
     readerTree: null,
+    readerNewOnly: false,
     definitions: [],        // [{id, term, html, slug}] — ORIGINAL, pre-override
     definitionOverrides: {}, // termId -> {html, updatedAt}
     defQuery: '',
@@ -126,6 +127,16 @@
       state.loggedIn = false;
       render();
     });
+  });
+
+  // ---- collapsible sidebar ------------------------------------------
+  var SIDEBAR_LS_KEY = 'bha-admin-sidebar-collapsed';
+  try {
+    if (localStorage.getItem(SIDEBAR_LS_KEY) === '1') document.body.classList.add('sidebar-collapsed');
+  } catch (e) { /* private mode etc — just default to expanded */ }
+  $('sidebarCollapseToggle').addEventListener('click', function () {
+    var collapsed = document.body.classList.toggle('sidebar-collapsed');
+    try { localStorage.setItem(SIDEBAR_LS_KEY, collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
   });
 
   // ---- data -----------------------------------------------------------
@@ -579,19 +590,21 @@
     return order.map(function (c) { return cats[c]; });
   }
 
-  function entryMatchesTokens(e, tokens) {
+  function entryMatchesTokens(e, tokens, newOnly) {
+    if (newOnly && !effective(e).isNew) return false;
     if (!tokens.length) return true;
     var eff = effective(e);
     var hay = (eff.title + ' ' + e.doc + ' ' + (e.code || '') + ' ' + stripHtml(eff.html)).toLowerCase();
     return tokens.every(function (t) { return hay.indexOf(t) !== -1; });
   }
 
-  function filterOutlineTree(nodes, tokens) {
+  function filterOutlineTree(nodes, tokens, newOnly) {
+    var noFilter = !tokens.length && !newOnly;
     var out = [];
     nodes.forEach(function (n) {
-      var matchedEntries = n.entries.filter(function (e) { return entryMatchesTokens(e, tokens); });
-      var filteredChildren = filterOutlineTree(n.children, tokens);
-      if (!tokens.length || matchedEntries.length || filteredChildren.length) {
+      var matchedEntries = n.entries.filter(function (e) { return entryMatchesTokens(e, tokens, newOnly); });
+      var filteredChildren = filterOutlineTree(n.children, tokens, newOnly);
+      if (noFilter || matchedEntries.length || filteredChildren.length) {
         out.push({ id: n.id, label: n.label, badge: n.badge, entries: matchedEntries, children: filteredChildren });
       }
     });
@@ -710,7 +723,9 @@
 
   function renderReaderBody(rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    var filtered = filterOutlineTree(state.readerTree, tokens);
+    var newOnly = !!state.readerNewOnly;
+    var filtering = tokens.length || newOnly;
+    var filtered = filterOutlineTree(state.readerTree, tokens, newOnly);
 
     var navList = $('readerOutlineList');
     navList.innerHTML = '';
@@ -719,20 +734,20 @@
     var entriesEl = $('readerEntries');
     entriesEl.innerHTML = '';
     var countEl = $('readerCount');
-    if (tokens.length) {
+    if (filtering) {
       var n = countOutlineEntries(filtered);
       countEl.textContent = n + (n === 1 ? ' match' : ' matches');
       countEl.hidden = false;
     } else {
       countEl.hidden = true;
     }
-    if (tokens.length && !filtered.length) {
-      entriesEl.innerHTML = '<div class="empty-state">Nothing matches that.</div>';
+    if (filtering && !filtered.length) {
+      entriesEl.innerHTML = '<div class="empty-state">' + (newOnly && !tokens.length ? 'Nothing flagged new right now.' : 'Nothing matches that.') + '</div>';
     } else {
       filtered.forEach(function (n) { entriesEl.appendChild(renderReaderSection(n, 0)); });
     }
     teardownScrollSpy();
-    if (!tokens.length) setupScrollSpy(entriesEl);
+    if (!filtering) setupScrollSpy(entriesEl);
   }
 
   function renderReader() {
@@ -751,6 +766,8 @@
       : buildRulesOutline(state.manuals, pool);
 
     $('readerSearch').value = '';
+    state.readerNewOnly = false;
+    if ($('readerNewOnly')) $('readerNewOnly').checked = false;
     $('readerEditorSlot').innerHTML = '<div class="empty-state">Click Edit on any entry to change it.</div>';
     renderReaderBody('');
   }
@@ -778,6 +795,10 @@
     clearTimeout(readerSearchDebounce);
     var val = this.value;
     readerSearchDebounce = setTimeout(function () { renderReaderBody(val); }, 80);
+  });
+  if ($('readerNewOnly')) $('readerNewOnly').addEventListener('change', function () {
+    state.readerNewOnly = this.checked;
+    renderReaderBody($('readerSearch').value);
   });
 
   $('backToTop').addEventListener('click', function () { $('readerScroll').scrollTo({ top: 0, behavior: 'smooth' }); });

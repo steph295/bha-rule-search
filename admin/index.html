@@ -10,6 +10,9 @@
 <body>
 
 <header>
+  <button id="sidebarCollapseToggle" class="icon-btn" title="Collapse sidebar" aria-label="Collapse sidebar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="1.5"></rect><path d="M6.3 2.5v11"></path></svg>
+  </button>
   <h1><img class="brand-logo" src="../bha-logo.svg" alt="BHA"> <span class="thin">Rules Admin</span></h1>
   <div class="right" id="who" style="display:none">
     <button id="pdfBtn" class="icon-btn" title="Download as PDF" aria-label="Download as PDF">
@@ -95,6 +98,9 @@
           <nav class="outline" id="readerOutline">
             <div class="reader-search-wrap">
               <input id="readerSearch" type="search" placeholder="Search within…" aria-label="Search within this document">
+              <label class="reader-new-toggle" for="readerNewOnly">
+                <input type="checkbox" id="readerNewOnly"> Show new only
+              </label>
               <div class="reader-search-count" id="readerCount" hidden></div>
             </div>
             <div class="outline-list" id="readerOutlineList"></div>

@@ -497,6 +497,16 @@ main {
 .reader-entry-title { font-weight: 650; font-size: 17px; }
 .reader-body.rfull { padding: 0; border-top: 0; font-size: 18px; }
 .reader-body.rfull p { line-height: 1.6; }
+.penalty-link {
+  display: block; margin: 10px auto 0; border: 0; background: none; padding: 2px 0;
+  font: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--green-mid); border-bottom: 1px dotted var(--green-mid); cursor: pointer; width: fit-content;
+}
+.penalty-link:hover { color: var(--green-dark); border-color: var(--green-dark); }
+.penalty-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.penalty-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.penalty-table th, .penalty-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+.penalty-table th { background: var(--green-pale); color: var(--green-dark); font-size: 12.5px; }
 
 /* ---- defined-terms glossary ---- */
 
@@ -949,7 +959,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 /* ---- data panel ---- */
 
-#panel, #pdfPanel, #historyPanel {
+#panel, #pdfPanel, #historyPanel, #penaltyPanel {
   border: none;
   border-radius: 14px;
   padding: 0;
@@ -957,11 +967,11 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   width: calc(100vw - 40px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
 }
-#panel::backdrop, #pdfPanel::backdrop, #historyPanel::backdrop { background: rgba(7,43,31,0.55); }
+#panel::backdrop, #pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
-#panel h2, #pdfPanel h2, #historyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
-#panel p, #pdfPanel p, #historyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
-#pdfPanel, #historyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
+#panel h2, #pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
+#panel p, #pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#pdfPanel, #historyPanel, #penaltyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
 .pdf-chapter-list {
   display: grid;
   grid-template-columns: 1fr 1fr;

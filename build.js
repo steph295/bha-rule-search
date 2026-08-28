@@ -36,12 +36,42 @@ function loadLocal() {
   return JSON.parse(fs.readFileSync(path.join(DATA, file), 'utf8'));
 }
 
+// BHA's own "Table Of Penalties" appendix is a real, separate document in
+// the same book — a set of Rule/Summary/Entry Point/Range tables, one per
+// manual/code. It already flows through parseBook() as ordinary <table>
+// entries (kind 'guide', doc 'Table Of Penalties'); this just builds the
+// rule-code -> matching-rows index BHA's own site computes to show a
+// "Penalty" quick-look on each rule, by reading the plain rule-code text
+// each row already carries (e.g. "(E)14") — no invented data, no needing
+// to resolve BHA's internal cross-reference IDs.
+function extractPenalties(entries) {
+  var byCode = {};
+  entries.forEach(function (e) {
+    if (e.doc !== 'Table Of Penalties') return;
+    var rowRe = /<tr>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<\/tr>/g;
+    var m;
+    while ((m = rowRe.exec(e.html))) {
+      var code = m[1].replace(/<[^>]+>/g, '').replace(/[()]/g, '').trim();
+      if (!code) continue;
+      if (!byCode[code]) byCode[code] = { sectionKey: 'Table Of Penalties::' + e.title, rows: [] };
+      byCode[code].rows.push({
+        summary: m[2].replace(/<[^>]+>/g, '').trim(),
+        entryPoint: m[3].replace(/<[^>]+>/g, '').trim(),
+        range: m[4].replace(/<[^>]+>/g, '').trim(),
+        rc: m[5].replace(/<[^>]+>/g, '').trim()
+      });
+    }
+  });
+  return byCode;
+}
+
 async function main() {
   const book = process.argv.includes('--fetch') ? await fetchLatest() : loadLocal();
   const parsed = P.parseBook(book);
   parsed.sourceUpdatedAt = book._sourceUpdatedAt || book.updated_at || null;
 
   // slim snapshot: search text is rebuilt in the browser from html
+  const penaltyByCode = extractPenalties(parsed.entries);
   const snapshot = {
     bookId: parsed.bookId,
     version: parsed.version,
@@ -51,9 +81,12 @@ async function main() {
     manuals: parsed.manuals,
     entries: parsed.entries.map(e => ({
       id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc,
-      letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false
+      letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false,
+      penalties: (e.code && penaltyByCode[e.code]) || undefined
     }))
   };
+  const penaltyRuleCount = snapshot.entries.filter(e => e.penalties).length;
+  console.log(`penalty table cross-referenced to ${penaltyRuleCount} rules`);
 
   const read = f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
   // <-escape so "</script>" can never terminate the inline blocks

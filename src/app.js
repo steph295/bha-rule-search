@@ -880,7 +880,9 @@
         '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
         (e.isNew ? NEW_PILL : '') +
         '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
-        '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>';
+        '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>' +
+        (e.penalties ? '<button type="button" class="penalty-link">Penalty</button>' : '');
+      if (e.penalties) block.querySelector('.penalty-link').addEventListener('click', function () { showPenaltyModal(e); });
       frag.appendChild(block);
     });
     n.children.forEach(function (c) { frag.appendChild(renderReaderSection(c, depth + 1, terms)); });
@@ -1662,6 +1664,33 @@
       if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); toggleCard(card, true); }
     }, 30);
   }
+
+  // Penalty quick-look: BHA's own "Table Of Penalties" appendix, cross-
+  // referenced to this rule at build time (see build.js extractPenalties) —
+  // real published rows, not anything computed or guessed client-side.
+  var penaltyPanel = $('penaltyPanel'), penaltyVisitKey = null;
+  function showPenaltyModal(e) {
+    $('penaltyTitle').textContent = dispCode(e) + ' — Penalty';
+    var rows = e.penalties.rows.map(function (r) {
+      return '<tr><td>' + P.escapeHtml(r.summary) + '</td><td>' + P.escapeHtml(r.entryPoint) + '</td>' +
+        '<td>' + P.escapeHtml(r.range) + '</td><td>' + P.escapeHtml(r.rc) + '</td></tr>';
+    }).join('');
+    $('penaltyTable').innerHTML = '<div class="penalty-table-wrap"><table class="penalty-table"><thead><tr>' +
+      '<th>Summary</th><th>Entry Point</th><th>Range</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+    penaltyVisitKey = e.penalties.sectionKey;
+    if (typeof penaltyPanel.showModal === 'function') penaltyPanel.showModal();
+    else penaltyPanel.setAttribute('open', '');
+  }
+  function closePenaltyModal() {
+    penaltyPanel.close ? penaltyPanel.close() : penaltyPanel.removeAttribute('open');
+  }
+  if ($('penaltyPanelClose')) $('penaltyPanelClose').addEventListener('click', closePenaltyModal);
+  if ($('penaltyVisitBtn')) $('penaltyVisitBtn').addEventListener('click', function () {
+    var target = state.data && state.data.entries.filter(function (e) { return entryKey(e) === penaltyVisitKey; })[0];
+    closePenaltyModal();
+    if (target) openInReader(target);
+  });
 
   function openInReader(e) {
     closeSearchModal();

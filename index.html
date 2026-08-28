@@ -398,7 +398,7 @@ main {
   vertical-align: middle;
 }
 
-.reader-row { display: flex; align-items: flex-start; gap: 30px; }
+.reader-row { display: flex; align-items: flex-start; gap: 44px; }
 
 .outline {
   flex: 0 0 250px;
@@ -432,7 +432,7 @@ main {
 .outline-link.depth-0 { font-weight: 600; color: var(--ink); margin-top: 4px; }
 
 .reader-content { flex: 1; min-width: 0; position: relative; }
-.reader-scroll { min-width: 0; }
+.reader-scroll { min-width: 0; padding: 2px 6px 60px 2px; }
 
 .back-to-top {
   position: absolute;
@@ -456,11 +456,11 @@ main {
 .back-to-top:hover { border-color: var(--green-mid); background: var(--green-pale); }
 
 .reader-title {
-  font-size: 27px;
+  font-size: 32px;
   font-weight: 750;
   color: var(--green-dark);
-  margin-bottom: 14px;
-  padding-bottom: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -486,20 +486,21 @@ main {
   scroll-margin-top: 14px;
 }
 .reader-heading.depth-0 {
-  font-size: 21px;
-  margin: 34px 0 12px;
-  padding-bottom: 8px;
+  font-size: 22px;
+  margin: 52px 0 18px;
+  padding-bottom: 12px;
   border-bottom: 2px solid var(--green);
   display: flex; align-items: center; flex-wrap: wrap;
 }
-.reader-heading.depth-1 { font-size: 17px; margin: 24px 0 8px; }
+.reader-heading.depth-0:first-child { margin-top: 4px; }
+.reader-heading.depth-1 { font-size: 18px; margin: 36px 0 12px; }
 .reader-heading.depth-2, .reader-heading.depth-3 {
-  font-size: 15px; margin: 16px 0 6px; color: var(--ink); font-weight: 650;
+  font-size: 15.5px; margin: 24px 0 8px; color: var(--ink); font-weight: 650;
 }
 
-.reader-entry { margin: 16px 0; }
-.reader-entry-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-.reader-entry-title { font-weight: 650; font-size: 16px; }
+.reader-entry { margin: 28px 0; }
+.reader-entry-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.reader-entry-title { font-weight: 650; font-size: 16.5px; }
 .reader-body.rfull { padding: 0; border-top: 0; }
 
 /* ---- defined-terms glossary ---- */
@@ -741,7 +742,7 @@ main {
 
 .rfull { padding: 4px 16px 16px; border-top: 1px dashed var(--line); }
 
-.rfull p { margin: 10px 0; position: relative; }
+.rfull p { margin: 14px 0; line-height: 1.65; position: relative; }
 .rfull .l1 { padding-left: 52px; font-weight: 500; }
 .rfull .l2 { padding-left: 92px; }
 .rfull .l3 { padding-left: 142px; }

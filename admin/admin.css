@@ -18,36 +18,49 @@ body {
   background: var(--bg);
 }
 header {
-  background: linear-gradient(180deg, var(--green) 0%, var(--green-dark) 100%);
-  color: #fff;
-  padding: 14px 20px;
+  background: #fff;
+  color: var(--ink);
+  padding: 13px 20px;
   display: flex;
   align-items: center;
   gap: 14px;
+  border-bottom: 1px solid var(--line);
 }
-header h1 { font-size: 18px; font-weight: 700; margin: 0; }
-header h1 .thin { font-weight: 300; opacity: .85; }
+header h1 { font-size: 16.5px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; }
+header h1 .thin { font-weight: 400; color: var(--ink-soft); }
+.brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px; background: var(--green);
+  color: #fff; font-size: 14px; font-weight: 700;
+}
 header .right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; }
-header .right a { color: rgba(255,255,255,.85); text-decoration: none; }
-header .right a:hover { color: #fff; text-decoration: underline; }
+header .right a { color: var(--ink-soft); text-decoration: none; }
+header .right a:hover { color: var(--ink); text-decoration: underline; }
 header button {
-  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
   border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
 }
+header button:hover { background: var(--green-pale); border-color: var(--green-mid); }
 
 /* ---- app shell: sidebar + content ---- */
 #appShell { display: flex; min-height: calc(100vh - 49px); }
 .sidebar {
-  width: 210px; flex: none; background: var(--green); color: #fff;
+  width: 220px; flex: none; background: #fff; color: var(--ink);
+  border-right: 1px solid var(--line);
   padding: 16px 10px; display: flex; flex-direction: column; gap: 2px;
+}
+.nav-section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink-soft); padding: 4px 11px 8px;
 }
 .navitem {
   display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px;
-  font-size: 14.5px; color: rgba(255,255,255,.78); cursor: pointer;
+  font-size: 14.5px; color: var(--ink-soft); cursor: pointer;
 }
-.navitem:hover { background: rgba(255,255,255,.08); }
-.navitem.active { background: rgba(255,255,255,.16); color: #fff; font-weight: 600; }
-.sidebar-foot { margin-top: auto; font-size: 11px; color: rgba(255,255,255,.45); padding: 8px 11px 2px; line-height: 1.5; }
+.navitem:hover { background: var(--bg); color: var(--ink); }
+.navitem.active { background: var(--green-pale); color: var(--green-dark); font-weight: 600; }
+.sidebar-bottom { margin-top: auto; border-top: 1px solid var(--line); padding-top: 8px; }
+.sidebar-foot { font-size: 11px; color: var(--ink-soft); opacity: .8; padding: 8px 11px 2px; line-height: 1.5; }
 
 .content { flex: 1; min-width: 0; }
 .view { display: none; }
@@ -360,10 +373,10 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .icon-btn {
   display: flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; padding: 0;
-  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line);
   border-radius: 999px; cursor: pointer;
 }
-.icon-btn:hover { background: rgba(255,255,255,.2); }
+.icon-btn:hover { background: var(--green-pale); color: var(--green-dark); border-color: var(--green-mid); }
 
 .btn {
   border: 0; background: var(--green); color: #fff; border-radius: 9px;

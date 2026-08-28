@@ -1381,14 +1381,17 @@
         if (e.isNew) counts.new++;
       });
     }
-    Array.prototype.forEach.call(document.querySelectorAll('#tabs button.tab'), function (t) {
+    Array.prototype.forEach.call(document.querySelectorAll('.app-sidebar .navitem[data-tab]'), function (t) {
       var key = t.dataset.tab;
       var on = state.tab === key && state.mode !== 'reader';
       t.classList.toggle('active', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-      var label = key === 'all' ? 'All' : key === 'new' ? 'New' : 'Changelog';
       var n = counts ? counts[key] : null;
-      t.innerHTML = label + (n != null ? '<span class="n">' + n + '</span>' : '');
+      var countEl = t.querySelector('.nav-count');
+      if (countEl) { countEl.textContent = n != null ? n : ''; countEl.hidden = n == null; }
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.app-sidebar .navitem[data-nav]'), function (t) {
+      var on = state.mode === 'reader' && state.readerBook === t.dataset.nav;
+      t.classList.toggle('active', on);
     });
     subtabs.hidden = state.tab !== 'guides' || state.mode === 'reader';
     Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
@@ -1410,9 +1413,21 @@
     runSearch();
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('#tabs button.tab'), function (t) {
-    t.addEventListener('click', function () { if (!t.disabled) selectTab(t.dataset.tab); });
+  Array.prototype.forEach.call(document.querySelectorAll('.app-sidebar .navitem[data-tab]'), function (t) {
+    t.addEventListener('click', function () { if (!t.disabled) selectTab(t.dataset.tab); closeSidebar(); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('.app-sidebar .navitem[data-nav]'), function (t) {
+    t.addEventListener('click', function () {
+      var book = t.dataset.nav;
+      if (book === 'history') { if (state.historyState === 'ready') openHistoryPanel(); }
+      else enterReader(book);
+      closeSidebar();
+    });
+  });
+  function openSidebar() { document.body.classList.add('sidebar-open'); }
+  function closeSidebar() { document.body.classList.remove('sidebar-open'); }
+  if ($('sidebarToggle')) $('sidebarToggle').addEventListener('click', openSidebar);
+  if ($('sidebarBackdrop')) $('sidebarBackdrop').addEventListener('click', closeSidebar);
   Array.prototype.forEach.call(document.querySelectorAll('#subtabs .subtab'), function (t) {
     t.addEventListener('click', function () {
       if (state.sub === t.dataset.sub) return;

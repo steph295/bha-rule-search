@@ -19,35 +19,70 @@
 </head>
 <body>
 
+<div id="sidebarBackdrop"></div>
+<nav class="app-sidebar" id="appSidebar" aria-label="Main navigation">
+  <div class="app-brand" id="homeBtn" role="button" tabindex="0" title="Home">
+    <span class="brand-mark">§</span> BHA <span class="thin">Rules Search</span>
+  </div>
+  <div class="nav-section-label">Menu</div>
+  <button class="navitem active" data-tab="all">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"></rect><rect x="9" y="2.5" width="4.5" height="4.5" rx="1"></rect><rect x="2.5" y="9" width="4.5" height="4.5" rx="1"></rect><rect x="9" y="9" width="4.5" height="4.5" rx="1"></rect></svg>
+    <span class="navitem-label">All</span><span class="nav-count"></span>
+  </button>
+  <button class="navitem" data-nav="rules">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8.5A1.5 1.5 0 0 1 13 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H13"></path></svg>
+    Rules of Racing
+  </button>
+  <button class="navitem" data-nav="guides">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5v9M6 3v9.5M9.5 3.5l3 9"></path></svg>
+    Guide Library
+  </button>
+  <button class="navitem" data-nav="bhagi">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="10" height="11" rx="1.2"></rect><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"></path></svg>
+    BHAGIs
+  </button>
+  <button class="navitem" data-nav="history">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5V8l2.5 1.5"></path><circle cx="8" cy="8" r="5.5"></circle></svg>
+    Version History
+  </button>
+  <button class="navitem" data-tab="new">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.8l1.6 3.4 3.7.4-2.7 2.6.7 3.7L8 11.1l-3.3 1.8.7-3.7-2.7-2.6 3.7-.4z"></path></svg>
+    <span class="navitem-label">New</span><span class="nav-count"></span>
+  </button>
+  <button class="navitem" data-tab="changelog">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"></path><path d="M3 8h10"></path><path d="M3 12.5h6"></path></svg>
+    <span class="navitem-label">Changelog</span><span class="nav-count"></span>
+  </button>
+  <div class="sidebar-bottom">
+    <a class="navitem" href="https://www.britishhorseracing.com/news-media/press-releases/" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h7.5L13 6v6.5H3z"></path><path d="M10 3.5V6h3"></path></svg>
+      Press ↗
+    </a>
+  </div>
+</nav>
+
+<div class="app-content">
+
 <div id="beta">BETA — this tool is under testing. Verify anything critical against the official BHA sources: <a href="https://rules.britishhorseracing.com" target="_blank" rel="noopener">Rules of Racing</a> and <a href="https://www.britishhorseracing.com/regulation/rules-guides/" target="_blank" rel="noopener">Rules of Racing and guides</a>.</div>
 
 <header>
-  <h1 id="homeBtn" role="button" tabindex="0" title="Home">BHA <span class="thin">Rules Search</span></h1>
+  <button id="sidebarToggle" type="button" title="Menu" aria-label="Open menu">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"></path></svg>
+  </button>
+  <div class="searchbox">
+    <svg class="searchbox-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
+    <input id="q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
+           spellcheck="false" enterkeyhint="search" readonly
+           placeholder="Search rule code or keyword…"
+           aria-label="Search the Rules of Racing">
+    <button id="clear" type="button" aria-label="Clear search">✕</button>
+  </div>
   <button id="pdfBtn" type="button" title="Download as PDF" aria-label="Download as PDF">
     <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
   </button>
   <button id="status" type="button"><span class="dot"></span><span class="stxt">Loading…</span></button>
 </header>
 
-<div class="pagehead">
-  <h2 class="page-title">Rules of Racing</h2>
-  <div class="pagehead-row">
-    <nav id="tabs" role="tablist" aria-label="Other views">
-      <button class="tab active" data-tab="all" role="tab" aria-selected="true">All</button>
-      <button class="tab" data-tab="new" role="tab" aria-selected="false">New</button>
-      <button class="tab" data-tab="changelog" role="tab" aria-selected="false">Changelog</button>
-      <a class="tab tab-link" href="https://www.britishhorseracing.com/news-media/press-releases/" target="_blank" rel="noopener">Press ↗</a>
-    </nav>
-    <div class="searchbox">
-      <svg class="searchbox-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
-      <input id="q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off"
-             spellcheck="false" enterkeyhint="search" readonly
-             placeholder="Search rule code or keyword…"
-             aria-label="Search the Rules of Racing">
-      <button id="clear" type="button" aria-label="Clear search">✕</button>
-    </div>
-  </div>
-</div>
 <nav id="subtabs" role="tablist" aria-label="Filter guides" hidden>
   <button class="subtab active" data-sub="all" role="tab" aria-selected="true">All guides</button>
   <button class="subtab" data-sub="bhagi" role="tab" aria-selected="false">BHAGIs</button>
@@ -57,6 +92,8 @@
   <div id="meta" role="status"></div>
   <div id="results"></div>
 </main>
+
+</div>
 
 <dialog id="searchModal" class="search-modal">
   <div class="sm-top">

@@ -91,14 +91,17 @@ header button {
 /* ---- manuals toolbar + home cards ---- */
 .manuals-toolbar {
   max-width: 1100px; margin: 0 auto; padding: 18px 20px 0;
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
 }
-.tabs { display: flex; gap: 6px; }
+.tabs { display: flex; gap: 4px; }
 .tabs button {
-  border: 1px solid var(--line); background: var(--card); border-radius: 999px;
-  padding: 5px 13px; font-size: 13px; cursor: pointer; color: var(--ink-soft);
+  border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--ink-soft);
+  padding: 7px 10px 8px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px;
+  white-space: nowrap;
 }
-.tabs button.active { background: var(--green-pale); border-color: var(--green-mid); color: var(--green-dark); font-weight: 600; }
+.tabs button:hover { color: var(--green-dark); }
+.tabs button.active { color: var(--green-dark); font-weight: 650; border-bottom-color: var(--green-mid); }
 .manuals-toolbar input {
   flex: 0 1 320px; box-sizing: border-box; font-size: 14.5px; padding: 8px 12px;
   border: 1px solid var(--line); border-radius: 9px;
@@ -192,6 +195,18 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   width: 100%; box-sizing: border-box; font-size: 14.5px; line-height: 1.6; padding: 11px 12px;
   border: 1px solid var(--line); border-radius: 9px; min-height: 220px; font-family: inherit; resize: vertical;
 }
+.text-toolbar { display: flex; gap: 4px; margin-bottom: 6px; }
+.text-toolbar button {
+  width: 30px; height: 28px; border: 1px solid var(--line); background: var(--card);
+  border-radius: 7px; font-size: 13.5px; color: var(--ink); cursor: pointer;
+}
+.text-toolbar button:hover { background: var(--green-pale); border-color: var(--green-mid); }
+.editor-card label.checkbox-row {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 500; color: var(--ink);
+  margin: 14px 0 0; cursor: pointer;
+}
+.checkbox-row input { margin: 0; }
 .hint { font-size: 12px; color: var(--ink-soft); margin-top: 5px; line-height: 1.5; }
 .editor-actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
 .editor-actions button.save {

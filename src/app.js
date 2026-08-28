@@ -174,6 +174,8 @@
       if (!o) return;
       if (o.title) e.title = o.title;
       if (o.html) { e.html = o.html; e.plain = undefined; }
+      if (o.flag === 'new') e.isNew = true;
+      else if (o.flag === 'not-new') e.isNew = false;
     });
     prepareEntries(state.data.entries);
     buildVocab();

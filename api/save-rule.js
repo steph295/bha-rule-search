@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
   const key = typeof body.key === 'string' ? body.key.trim() : '';
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const html = typeof body.html === 'string' ? body.html : '';
+  const flag = body.flag === 'new' || body.flag === 'not-new' ? body.flag : undefined;
   if (!key) { res.status(400).json({ error: 'missing key' }); return; }
   if (!title && !html) { res.status(400).json({ error: 'nothing to save — provide title and/or html' }); return; }
 
@@ -55,6 +56,7 @@ module.exports = async function handler(req, res) {
   current.overrides[key] = {
     title: title || prev.title,
     html: html || prev.html,
+    flag: flag,
     updatedAt: new Date().toISOString()
   };
   current.updatedAt = new Date().toISOString();

@@ -59,12 +59,11 @@
 
     <section id="view-manuals" class="view">
       <div class="manuals-toolbar" id="manualsToolbar">
-        <div class="tabs">
-          <button class="active" data-tab="all">All</button>
-          <button data-tab="rules">Rules</button>
-          <button data-tab="guides">Guides</button>
-          <button data-tab="edited">Edited</button>
-        </div>
+        <nav class="tabs" role="tablist" aria-label="Filter">
+          <button class="active" data-tab="all" role="tab" aria-selected="true">All</button>
+          <button data-tab="new" role="tab" aria-selected="false">New</button>
+          <button data-tab="edited" role="tab" aria-selected="false">Edited</button>
+        </nav>
         <input id="search" type="text" placeholder="Search code or keyword…">
       </div>
 

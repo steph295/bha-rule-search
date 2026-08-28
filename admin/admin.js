@@ -42,7 +42,9 @@
     return String(html || '')
       .replace(/<\/p>/gi, '\n\n')
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
+      // keep <b>/<i>/<u> (and their closing tags) — everything else goes,
+      // same inline-tag whitelist plainTextToHtml re-escapes back in on save
+      .replace(/<(?!\/?(?:b|i|u)>)[^>]+>/gi, '')
       // decode specific entities before &amp; itself, else "&amp;nbsp;" etc
       // would decode in two passes and re-escape wrong on the next save
       .replace(/&nbsp;|&#160;/g, ' ')
@@ -58,10 +60,24 @@
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // Same as escapeHtml, but lets the three inline tags the toolbar's
+  // Bold/Italic/Underline buttons insert survive — everything else the
+  // admin types is still escaped, so this can't be used to inject arbitrary
+  // markup, only the exact <b>/<i>/<u> pairs those buttons produce.
+  var INLINE_TAGS = ['b', 'i', 'u'];
+  function escapeHtmlAllowInline(s) {
+    var esc = escapeHtml(s);
+    INLINE_TAGS.forEach(function (tag) {
+      esc = esc.replace(new RegExp('&lt;' + tag + '&gt;', 'gi'), '<' + tag + '>')
+        .replace(new RegExp('&lt;/' + tag + '&gt;', 'gi'), '</' + tag + '>');
+    });
+    return esc;
+  }
+
   function plainTextToHtml(text) {
     var paras = String(text || '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
     return paras.map(function (p) {
-      return '<p class="l0">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+      return '<p class="l0">' + escapeHtmlAllowInline(p).replace(/\n/g, '<br>') + '</p>';
     }).join('');
   }
 
@@ -70,6 +86,7 @@
     return {
       title: (o && o.title) || e.title,
       html: (o && o.html) || e.html,
+      isNew: o && o.flag === 'new' ? true : o && o.flag === 'not-new' ? false : !!e.isNew,
       edited: !!o
     };
   }
@@ -127,7 +144,7 @@
         return { kind: 'guide', code: null, doc: u.title, cat: u.cat, title: u.title, html: u.html, _uploadId: id };
       });
       var entries = (rules.entries || []).map(function (e) {
-        return { kind: e.kind, code: e.code, letter: e.letter, num: e.num, doc: e.doc, title: e.title, html: e.html, path: e.path || [] };
+        return { kind: e.kind, code: e.code, letter: e.letter, num: e.num, doc: e.doc, title: e.title, html: e.html, path: e.path || [], isNew: !!e.isNew };
       }).concat((guides.entries || []).concat(uploadedGuideEntries).map(function (g) {
         return { kind: g.kind === 'bhagi' ? 'bhagi' : 'guidedoc', code: g.code, letter: null, num: null, doc: g.doc, title: g.title, html: g.html, path: [g.cat], _uploadId: g._uploadId };
       }));
@@ -165,7 +182,10 @@
   Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
     b.addEventListener('click', function () {
       state.tab = b.dataset.tab;
-      Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.classList.toggle('active', x === b); });
+      Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+      });
       updateManualsViewFromFilters();
     });
   });
@@ -755,8 +775,7 @@
   }, { passive: true });
 
   function matchesTab(e) {
-    if (state.tab === 'rules') return !isGuideEntry(e);
-    if (state.tab === 'guides') return isGuideEntry(e);
+    if (state.tab === 'new') return effective(e).isNew;
     if (state.tab === 'edited') return !!state.overrides[e.key];
     return true;
   }
@@ -810,8 +829,15 @@
       '<label for="editTitle">Title</label>' +
       '<input type="text" id="editTitle" value="' + escapeHtml(eff.title) + '">' +
       '<label for="editBody">Body text</label>' +
+      '<div class="text-toolbar">' +
+      '<button type="button" id="tbBold" title="Bold"><b>B</b></button>' +
+      '<button type="button" id="tbItalic" title="Italic"><i>I</i></button>' +
+      '<button type="button" id="tbUnderline" title="Underline"><u>U</u></button>' +
+      '</div>' +
       '<textarea id="editBody"></textarea>' +
-      '<div class="hint">Plain text — blank lines start a new paragraph. This replaces the formatted sub-clauses (45.1, 45.2 …) with plain paragraphs; it does not preserve the original numbering structure.</div>' +
+      '<div class="hint">Plain text — blank lines start a new paragraph. This replaces the formatted sub-clauses (45.1, 45.2 …) with plain paragraphs; it does not preserve the original numbering structure. Select some text first to bold/italicise/underline it.</div>' +
+      '<label class="checkbox-row" for="editFlagNew"><input type="checkbox" id="editFlagNew"' + (eff.isNew ? ' checked' : '') + '> Flag as New</label>' +
+      '<div class="hint">Controls the "New" badge and the New tab/changelog — independent of the automatic new-entries detection.</div>' +
       '<div class="editor-actions">' +
       '<button class="save" id="saveBtn">Publish change</button>' +
       (eff.edited ? '<span class="hint" style="margin:0">Edited ' + new Date(state.overrides[key].updatedAt).toLocaleString() + '</span>' : '') +
@@ -819,7 +845,24 @@
       '<div class="save-msg" id="saveMsg"></div>' +
       '</div>';
     $('editBody').value = stripHtml(eff.html);
+    $('tbBold').addEventListener('click', function () { wrapSelection($('editBody'), '<b>', '</b>'); });
+    $('tbItalic').addEventListener('click', function () { wrapSelection($('editBody'), '<i>', '</i>'); });
+    $('tbUnderline').addEventListener('click', function () { wrapSelection($('editBody'), '<u>', '</u>'); });
     $('saveBtn').addEventListener('click', function () { confirmSave(e); });
+  }
+
+  // Wraps the textarea's current selection in the given tag pair (or, with
+  // nothing selected, inserts an empty pair with the cursor left in between)
+  // — a plain-textarea stand-in for a real rich-text toolbar, since the
+  // editor is otherwise just markdown-free plain text.
+  function wrapSelection(textarea, before, after) {
+    var start = textarea.selectionStart, end = textarea.selectionEnd;
+    var val = textarea.value;
+    var selected = val.slice(start, end);
+    textarea.value = val.slice(0, start) + before + selected + after + val.slice(end);
+    textarea.focus();
+    textarea.selectionStart = start + before.length;
+    textarea.selectionEnd = start + before.length + selected.length;
   }
 
   function confirmSave(e) {
@@ -843,6 +886,11 @@
     var title = $('editTitle').value.trim();
     var bodyText = $('editBody').value;
     var html = plainTextToHtml(bodyText);
+    var wantNew = $('editFlagNew').checked;
+    // Only sent when it actually differs from the automatic new-entries
+    // detection — matches every other override field here, which only
+    // exists in overrides.json when it's actually overriding something.
+    var flag = wantNew === !!e.isNew ? '' : (wantNew ? 'new' : 'not-new');
     var msg = $('saveMsg');
     var btn = $('saveBtn');
     btn.disabled = true;
@@ -851,12 +899,12 @@
 
     fetch('/api/save-rule', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: e.key, title: title, html: html })
+      body: JSON.stringify({ key: e.key, title: title, html: html, flag: flag })
     }).then(function (r) {
       if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
       return r.json();
     }).then(function () {
-      state.overrides[e.key] = { title: title, html: html, updatedAt: new Date().toISOString() };
+      state.overrides[e.key] = { title: title, html: html, flag: flag || undefined, updatedAt: new Date().toISOString() };
       msg.textContent = 'Published — live on the public site now.';
       msg.className = 'save-msg ok';
       btn.disabled = false;

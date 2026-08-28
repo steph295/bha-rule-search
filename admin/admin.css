@@ -173,7 +173,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .empty-state { color: var(--ink-soft); font-size: 14.5px; padding: 40px 20px; text-align: center; }
 
 /* ---- manuals reader (outline + text + editor) ---- */
-.manuals-reader { max-width: 1300px; margin: 0 auto; padding: 14px 20px 60px; }
+.manuals-reader { max-width: 1600px; margin: 0 auto; padding: 14px 20px 60px; }
 .reader-back {
   display: inline-flex; align-items: center; gap: 6px;
   border: 0; background: none; font: inherit; font-weight: 600; font-size: 14.5px;
@@ -209,7 +209,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .outline-link.depth-0 { font-weight: 600; color: var(--ink); margin-top: 3px; }
 
 .reader-content { flex: 1; min-width: 0; position: relative; }
-.reader-scroll { min-width: 0; padding: 2px 6px 50px 2px; }
+.reader-scroll { min-width: 0; max-width: 700px; padding: 2px 6px 50px 2px; }
 
 .back-to-top {
   position: absolute;

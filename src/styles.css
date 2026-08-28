@@ -318,7 +318,7 @@ main {
 
 /* ---- reader (Word/Docs-style document view + outline sidebar) ---- */
 
-.reader-mode main { max-width: 1120px; }
+.reader-mode main { max-width: 1500px; }
 .reader-mode #subtabs { display: none; }
 
 .reader-back {
@@ -416,7 +416,7 @@ main {
 .outline-link.depth-0 { font-weight: 600; color: var(--ink); margin-top: 4px; }
 
 .reader-content { flex: 1; min-width: 0; position: relative; }
-.reader-scroll { min-width: 0; padding: 2px 6px 60px 2px; }
+.reader-scroll { min-width: 0; max-width: 700px; padding: 2px 6px 60px 2px; }
 
 .back-to-top {
   position: absolute;
@@ -484,8 +484,9 @@ main {
 
 .reader-entry { margin: 28px 0; }
 .reader-entry-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-.reader-entry-title { font-weight: 650; font-size: 16.5px; }
-.reader-body.rfull { padding: 0; border-top: 0; }
+.reader-entry-title { font-weight: 650; font-size: 17px; }
+.reader-body.rfull { padding: 0; border-top: 0; font-size: 18px; }
+.reader-body.rfull p { line-height: 1.6; }
 
 /* ---- defined-terms glossary ---- */
 

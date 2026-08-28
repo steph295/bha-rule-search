@@ -815,6 +815,7 @@
     n.entries.forEach(function (e) {
       var block = document.createElement('div');
       block.className = 'reader-entry';
+      block.dataset.key = entryKey(e);
       block.innerHTML = '<div class="reader-entry-head">' +
         '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
         (e.isNew ? NEW_PILL : '') +
@@ -1503,7 +1504,6 @@
     row.innerHTML = '<span class="' + codeClass(e) + ' sm-row-code">' + P.escapeHtml(dispCode(e)) + '</span>' +
       '<span class="sm-row-title">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
       '<div class="sm-row-path">' + P.escapeHtml(crumb || '') + '</div>';
-    row.addEventListener('mouseenter', function () { setSmActive(idx); });
     row.addEventListener('click', function () { setSmActive(idx); });
     return row;
   }
@@ -1516,7 +1516,11 @@
     smPreview.innerHTML = '<div class="sm-preview-path">' + crumb.filter(Boolean).map(P.escapeHtml).join(' › ') + '</div>' +
       '<div class="sm-preview-title"><span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
       '<span>' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
+      '<button type="button" class="sm-preview-open">' +
+      '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h6.5A1.5 1.5 0 0 1 11 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H11"></path></svg>' +
+      'Find in document</button>' +
       '<div class="rfull">' + highlightHtml(e.html, terms) + '</div>';
+    smPreview.querySelector('.sm-preview-open').addEventListener('click', function () { openInReader(e); });
   }
 
   function setSmActive(idx) {
@@ -1576,6 +1580,23 @@
     setTimeout(function () {
       var card = results.querySelector('.result[data-id="' + e.id + '"]');
       if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); toggleCard(card, true); }
+    }, 30);
+  }
+
+  function openInReader(e) {
+    closeSearchModal();
+    var book = e.kind === 'bhagi' ? 'bhagi' : isGuideEntry(e) ? 'guides' : 'rules';
+    var key = entryKey(e);
+    enterReader(book);
+    setTimeout(function () {
+      var block = Array.prototype.filter.call(
+        document.querySelectorAll('.reader-entry'),
+        function (el) { return el.dataset.key === key; }
+      )[0];
+      if (!block) return;
+      block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      block.classList.add('flash');
+      setTimeout(function () { block.classList.remove('flash'); }, 1600);
     }, 30);
   }
 

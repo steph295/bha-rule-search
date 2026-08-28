@@ -879,6 +879,19 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 .sm-empty { color: var(--ink-soft); font-size: 14px; padding: 40px 20px; text-align: center; }
 .sm-preview-path { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px; }
 .sm-preview-title { font-size: 19px; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sm-preview-open {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: #fff; color: var(--green-mid);
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600;
+  cursor: pointer; margin-bottom: 18px;
+}
+.sm-preview-open:hover { background: var(--green-pale); border-color: var(--green-mid); }
+
+@keyframes reader-entry-flash {
+  0% { background: var(--green-pale); }
+  100% { background: transparent; }
+}
+.reader-entry.flash { animation: reader-entry-flash 1.6s ease-out; border-radius: 8px; }
 
 .sm-footer {
   flex: none;

@@ -349,6 +349,15 @@ main {
    measured in JS (heights vary with viewport width, e.g. the beta banner
    wrapping to one or two lines) and re-synced on resize. */
 @media (min-width: 821px) {
+  /* Belt-and-braces against scroll chaining: once an inner pane below
+     hits its own scroll limit, a browser's default behaviour is to let
+     further wheel/trackpad input "chain" into the outer page. Even a few
+     px of page scroll room (from sub-pixel height-calc rounding) is
+     enough to shift this fixed chrome and the top of the row out of
+     view, so the page itself must never be able to scroll here. */
+  body.reader-mode { overflow: hidden; }
+  html:has(body.reader-mode) { overflow: hidden; }
+
   .reader-mode #beta, .reader-mode header {
     position: fixed;
     left: 0; right: 0;
@@ -366,11 +375,12 @@ main {
   .reader-mode .def-panel {
     height: 100%;
     overflow-y: auto;
+    overscroll-behavior: contain;
     position: static;
     max-height: none;
   }
   .reader-mode .reader-content { height: 100%; }
-  .reader-mode .reader-scroll { height: 100%; overflow-y: auto; }
+  .reader-mode .reader-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 }
 
 .pill-new {

@@ -984,6 +984,7 @@
   function exitReader() {
     if (state.mode !== 'reader') return;
     state.mode = 'search';
+    state.activeDefTerm = null;
     document.body.classList.remove('reader-mode');
     teardownScrollSpy();
   }
@@ -1125,7 +1126,7 @@
   }
 
   function renderDefPanel() {
-    var panel = $('defPanel');
+    var panel = $(state.mode === 'reader' ? 'defPanel' : 'flatDefPanel');
     if (!panel) return;
     if (state.activeDefTerm == null) {
       panel.innerHTML = '<div class="def-panel-hint">Click any <span class="defterm-sample">underlined term</span> in the text to see its definition here.</div>';
@@ -1171,6 +1172,11 @@
   // Defined terms are clickable everywhere they're glossarized (reader
   // entries and expanded search cards) — a single delegated listener
   // covers both, since the spans are created in many different places.
+  // Both the reader and flat list/card views show the definition in a
+  // persistent side panel matching the breakpoint where that panel has
+  // room to sit beside the content (see #flatDefPanel in styles.css);
+  // narrower viewports fall back to a floating popover instead.
+  var flatDefPanelMQ = window.matchMedia('(min-width: 900px)');
   document.addEventListener('click', function (ev) {
     var el = ev.target.closest && ev.target.closest('.defterm');
     if (!el) return;
@@ -1179,6 +1185,9 @@
     var t = state.glossary && state.glossary.terms.filter(function (x) { return String(x.id) === el.dataset.termId; })[0];
     if (!t) return;
     if (state.mode === 'reader' && $('defPanel')) {
+      state.activeDefTerm = t.id;
+      renderDefPanel();
+    } else if (state.mode !== 'reader' && $('flatDefPanel') && flatDefPanelMQ.matches) {
       state.activeDefTerm = t.id;
       renderDefPanel();
     } else {
@@ -1353,6 +1362,12 @@
 
     if (state.mode === 'reader') { renderReaderView(); return; }
     document.body.classList.remove('reader-mode');
+    // renderResults() (below, for the "new" tab) repopulates this — clearing
+    // it here first means non-card views (home cards, changelog) don't show
+    // a stale or irrelevant "click a term" hint next to content with no
+    // defined terms in it.
+    var flatPanel = $('flatDefPanel');
+    if (flatPanel) flatPanel.innerHTML = '';
 
     var tab = state.tab;
 
@@ -1449,6 +1464,7 @@
   function renderResults(res) {
     results.innerHTML = '';
     state.activeIdx = -1;
+    if (state.glossaryState === 'ready') renderDefPanel();
     if (!res.entries.length) {
       meta.textContent = 'No matches';
       var n = document.createElement('div');

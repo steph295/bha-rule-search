@@ -532,6 +532,19 @@ main {
 .defterm-sample { border-bottom: 1px dotted var(--green-mid); }
 .def-panel-term { font-size: 17px; font-weight: 750; color: var(--green-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 
+/* Flat list views (search results, "New" tab) get the same persistent
+   side panel as the reader instead of a floating popover, so opening a
+   definition doesn't cover up neighbouring cards. Only shown once there's
+   room for a 300px column beside the results; narrower falls back to the
+   popover (see the matching matchMedia check in app.js). */
+.results-row { display: flex; align-items: flex-start; gap: 24px; }
+.results-row #results { flex: 1; min-width: 0; }
+#flatDefPanel:empty { display: none; }
+body.reader-mode #flatDefPanel { display: none; }
+@media (max-width: 900px) {
+  #flatDefPanel { display: none; }
+}
+
 .def-popover {
   position: absolute;
   z-index: 40;

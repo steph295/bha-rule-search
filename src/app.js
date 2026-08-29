@@ -46,7 +46,8 @@
     glossaryState: 'idle', // idle | loading | ready | failed
     glossaryRe: null,      // compiled longest-match-first regex over every term
     glossaryByLower: null, // lowercased term -> term object
-    activeDefTerm: null    // id of the term currently shown in the reader's definitions panel
+    activeDefTerm: null,   // id of the term currently shown in the reader's definitions panel
+    readerNewOnly: false   // "Show new only" toggle within the reader's outline search
   };
 
   // Which tab an entry belongs to. Rulebook entries (manual/code/guide) come
@@ -821,14 +822,16 @@
   // any descendant) still has matching entries — same shape as the source
   // tree, so the nav and content renderers don't need to know about search
   // at all. tokens=[] (no in-doc search active) passes every node through.
-  function filterOutlineTree(nodes, tokens) {
+  function filterOutlineTree(nodes, tokens, newOnly) {
+    var noFilter = !tokens.length && !newOnly;
     var out = [];
     nodes.forEach(function (n) {
-      var matchedEntries = tokens.length
-        ? n.entries.filter(function (e) { return tokens.every(function (t) { return e.text.indexOf(t) !== -1; }); })
-        : n.entries;
-      var filteredChildren = filterOutlineTree(n.children, tokens);
-      if (!tokens.length || matchedEntries.length || filteredChildren.length) {
+      var matchedEntries = n.entries.filter(function (e) {
+        if (newOnly && !e.isNew) return false;
+        return !tokens.length || tokens.every(function (t) { return e.text.indexOf(t) !== -1; });
+      });
+      var filteredChildren = filterOutlineTree(n.children, tokens, newOnly);
+      if (noFilter || matchedEntries.length || filteredChildren.length) {
         out.push({ id: n.id, label: n.label, badge: n.badge, isNew: n.isNew, entries: matchedEntries, children: filteredChildren });
       }
     });
@@ -926,6 +929,20 @@
       });
       var crumbSection = $('breadcrumbSection');
       if (crumbSection) crumbSection.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
+
+      var mobileBar = document.querySelector('.reader-mobile-bar');
+      if (mobileBar) {
+        var topNodes = state.readerTree || [];
+        var topId = activeTopHeading ? activeTopHeading.dataset.outlineId : '';
+        var topIdx = topNodes.findIndex(function (n) { return n.id === topId; });
+        mobileBar.dataset.activeTopId = topId;
+        var mnavLabel = $('mnavLabel'), mnavCount = $('mnavCount');
+        if (mnavLabel) mnavLabel.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
+        if (mnavCount) mnavCount.textContent = topIdx >= 0 ? (topIdx + 1) + ' / ' + topNodes.length : '';
+        var mnavPrev = $('mnavPrev'), mnavNext = $('mnavNext');
+        if (mnavPrev) mnavPrev.disabled = topIdx <= 0;
+        if (mnavNext) mnavNext.disabled = topIdx < 0 || topIdx >= topNodes.length - 1;
+      }
     }
     readerScrollHandler = function () {
       if (ticking) return;
@@ -996,30 +1013,32 @@
   // touched, so the input never loses focus while the user is typing.
   function renderReaderBody(navListEl, entriesEl, countEl, titleText, rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    var filtered = filterOutlineTree(state.readerTree, tokens);
+    var newOnly = !!state.readerNewOnly;
+    var filtering = tokens.length || newOnly;
+    var filtered = filterOutlineTree(state.readerTree, tokens, newOnly);
 
     navListEl.innerHTML = '';
     navListEl.appendChild(renderOutlineNav(filtered, 0));
 
     entriesEl.innerHTML = '';
-    if (tokens.length) {
+    if (filtering) {
       var n = countOutlineEntries(filtered);
       countEl.textContent = n + (n === 1 ? ' match' : ' matches') + ' in ' + titleText;
       countEl.hidden = false;
     } else {
       countEl.hidden = true;
     }
-    if (tokens.length && !filtered.length) {
+    if (filtering && !filtered.length) {
       var none = document.createElement('div');
       none.className = 'noresults';
-      none.textContent = 'Nothing in ' + titleText + ' matches that — try a different word.';
+      none.textContent = newOnly && !tokens.length ? 'Nothing flagged new right now.' : 'Nothing in ' + titleText + ' matches that — try a different word.';
       entriesEl.appendChild(none);
     } else {
       filtered.forEach(function (n) { entriesEl.appendChild(renderReaderSection(n, 0, tokens)); });
     }
 
     teardownScrollSpy();
-    if (!tokens.length) setupScrollSpy(entriesEl);
+    if (!filtering) setupScrollSpy(entriesEl);
   }
 
   function renderReaderView() {
@@ -1054,13 +1073,22 @@
     var nav = document.createElement('nav');
     nav.className = 'outline';
 
+    var sheetHead = document.createElement('div');
+    sheetHead.className = 'outline-sheet-head';
+    sheetHead.innerHTML = '<span>Chapters</span><button type="button" class="outline-sheet-close" aria-label="Close">✕</button>';
+    nav.appendChild(sheetHead);
+
+    state.readerNewOnly = false;
+
     var searchWrap = document.createElement('div');
     searchWrap.className = 'reader-search-wrap';
     searchWrap.innerHTML = '<input type="search" class="reader-search" placeholder="Search within ' +
       P.escapeHtml(titleText) + '…" aria-label="Search within ' + P.escapeHtml(titleText) + '">' +
+      '<label class="reader-new-toggle"><input type="checkbox" class="reader-new-only"> Show new only</label>' +
       '<div class="reader-search-count" hidden></div>';
     nav.appendChild(searchWrap);
     var countEl = searchWrap.querySelector('.reader-search-count');
+    var newOnlyInput = searchWrap.querySelector('.reader-new-only');
 
     var navList = document.createElement('div');
     navList.className = 'outline-list';
@@ -1101,11 +1129,60 @@
       var val = searchInput.value;
       debounce = setTimeout(function () { renderReaderBody(navList, entriesEl, countEl, titleText, val); }, 80);
     });
+    newOnlyInput.addEventListener('change', function () {
+      state.readerNewOnly = newOnlyInput.checked;
+      renderReaderBody(navList, entriesEl, countEl, titleText, searchInput.value);
+    });
 
     var row = document.createElement('div');
     row.className = 'reader-row';
     row.appendChild(nav);
     row.appendChild(content);
+
+    // Mobile fallback (see max-width:820px in styles.css): the full chapter
+    // outline no longer sits inline above the content — it opens as a
+    // bottom sheet from this slim bar instead, Google-Docs-tabs-style, so
+    // the reader opens straight into the text rather than a screen of nav.
+    var sheetBackdrop = document.createElement('div');
+    sheetBackdrop.className = 'outline-sheet-backdrop';
+
+    var mobileBar = document.createElement('div');
+    mobileBar.className = 'reader-mobile-bar';
+    mobileBar.innerHTML =
+      '<button type="button" class="mnav-step" id="mnavPrev" aria-label="Previous chapter">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5L5 8l5 4.5"></path></svg></button>' +
+      '<button type="button" class="mnav-current"><span class="mnav-label" id="mnavLabel"></span><span class="mnav-count" id="mnavCount"></span></button>' +
+      '<button type="button" class="mnav-step" id="mnavNext" aria-label="Next chapter">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l5 4.5-5 4.5"></path></svg></button>' +
+      '<button type="button" class="mnav-search" aria-label="Search within ' + P.escapeHtml(titleText) + '">' +
+      '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg></button>';
+
+    function openOutlineSheet(focusSearch) {
+      nav.classList.add('open');
+      sheetBackdrop.classList.add('show');
+      if (focusSearch) setTimeout(function () { searchInput.focus(); }, 260);
+    }
+    function closeOutlineSheet() {
+      nav.classList.remove('open');
+      sheetBackdrop.classList.remove('show');
+    }
+    sheetHead.querySelector('.outline-sheet-close').addEventListener('click', closeOutlineSheet);
+    sheetBackdrop.addEventListener('click', closeOutlineSheet);
+    navList.addEventListener('click', function (ev) { if (ev.target.closest('.outline-link')) closeOutlineSheet(); });
+    mobileBar.querySelector('.mnav-current').addEventListener('click', function () { openOutlineSheet(false); });
+    mobileBar.querySelector('.mnav-search').addEventListener('click', function () { openOutlineSheet(true); });
+
+    function stepChapter(dir) {
+      var topNodes = state.readerTree || [];
+      var curId = mobileBar.dataset.activeTopId;
+      var idx = topNodes.findIndex(function (n) { return n.id === curId; });
+      var targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= topNodes.length) return;
+      var el = document.getElementById(topNodes[targetIdx].id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    mobileBar.querySelector('#mnavPrev').addEventListener('click', function () { stepChapter(-1); });
+    mobileBar.querySelector('#mnavNext').addEventListener('click', function () { stepChapter(1); });
 
     if (state.glossaryState === 'ready') {
       state.activeDefTerm = null;
@@ -1117,6 +1194,8 @@
 
     wrap.appendChild(back);
     wrap.appendChild(row);
+    wrap.appendChild(sheetBackdrop);
+    wrap.appendChild(mobileBar);
     results.appendChild(wrap);
 
     document.body.classList.add('reader-mode');
@@ -1648,6 +1727,7 @@
     if (scope === 'rules') return !isGuideEntry(e);
     if (scope === 'guides') return isGuideEntry(e);
     if (scope === 'bhagi') return e.kind === 'bhagi';
+    if (scope === 'new') return !!e.isNew;
     return true;
   }
 

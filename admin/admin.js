@@ -246,16 +246,6 @@
       editBtn.addEventListener('click', function (ev) { ev.stopPropagation(); opts.onEdit(); });
       card.appendChild(editBtn);
     }
-    if (opts.onUpload) {
-      var uploadBtn = document.createElement('button');
-      uploadBtn.type = 'button';
-      uploadBtn.className = 'doc-edit-btn';
-      uploadBtn.title = 'Upload a new document';
-      uploadBtn.setAttribute('aria-label', 'Upload a new document');
-      uploadBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3.5"></path><path d="M4.8 6.3L8 3l3.2 3.3"></path><path d="M3 11.5v1a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5v-1"></path></svg>';
-      uploadBtn.addEventListener('click', function (ev) { ev.stopPropagation(); opts.onUpload(); });
-      card.appendChild(uploadBtn);
-    }
     return card;
   }
 
@@ -276,8 +266,7 @@
       { whatsNew: rulesMeta.whatsNew, onEdit: function () { openBookMetaPanel('rules', 'Rules of Racing'); } }));
     wrap.appendChild(docCard('library', 'Guide Library',
       guideEntries.length + ' entries',
-      function () { enterReader('guides'); },
-      { onUpload: openUploadGuidePanel }));
+      function () { enterReader('guides'); }));
     wrap.appendChild(docCard('bhagi', 'BHAGIs',
       Object.keys(bhagiDocs).length + ' sections · ' + bhagiEntries.length + ' entries',
       function () { enterReader('bhagi'); }));
@@ -411,6 +400,8 @@
   function closeUploadGuidePanel() {
     uploadGuidePanel.close ? uploadGuidePanel.close() : uploadGuidePanel.removeAttribute('open');
   }
+
+  $('uploadGuideBtn').addEventListener('click', openUploadGuidePanel);
 
   function renderUploadedGuidesList() {
     var list = $('ugExistingList');

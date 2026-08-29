@@ -114,6 +114,7 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--green-mid); border-
 }
 .tabs button:hover { color: var(--green-dark); }
 .tabs button.active { color: var(--green-dark); font-weight: 650; border-bottom-color: var(--green-mid); }
+.toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .manuals-toolbar input {
   flex: 0 1 320px; box-sizing: border-box; font-size: 14.5px; padding: 8px 12px;
   border: 1px solid var(--line); border-radius: 9px;
@@ -258,11 +259,11 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   display: flex; flex-direction: column;
 }
 .reader-search-wrap { margin-bottom: 8px; }
-.reader-search-wrap input {
+.reader-search-wrap input[type="search"] {
   width: 100%; box-sizing: border-box; font-size: 14px; padding: 8px 11px;
   border: 1px solid var(--line); border-radius: 9px; outline: none;
 }
-.reader-search-wrap input:focus { border-color: var(--green-mid); }
+.reader-search-wrap input[type="search"]:focus { border-color: var(--green-mid); }
 .reader-search-count { font-size: 12px; color: var(--ink-soft); margin: 6px 2px 0; }
 .reader-new-toggle {
   display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft);

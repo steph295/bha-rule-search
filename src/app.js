@@ -175,8 +175,10 @@
       if (!o) return;
       if (o.title) e.title = o.title;
       if (o.html) { e.html = o.html; e.plain = undefined; }
-      if (o.flag === 'new') e.isNew = true;
-      else if (o.flag === 'not-new') e.isNew = false;
+      var flag = o.flag === 'not-new' ? 'none' : o.flag;
+      if (flag === 'new') { e.isNew = true; e.isUpdated = false; }
+      else if (flag === 'updated') { e.isNew = false; e.isUpdated = true; }
+      else if (flag === 'none') { e.isNew = false; e.isUpdated = false; }
     });
     prepareEntries(state.data.entries);
     buildVocab();
@@ -759,9 +761,15 @@
 
   function markTreeNew(node) {
     var any = node.entries.some(function (e) { return e.isNew; });
-    node.children.forEach(function (c) { if (markTreeNew(c)) any = true; });
+    var anyUpdated = node.entries.some(function (e) { return e.isUpdated; });
+    node.children.forEach(function (c) {
+      var r = markTreeNew(c);
+      if (r.isNew) any = true;
+      if (r.isUpdated) anyUpdated = true;
+    });
     node.isNew = any;
-    return any;
+    node.isUpdated = anyUpdated;
+    return { isNew: any, isUpdated: anyUpdated };
   }
 
   // Rules of Racing: one top-level outline node per manual (A, B, C…) plus
@@ -817,6 +825,8 @@
   }
 
   var NEW_PILL = '<span class="pill-new">new</span>';
+  var UPDATED_PILL = '<span class="pill-updated">updated</span>';
+  function statusPill(x) { return x.isNew ? NEW_PILL : x.isUpdated ? UPDATED_PILL : ''; }
 
   // A filter pass over the outline tree that keeps a node whenever it (or
   // any descendant) still has matching entries — same shape as the source
@@ -853,7 +863,7 @@
       row.href = '#';
       row.dataset.target = n.id;
       row.innerHTML = (n.badge ? '<span class="cl sm">' + P.escapeHtml(n.badge) + '</span>' : '') +
-        (n.isNew ? NEW_PILL : '') + '<span>' + P.escapeHtml(n.label) + '</span>';
+        statusPill(n) + '<span>' + P.escapeHtml(n.label) + '</span>';
       row.addEventListener('click', function (ev) {
         ev.preventDefault();
         var el = document.getElementById(n.id);
@@ -873,7 +883,7 @@
     head.dataset.outlineLabel = n.label;
     head.className = 'reader-heading depth-' + depth;
     head.innerHTML = (n.badge ? '<span class="cl">' + P.escapeHtml(n.badge) + '</span>' : '') +
-      (n.isNew ? NEW_PILL : '') + P.escapeHtml(n.label);
+      statusPill(n) + P.escapeHtml(n.label);
     frag.appendChild(head);
     n.entries.forEach(function (e) {
       var block = document.createElement('div');
@@ -881,7 +891,7 @@
       block.dataset.key = entryKey(e);
       block.innerHTML = '<div class="reader-entry-head">' +
         '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
-        (e.isNew ? NEW_PILL : '') +
+        statusPill(e) +
         '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
         '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>' +
         (e.penalties ? '<button type="button" class="penalty-link">Penalty</button>' : '');
@@ -929,20 +939,6 @@
       });
       var crumbSection = $('breadcrumbSection');
       if (crumbSection) crumbSection.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
-
-      var mobileBar = document.querySelector('.reader-mobile-bar');
-      if (mobileBar) {
-        var topNodes = state.readerTree || [];
-        var topId = activeTopHeading ? activeTopHeading.dataset.outlineId : '';
-        var topIdx = topNodes.findIndex(function (n) { return n.id === topId; });
-        mobileBar.dataset.activeTopId = topId;
-        var mnavLabel = $('mnavLabel'), mnavCount = $('mnavCount');
-        if (mnavLabel) mnavLabel.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
-        if (mnavCount) mnavCount.textContent = topIdx >= 0 ? (topIdx + 1) + ' / ' + topNodes.length : '';
-        var mnavPrev = $('mnavPrev'), mnavNext = $('mnavNext');
-        if (mnavPrev) mnavPrev.disabled = topIdx <= 0;
-        if (mnavNext) mnavNext.disabled = topIdx < 0 || topIdx >= topNodes.length - 1;
-      }
     }
     readerScrollHandler = function () {
       if (ticking) return;
@@ -1066,17 +1062,20 @@
       '<span class="crumb-sep">/</span>' +
       '<button type="button" class="crumb-book">' + P.escapeHtml(titleText) + '</button>' +
       '<span class="crumb-sep">/</span>' +
-      '<span class="crumb-section" id="breadcrumbSection"></span>';
+      '<span class="crumb-section" id="breadcrumbSection"></span>' +
+      '<button type="button" class="reader-back-search" aria-label="Search">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg></button>';
     back.querySelector('.crumb-home').addEventListener('click', goHome);
     back.querySelector('.crumb-book').addEventListener('click', function () { scroll.scrollTo({ top: 0, behavior: 'smooth' }); });
+    // Below 820px (see styles.css) there's no room for the persistent
+    // outline pane and its own "search within" box, so this icon is the
+    // mobile entry point instead — it opens the same global search used
+    // everywhere else in the app, Wikipedia-style simplicity over a
+    // dedicated in-doc nav.
+    back.querySelector('.reader-back-search').addEventListener('click', openSearchModal);
 
     var nav = document.createElement('nav');
     nav.className = 'outline';
-
-    var sheetHead = document.createElement('div');
-    sheetHead.className = 'outline-sheet-head';
-    sheetHead.innerHTML = '<span>Chapters</span><button type="button" class="outline-sheet-close" aria-label="Close">✕</button>';
-    nav.appendChild(sheetHead);
 
     state.readerNewOnly = false;
 
@@ -1139,51 +1138,6 @@
     row.appendChild(nav);
     row.appendChild(content);
 
-    // Mobile fallback (see max-width:820px in styles.css): the full chapter
-    // outline no longer sits inline above the content — it opens as a
-    // bottom sheet from this slim bar instead, Google-Docs-tabs-style, so
-    // the reader opens straight into the text rather than a screen of nav.
-    var sheetBackdrop = document.createElement('div');
-    sheetBackdrop.className = 'outline-sheet-backdrop';
-
-    var mobileBar = document.createElement('div');
-    mobileBar.className = 'reader-mobile-bar';
-    mobileBar.innerHTML =
-      '<button type="button" class="mnav-step" id="mnavPrev" aria-label="Previous chapter">' +
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5L5 8l5 4.5"></path></svg></button>' +
-      '<button type="button" class="mnav-current"><span class="mnav-label" id="mnavLabel"></span><span class="mnav-count" id="mnavCount"></span></button>' +
-      '<button type="button" class="mnav-step" id="mnavNext" aria-label="Next chapter">' +
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l5 4.5-5 4.5"></path></svg></button>' +
-      '<button type="button" class="mnav-search" aria-label="Search within ' + P.escapeHtml(titleText) + '">' +
-      '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg></button>';
-
-    function openOutlineSheet(focusSearch) {
-      nav.classList.add('open');
-      sheetBackdrop.classList.add('show');
-      if (focusSearch) setTimeout(function () { searchInput.focus(); }, 260);
-    }
-    function closeOutlineSheet() {
-      nav.classList.remove('open');
-      sheetBackdrop.classList.remove('show');
-    }
-    sheetHead.querySelector('.outline-sheet-close').addEventListener('click', closeOutlineSheet);
-    sheetBackdrop.addEventListener('click', closeOutlineSheet);
-    navList.addEventListener('click', function (ev) { if (ev.target.closest('.outline-link')) closeOutlineSheet(); });
-    mobileBar.querySelector('.mnav-current').addEventListener('click', function () { openOutlineSheet(false); });
-    mobileBar.querySelector('.mnav-search').addEventListener('click', function () { openOutlineSheet(true); });
-
-    function stepChapter(dir) {
-      var topNodes = state.readerTree || [];
-      var curId = mobileBar.dataset.activeTopId;
-      var idx = topNodes.findIndex(function (n) { return n.id === curId; });
-      var targetIdx = idx + dir;
-      if (targetIdx < 0 || targetIdx >= topNodes.length) return;
-      var el = document.getElementById(topNodes[targetIdx].id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    mobileBar.querySelector('#mnavPrev').addEventListener('click', function () { stepChapter(-1); });
-    mobileBar.querySelector('#mnavNext').addEventListener('click', function () { stepChapter(1); });
-
     if (state.glossaryState === 'ready') {
       state.activeDefTerm = null;
       var defPanel = document.createElement('div');
@@ -1194,8 +1148,6 @@
 
     wrap.appendChild(back);
     wrap.appendChild(row);
-    wrap.appendChild(sheetBackdrop);
-    wrap.appendChild(mobileBar);
     results.appendChild(wrap);
 
     document.body.classList.add('reader-mode');
@@ -1692,7 +1644,7 @@
     row.className = 'sm-row' + (idx === 0 ? ' active' : '');
     var crumb = isGuideEntry(e) ? (e.cat || e.doc) : (e.letter ? e.letter + ' — ' + e.doc : e.doc);
     row.innerHTML = '<span class="' + codeClass(e) + ' sm-row-code">' + P.escapeHtml(dispCode(e)) + '</span>' +
-      (e.isNew ? NEW_PILL : '') +
+      statusPill(e) +
       '<span class="sm-row-title">' + highlight(P.escapeHtml(e.title), terms) + '</span>' +
       '<div class="sm-row-path">' + P.escapeHtml(crumb || '') + '</div>';
     row.addEventListener('click', function () { setSmActive(idx); });
@@ -1706,7 +1658,7 @@
       : [e.letter ? e.letter + ' — ' + e.doc : e.doc].concat((e.path || []).slice(0, -1));
     smPreview.innerHTML = '<div class="sm-preview-path">' + crumb.filter(Boolean).map(P.escapeHtml).join(' › ') + '</div>' +
       '<div class="sm-preview-title"><span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
-      (e.isNew ? NEW_PILL : '') +
+      statusPill(e) +
       '<span>' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
       '<button type="button" class="sm-preview-open">' +
       '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h6.5A1.5 1.5 0 0 1 11 4v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5z"></path><path d="M3 11.5A1.5 1.5 0 0 1 4.5 10H11"></path></svg>' +

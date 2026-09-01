@@ -382,9 +382,8 @@ main {
   .reader-mode .reader-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 }
 
-.pill-new {
+.pill-new, .pill-updated {
   display: inline-block;
-  background: #5b6472;
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -395,6 +394,8 @@ main {
   margin-right: 7px;
   vertical-align: middle;
 }
+.pill-new { background: #5b6472; }
+.pill-updated { background: var(--blue-mid); }
 
 .reader-row { display: flex; align-items: flex-start; gap: 44px; }
 

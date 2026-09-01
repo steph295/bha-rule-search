@@ -670,31 +670,49 @@
     var block = document.createElement('div');
     block.className = 'reader-entry' + (e.key === state.selectedKey ? ' selected' : '');
     block.dataset.key = e.key;
-    var flagSelectHtml = state.readerEditMode
-      ? '<select class="reader-entry-flag" title="New / Updated flag">' +
-        '<option value=""' + (!eff.isNew && !eff.isUpdated ? ' selected' : '') + '>Auto</option>' +
-        '<option value="new"' + (eff.isNew ? ' selected' : '') + '>New</option>' +
-        '<option value="updated"' + (eff.isUpdated ? ' selected' : '') + '>Updated</option>' +
-        '<option value="none">Not flagged</option>' +
-        '</select>'
+    // Two independent checkboxes (New / Updated) rather than a single
+    // four-option dropdown — matches the BHA's own editor exactly, and
+    // "auto" is simply neither box checked (defers to automatic
+    // new-entries detection), so there's nothing extra to explain.
+    var flagHtml = state.readerEditMode
+      ? '<div class="reader-entry-flag">' +
+        '<label><input type="checkbox" class="flag-new"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
+        '<label><input type="checkbox" class="flag-updated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
+        '</div>'
       : '';
+    var titleHtml = state.readerEditMode
+      ? '<span class="reader-entry-title editable" tabindex="0" title="Click to edit the title">' + escapeHtml(eff.title) +
+        '<svg class="title-pencil" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg></span>'
+      : '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>';
     block.innerHTML = '<div class="reader-entry-head">' +
       '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
-      '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>' +
+      titleHtml +
       (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
-      flagSelectHtml +
+      flagHtml +
       '</div>' +
       '<div class="rfull-body"></div>';
     renderEntryBody(block.querySelector('.rfull-body'), e, eff.html);
-    var flagSelect = block.querySelector('.reader-entry-flag');
-    if (flagSelect) flagSelect.addEventListener('change', function () { saveEntryFlag(e, flagSelect); });
+    var newCb = block.querySelector('.flag-new'), updCb = block.querySelector('.flag-updated');
+    if (newCb) newCb.addEventListener('change', function () { applyFlag(e, block, newCb.checked ? 'new' : ''); });
+    if (updCb) updCb.addEventListener('change', function () { applyFlag(e, block, updCb.checked ? 'updated' : ''); });
+    var titleEl = block.querySelector('.reader-entry-title.editable');
+    if (titleEl) titleEl.addEventListener('click', function () { startTitleEdit(e, block, titleEl); });
     return block;
   }
 
-  function saveEntryFlag(e, selectEl) {
-    var newFlag = selectEl.value;
+  function markEdited(block) {
+    if (block && !block.querySelector('.edited-dot')) {
+      var dot = document.createElement('span');
+      dot.className = 'edited-dot';
+      dot.title = 'Has a published edit';
+      block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
+    }
+  }
+
+  function applyFlag(e, block, newFlag) {
     var eff = effective(e);
-    selectEl.disabled = true;
+    var newCb = block.querySelector('.flag-new'), updCb = block.querySelector('.flag-updated');
+    newCb.disabled = updCb.disabled = true;
     fetch('/api/save-rule', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: e.key, html: eff.html, flag: newFlag })
@@ -703,18 +721,77 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: eff.html, flag: newFlag, updatedAt: new Date().toISOString() });
-      selectEl.disabled = false;
-      var block = selectEl.closest('.reader-entry');
-      if (block && !block.querySelector('.edited-dot')) {
-        var dot = document.createElement('span');
-        dot.className = 'edited-dot';
-        dot.title = 'Has a published edit';
-        block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
-      }
+      newCb.disabled = updCb.disabled = false;
+      newCb.checked = newFlag === 'new';
+      updCb.checked = newFlag === 'updated';
+      markEdited(block);
     }).catch(function (err) {
-      selectEl.disabled = false;
+      newCb.disabled = updCb.disabled = false;
       alert('Could not publish: ' + err.message);
-      selectEl.value = newFlag === '' ? '' : currentFlagOverride(e); // best-effort revert
+      newCb.checked = eff.isNew; updCb.checked = eff.isUpdated; // revert to last-known state
+    });
+  }
+
+  function startTitleEdit(e, block, titleEl) {
+    var eff = effective(e);
+    var wrap = document.createElement('span');
+    wrap.className = 'title-editing';
+    wrap.innerHTML =
+      '<input type="text" class="title-input" value="' + escapeHtml(eff.title) + '">' +
+      '<button type="button" class="save small">Save</button>' +
+      '<button type="button" class="revert small">Cancel</button>';
+    titleEl.replaceWith(wrap);
+    var input = wrap.querySelector('.title-input');
+    input.focus();
+    input.select();
+    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(titleEl); });
+    wrap.querySelector('.save').addEventListener('click', function () {
+      confirmSaveTitle(e, block, wrap, titleEl, input.value.trim());
+    });
+  }
+
+  function confirmSaveTitle(e, block, wrap, titleEl, newTitle) {
+    if (!newTitle) { alert('Give it a title first.'); return; }
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Publish this title?</h3>' +
+      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doSaveTitle(e, block, wrap, newTitle);
+    });
+  }
+
+  function doSaveTitle(e, block, wrap, newTitle) {
+    var btn = wrap.querySelector('.save');
+    btn.disabled = true;
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: e.key, title: newTitle, flag: currentFlagOverride(e) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { title: newTitle, updatedAt: new Date().toISOString() });
+      var fresh = document.createElement('span');
+      fresh.className = 'reader-entry-title editable';
+      fresh.tabIndex = 0;
+      fresh.title = 'Click to edit the title';
+      fresh.innerHTML = escapeHtml(newTitle) +
+        '<svg class="title-pencil" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
+      fresh.addEventListener('click', function () { startTitleEdit(e, block, fresh); });
+      wrap.replaceWith(fresh);
+      // Only findable now that the title span exists again in place of wrap.
+      markEdited(block);
+    }).catch(function (err) {
+      alert('Could not publish: ' + err.message);
+      btn.disabled = false;
     });
   }
 
@@ -742,6 +819,23 @@
     return '<' + parts.tag + clsAttr + '>' + parts.rnHtml + bodyHtml + '</' + parts.tag + '>';
   }
 
+  function makePencilBtn(title) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'edit-line-pencil';
+    btn.title = title;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
+    return btn;
+  }
+
+  function makeAddGap() {
+    var gap = document.createElement('div');
+    gap.className = 'edit-line-gap';
+    gap.innerHTML = '<button type="button" class="edit-line-add" title="Add a line here">' +
+      '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg></button>';
+    return gap;
+  }
+
   function renderEntryBody(container, e, html) {
     if (!state.readerEditMode) { container.innerHTML = html; return; }
     var tmp = document.createElement('div');
@@ -749,6 +843,9 @@
     var lineEls = Array.prototype.slice.call(tmp.children);
     if (!lineEls.length) { container.innerHTML = html; return; }
     container.innerHTML = '';
+    var leadGap = makeAddGap();
+    container.appendChild(leadGap);
+    leadGap.querySelector('.edit-line-add').addEventListener('click', function () { startNewLine(e, container, leadGap, null); });
     lineEls.forEach(function (el) {
       if (el.tagName !== 'P') { container.appendChild(el); return; }
       var row = document.createElement('div');
@@ -756,15 +853,15 @@
       var content = document.createElement('div');
       content.className = 'edit-line-content';
       content.appendChild(el);
-      var pencil = document.createElement('button');
-      pencil.type = 'button';
-      pencil.className = 'edit-line-pencil';
-      pencil.title = 'Edit this line';
-      pencil.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
+      var pencil = makePencilBtn('Edit this line');
       row.appendChild(content);
       row.appendChild(pencil);
       container.appendChild(row);
       pencil.addEventListener('click', function () { startLineEdit(e, container, row, el); });
+
+      var gap = makeAddGap();
+      container.appendChild(gap);
+      gap.querySelector('.edit-line-add').addEventListener('click', function () { startNewLine(e, container, gap, el); });
     });
   }
 
@@ -786,16 +883,60 @@
     ta.selectionStart = ta.selectionEnd = ta.value.length;
     wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(row); });
     wrap.querySelector('.save').addEventListener('click', function () {
-      confirmSaveLine(e, container, wrap, row, parts, ta.value);
+      confirmLineChange(e, container, wrap, 'Publish this change?', function () { return rebuildLine(parts, ta.value); });
     });
   }
 
-  function confirmSaveLine(e, container, wrap, row, parts, newText) {
+  // Numbers a newly-inserted line off the line it follows, with a letter
+  // suffix (6.2 -> 6.2A) rather than renumbering — same reasoning as
+  // everywhere else in this app: a rule's number is something people cite,
+  // so nothing below the insertion point should ever shift. Inserting at
+  // the very top of an entry (afterEl === null) has no number to append a
+  // letter to, so it gets no visible number at all — same as an unnumbered
+  // lead-in paragraph.
+  function nextInsertedNumber(afterEl) {
+    if (!afterEl) return '';
+    var rn = afterEl.querySelector(':scope > .rn');
+    var base = rn ? stripHtml(rn.innerHTML).trim() : '';
+    if (!base) return '';
+    var m = /^(.*?)([A-Z]?)$/.exec(base);
+    return m[1] + (m[2] ? String.fromCharCode(m[2].charCodeAt(0) + 1) : 'A');
+  }
+
+  function startNewLine(e, container, gap, afterEl) {
+    var className = afterEl ? afterEl.className : 'l0';
+    var newNumber = nextInsertedNumber(afterEl);
+    var wrap = document.createElement('div');
+    wrap.className = 'edit-line-editing';
+    wrap.innerHTML =
+      (newNumber ? '<div class="new-line-number">Numbered <b>' + escapeHtml(newNumber) + '</b> — sits here without renumbering anything below.</div>' : '') +
+      '<textarea class="edit-line-textarea" placeholder="New line…"></textarea>' +
+      '<div class="edit-line-actions">' +
+      '<button type="button" class="save small">Add line</button>' +
+      '<button type="button" class="revert small">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg"></div>';
+    gap.replaceWith(wrap);
+    var ta = wrap.querySelector('.edit-line-textarea');
+    ta.focus();
+    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(gap); });
+    wrap.querySelector('.save').addEventListener('click', function () {
+      if (!ta.value.trim()) { alert('Give the new line some text first.'); return; }
+      confirmLineChange(e, container, wrap, 'Publish this new line?', function () {
+        var rnHtml = newNumber ? '<span class="rn">' + escapeHtml(newNumber) + '</span>' : '';
+        var bodyHtml = escapeHtmlAllowInline(ta.value).replace(/\n/g, '<br>');
+        var clsAttr = className ? ' class="' + className + '"' : '';
+        return '<p' + clsAttr + '>' + rnHtml + bodyHtml + '</p>';
+      });
+    });
+  }
+
+  function confirmLineChange(e, container, wrap, question, buildLineHtml) {
     var overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML =
       '<div class="confirm-box">' +
-      '<h3>Publish this change?</h3>' +
+      '<h3>' + escapeHtml(question) + '</h3>' +
       '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
       '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
       '</div>';
@@ -803,19 +944,25 @@
     overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
     overlay.querySelector('.confirm').addEventListener('click', function () {
       overlay.remove();
-      doSaveLine(e, container, wrap, parts, newText);
+      doSaveLine(e, container, wrap, buildLineHtml());
     });
   }
 
-  function doSaveLine(e, container, wrap, parts, newText) {
+  // Shared by both editing an existing line and inserting a new one: `wrap`
+  // sits exactly where the changed/new content belongs, so walking the
+  // container's current children and swapping `wrap` for `lineHtml`
+  // reconstructs the full entry body either way — add-line gaps contribute
+  // nothing of their own.
+  function doSaveLine(e, container, wrap, lineHtml) {
     var btn = wrap.querySelector('.save');
     var msg = wrap.querySelector('.save-msg');
-    var newLineHtml = rebuildLine(parts, newText);
     var htmlParts = [];
     Array.prototype.forEach.call(container.children, function (child) {
-      if (child === wrap) { htmlParts.push(newLineHtml); return; }
+      if (child === wrap) { htmlParts.push(lineHtml); return; }
       if (child.classList && child.classList.contains('edit-line-row')) {
         htmlParts.push(child.querySelector('.edit-line-content').firstElementChild.outerHTML);
+      } else if (child.classList && child.classList.contains('edit-line-gap')) {
+        return;
       } else {
         htmlParts.push(child.outerHTML);
       }
@@ -832,13 +979,7 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: fullHtml, updatedAt: new Date().toISOString() });
-      var block = container.closest('.reader-entry');
-      if (block && !block.querySelector('.edited-dot')) {
-        var dot = document.createElement('span');
-        dot.className = 'edited-dot';
-        dot.title = 'Has a published edit';
-        block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
-      }
+      markEdited(container.closest('.reader-entry'));
       renderEntryBody(container, e, effective(e).html);
     }).catch(function (err) {
       msg.textContent = 'Could not publish: ' + err.message;
@@ -1070,14 +1211,12 @@
       '</div>' +
       '<textarea id="editBody"></textarea>' +
       '<div class="hint">Plain text — blank lines start a new paragraph. This replaces the formatted sub-clauses (45.1, 45.2 …) with plain paragraphs; it does not preserve the original numbering structure. Select some text first to bold/italicise/underline it.</div>' +
-      '<label for="editFlag">Flag</label>' +
-      '<select id="editFlag">' +
-      '<option value=""' + (!eff.isNew && !eff.isUpdated ? ' selected' : '') + '>Auto (as published)</option>' +
-      '<option value="new"' + (eff.isNew ? ' selected' : '') + '>New</option>' +
-      '<option value="updated"' + (eff.isUpdated ? ' selected' : '') + '>Updated</option>' +
-      '<option value="none">Not flagged</option>' +
-      '</select>' +
-      '<div class="hint">Controls the "New"/"Updated" badge and the New tab/changelog — independent of the automatic new-entries detection.</div>' +
+      '<label>Flag</label>' +
+      '<div class="reader-entry-flag" style="margin-left:0">' +
+      '<label><input type="checkbox" id="editFlagNew"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
+      '<label><input type="checkbox" id="editFlagUpdated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
+      '</div>' +
+      '<div class="hint">Leave both unchecked for Auto — deferring to the automatic new-entries detection.</div>' +
       '<div class="editor-actions">' +
       '<button class="save" id="saveBtn">Publish change</button>' +
       (eff.edited ? '<button class="revert" id="revertBtn" type="button">Discard edit</button>' : '') +
@@ -1091,6 +1230,8 @@
     $('tbUnderline').addEventListener('click', function () { wrapSelection($('editBody'), '<u>', '</u>'); });
     $('saveBtn').addEventListener('click', function () { confirmSave(e); });
     if ($('revertBtn')) $('revertBtn').addEventListener('click', function () { confirmRevert(e); });
+    $('editFlagNew').addEventListener('change', function () { if (this.checked) $('editFlagUpdated').checked = false; });
+    $('editFlagUpdated').addEventListener('change', function () { if (this.checked) $('editFlagNew').checked = false; });
   }
 
   function confirmRevert(e) {
@@ -1166,7 +1307,7 @@
     var title = $('editTitle').value.trim();
     var bodyText = $('editBody').value;
     var html = plainTextToHtml(bodyText);
-    var flag = $('editFlag').value;
+    var flag = $('editFlagNew').checked ? 'new' : $('editFlagUpdated').checked ? 'updated' : '';
     var msg = $('saveMsg');
     var btn = $('saveBtn');
     btn.disabled = true;

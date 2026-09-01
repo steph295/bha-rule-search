@@ -598,7 +598,10 @@
     if (e.kind === 'bhagi') return e.code || 'BHAGI';
     if (e.kind === 'guidedoc') return e.cat === 'BHA General Instructions (BHAGIs)' ? 'BHAGI' : 'Guide';
     if (e.code) return String(e.num);
-    if (e.num != null) return '¶' + e.num;
+    // Same bare-number convention as a manual rule — paragraph numbers in a
+    // standalone Code/Guide restart per document (see parser.js), but BHA's
+    // own site still shows just the number, no "¶" ornament of our own.
+    if (e.num != null) return String(e.num);
     if (e.kind === 'code') return 'Code';
     if (e.kind === 'guide') return 'Guide';
     return 'Text';
@@ -652,7 +655,7 @@
     status.classList.toggle('live', verified);
     status.title = verified
       ? 'Verified against rules.britishhorseracing.com recently'
-      : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy — tap for details';
+      : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy';
   }
 
   // The home hub: one card per top-level document, each opening straight
@@ -1185,8 +1188,13 @@
     }
     var t = state.glossary.terms.filter(function (x) { return x.id === state.activeDefTerm; })[0];
     if (!t) return;
-    panel.innerHTML = '<div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
+    panel.innerHTML = '<div class="def-panel-head"><div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
+      '<button type="button" class="def-panel-close" aria-label="Close definition">✕</button></div>' +
       '<div class="rfull">' + t.html + '</div>';
+    panel.querySelector('.def-panel-close').addEventListener('click', function () {
+      state.activeDefTerm = null;
+      renderDefPanel();
+    });
     // The panel keeps its own scroll position across re-renders (replacing
     // innerHTML doesn't reset it) — without this, picking a short definition
     // right after scrolling through a long one can leave it start out of
@@ -1916,7 +1924,6 @@
     var last = 0;
     try { last = +localStorage.getItem(LS_CHECK) || 0; } catch (e) {}
     if (!force && state.data && Date.now() - last < CHECK_EVERY_MS) return Promise.resolve(false);
-    setPanelMsg('Checking for updates…');
     return getJSON('/api/books/', 20000).then(function (books) {
       try { localStorage.setItem(LS_CHECK, String(Date.now())); } catch (e) {}
       var book = pickBook(books);
@@ -1925,99 +1932,20 @@
         state.source = 'live'; // confirmed current
         saveCache(state.data); // remember the verification across reloads
         renderStatus();
-        setPanelMsg('Up to date — v' + state.data.version + ' is the latest published rulebook.');
         return false;
       }
-      setPanelMsg('Downloading latest rulebook (v' + (book.version || '?') + ')…');
       return getJSON('/api/books/' + book.id + '?with=sections', 90000).then(function (full) {
         var parsed = P.parseBook(full);
         parsed.sourceUpdatedAt = book.updated_at;
         var isUpdate = state.data && state.data.version !== parsed.version;
         adopt(parsed, 'live');
         saveCache(parsed);
-        setPanelMsg('Loaded v' + parsed.version + ' from the BHA site.');
         if (isUpdate) toast('Rules updated to v' + parsed.version);
         return true;
       });
-    }).catch(function (err) {
-      setPanelMsg('Could not reach the BHA site (' + err.message + '). Using the ' +
-        (state.source === 'none' ? 'paste option below' : 'built-in copy') + '.');
-      if (state.source === 'none') openPanel();
-      return false;
+    }).catch(function () {
+      return false; // stay on the cached/built-in copy
     });
-  }
-
-  // -------------------------------------------------------------- panel
-
-  var panel = $('panel');
-  function openPanel() {
-    $('paneldesc').textContent = state.data
-      ? 'Rulebook v' + state.data.version + ' (' + (state.data.year || '') + ') — ' +
-        state.data.entries.length + ' searchable entries. Source: ' +
-        ({ live: 'fetched live from the BHA site', cache: 'saved locally from an earlier live fetch', snapshot: 'built into this page', pasted: 'pasted text', none: 'no data loaded' })[state.source] + '.'
-      : 'No rules data loaded yet.';
-    if (typeof panel.showModal === 'function') panel.showModal();
-    else panel.setAttribute('open', '');
-  }
-  status.addEventListener('click', openPanel);
-  $('panelclose').addEventListener('click', function () { panel.close ? panel.close() : panel.removeAttribute('open'); });
-  $('checknow').addEventListener('click', function () { refresh(true); });
-  function setPanelMsg(m) { $('panelmsg').textContent = m; }
-
-  $('pastego').addEventListener('click', function () {
-    var t = $('pastebox').value.trim();
-    if (!t) { setPanelMsg('Paste the rules text or JSON first.'); return; }
-    try {
-      var parsed;
-      if (t[0] === '{' || t[0] === '[') {
-        var j = JSON.parse(t);
-        var book = Array.isArray(j) ? null : (j.sections ? j : null);
-        if (!book) throw new Error('JSON does not look like a rulebook (expected a book object with sections)');
-        parsed = P.parseBook(book);
-      } else {
-        parsed = parsePastedText(t);
-      }
-      if (!parsed.entries.length) throw new Error('no rules recognised in that text');
-      adopt(parsed, 'pasted');
-      saveCache(parsed);
-      setPanelMsg('Loaded ' + parsed.entries.length + ' entries from pasted content.');
-      panel.close && panel.close();
-      q.focus();
-    } catch (err) {
-      setPanelMsg('Could not parse that: ' + err.message);
-    }
-  });
-
-  // Very forgiving plain-text importer: split on rule-code headings,
-  // otherwise on blank lines.
-  function parsePastedText(t) {
-    var lines = t.split(/\r?\n/);
-    var entries = [];
-    var cur = null;
-    var headRe = /^\s*\(?([A-Za-z])\)?\s*(\d{1,3})\b[.):\-\s]*(.*)$/;
-    lines.forEach(function (line) {
-      var m = headRe.exec(line);
-      if (m && line.trim().length < 120) {
-        cur = {
-          code: m[1].toUpperCase() + m[2], num: +m[2], letter: m[1].toUpperCase(),
-          kind: 'manual', doc: 'Pasted rules', title: m[3].trim() || ('Rule (' + m[1].toUpperCase() + ')' + m[2]),
-          path: [], html: '', _t: []
-        };
-        entries.push(cur);
-      } else if (line.trim()) {
-        if (!cur) {
-          cur = { code: null, num: null, letter: null, kind: 'guide', doc: 'Pasted rules', title: line.trim().slice(0, 80), path: [], html: '', _t: [] };
-          entries.push(cur);
-        }
-        cur._t.push(line.trim());
-      }
-    });
-    entries.forEach(function (e, i) {
-      e.id = i;
-      e.html = e._t.map(function (p) { return '<p class="l0">' + P.escapeHtml(p) + '</p>'; }).join('');
-      delete e._t;
-    });
-    return { bookId: 0, version: 'pasted', publishedAt: null, year: null, manuals: [], entries: entries };
   }
 
   // ---------------------------------------------------------- pdf export

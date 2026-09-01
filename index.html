@@ -113,11 +113,8 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 4px 12px;
-  cursor: pointer;
   flex: none;
-  -webkit-tap-highlight-color: transparent;
 }
-#status:hover { background: var(--blue-pale); }
 #status .dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: var(--amber);
@@ -562,7 +559,17 @@ main {
   border-radius: 12px;
   padding: 16px 18px;
 }
-.def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.def-panel-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); }
+.def-panel-close {
+  flex: none; border: 0; background: #eef2f0; color: var(--ink-soft);
+  width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.def-panel-close:hover { background: var(--blue-pale); color: var(--blue-dark); }
 
 /* Flat list views (search results, "New" tab) get the same persistent
    side panel as the reader instead of a floating popover, so opening a
@@ -1009,7 +1016,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 /* ---- data panel ---- */
 
-#panel, #pdfPanel, #historyPanel, #penaltyPanel {
+#pdfPanel, #historyPanel, #penaltyPanel {
   border: none;
   border-radius: 14px;
   padding: 0;
@@ -1017,10 +1024,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   width: calc(100vw - 40px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
 }
-#panel::backdrop, #pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
+#pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
-#panel h2, #pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
-#panel p, #pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
+#pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
 #pdfPanel, #historyPanel, #penaltyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
 .pdf-chapter-list {
   display: grid;
@@ -1042,15 +1049,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   cursor: pointer;
 }
 .pdf-check-row { margin-bottom: 4px; }
-#panel textarea {
-  width: 100%;
-  height: 130px;
-  font-size: 13px;
-  font-family: ui-monospace, Menlo, monospace;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px;
-}
 .panel-btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .btn {
   border: 0;
@@ -1063,7 +1061,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 }
 .btn.ghost { background: var(--blue-pale); color: var(--blue-dark); }
 .btn:disabled { opacity: 0.5; cursor: default; }
-#panelmsg { font-size: 14px; color: var(--ink-soft); min-height: 1.2em; margin-top: 8px; }
 
 #toast {
   position: fixed;
@@ -1109,7 +1106,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   <button id="pdfBtn" type="button" title="Download as PDF" aria-label="Download as PDF">
     <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
   </button>
-  <button id="status" type="button"><span class="dot"></span><span class="stxt">Loading…</span></button>
+  <span id="status"><span class="dot"></span><span class="stxt">Loading…</span></span>
 </header>
 
 <div class="pagehead">
@@ -1169,22 +1166,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     <span><span class="sm-key">↑↓</span>Navigate</span>
     <span><span class="sm-key">↵</span>Open</span>
     <span><span class="sm-key">Esc</span>Close</span>
-  </div>
-</dialog>
-
-<dialog id="panel">
-  <div class="panel-inner">
-    <h2>Rules data</h2>
-    <p id="paneldesc"></p>
-    <p>The app refreshes itself from <b>rules.britishhorseracing.com</b> when it can.
-       If that site is unreachable, you can paste rules text (or the book JSON) here instead:</p>
-    <textarea id="pastebox" placeholder="Paste rules text or book JSON…"></textarea>
-    <div class="panel-btns">
-      <button id="checknow" class="btn">Check for updates now</button>
-      <button id="pastego" class="btn ghost">Load pasted text</button>
-      <button id="panelclose" class="btn ghost">Close</button>
-    </div>
-    <div id="panelmsg"></div>
   </div>
 </dialog>
 
@@ -2362,7 +2343,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     if (e.kind === 'bhagi') return e.code || 'BHAGI';
     if (e.kind === 'guidedoc') return e.cat === 'BHA General Instructions (BHAGIs)' ? 'BHAGI' : 'Guide';
     if (e.code) return String(e.num);
-    if (e.num != null) return '¶' + e.num;
+    // Same bare-number convention as a manual rule — paragraph numbers in a
+    // standalone Code/Guide restart per document (see parser.js), but BHA's
+    // own site still shows just the number, no "¶" ornament of our own.
+    if (e.num != null) return String(e.num);
     if (e.kind === 'code') return 'Code';
     if (e.kind === 'guide') return 'Guide';
     return 'Text';
@@ -2416,7 +2400,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     status.classList.toggle('live', verified);
     status.title = verified
       ? 'Verified against rules.britishhorseracing.com recently'
-      : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy — tap for details';
+      : 'Using ' + (state.source === 'cache' ? 'locally cached' : 'built-in') + ' copy';
   }
 
   // The home hub: one card per top-level document, each opening straight
@@ -2949,8 +2933,13 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     }
     var t = state.glossary.terms.filter(function (x) { return x.id === state.activeDefTerm; })[0];
     if (!t) return;
-    panel.innerHTML = '<div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
+    panel.innerHTML = '<div class="def-panel-head"><div class="def-panel-term">' + P.escapeHtml(t.term) + '</div>' +
+      '<button type="button" class="def-panel-close" aria-label="Close definition">✕</button></div>' +
       '<div class="rfull">' + t.html + '</div>';
+    panel.querySelector('.def-panel-close').addEventListener('click', function () {
+      state.activeDefTerm = null;
+      renderDefPanel();
+    });
     // The panel keeps its own scroll position across re-renders (replacing
     // innerHTML doesn't reset it) — without this, picking a short definition
     // right after scrolling through a long one can leave it start out of
@@ -3680,7 +3669,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     var last = 0;
     try { last = +localStorage.getItem(LS_CHECK) || 0; } catch (e) {}
     if (!force && state.data && Date.now() - last < CHECK_EVERY_MS) return Promise.resolve(false);
-    setPanelMsg('Checking for updates…');
     return getJSON('/api/books/', 20000).then(function (books) {
       try { localStorage.setItem(LS_CHECK, String(Date.now())); } catch (e) {}
       var book = pickBook(books);
@@ -3689,99 +3677,20 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
         state.source = 'live'; // confirmed current
         saveCache(state.data); // remember the verification across reloads
         renderStatus();
-        setPanelMsg('Up to date — v' + state.data.version + ' is the latest published rulebook.');
         return false;
       }
-      setPanelMsg('Downloading latest rulebook (v' + (book.version || '?') + ')…');
       return getJSON('/api/books/' + book.id + '?with=sections', 90000).then(function (full) {
         var parsed = P.parseBook(full);
         parsed.sourceUpdatedAt = book.updated_at;
         var isUpdate = state.data && state.data.version !== parsed.version;
         adopt(parsed, 'live');
         saveCache(parsed);
-        setPanelMsg('Loaded v' + parsed.version + ' from the BHA site.');
         if (isUpdate) toast('Rules updated to v' + parsed.version);
         return true;
       });
-    }).catch(function (err) {
-      setPanelMsg('Could not reach the BHA site (' + err.message + '). Using the ' +
-        (state.source === 'none' ? 'paste option below' : 'built-in copy') + '.');
-      if (state.source === 'none') openPanel();
-      return false;
+    }).catch(function () {
+      return false; // stay on the cached/built-in copy
     });
-  }
-
-  // -------------------------------------------------------------- panel
-
-  var panel = $('panel');
-  function openPanel() {
-    $('paneldesc').textContent = state.data
-      ? 'Rulebook v' + state.data.version + ' (' + (state.data.year || '') + ') — ' +
-        state.data.entries.length + ' searchable entries. Source: ' +
-        ({ live: 'fetched live from the BHA site', cache: 'saved locally from an earlier live fetch', snapshot: 'built into this page', pasted: 'pasted text', none: 'no data loaded' })[state.source] + '.'
-      : 'No rules data loaded yet.';
-    if (typeof panel.showModal === 'function') panel.showModal();
-    else panel.setAttribute('open', '');
-  }
-  status.addEventListener('click', openPanel);
-  $('panelclose').addEventListener('click', function () { panel.close ? panel.close() : panel.removeAttribute('open'); });
-  $('checknow').addEventListener('click', function () { refresh(true); });
-  function setPanelMsg(m) { $('panelmsg').textContent = m; }
-
-  $('pastego').addEventListener('click', function () {
-    var t = $('pastebox').value.trim();
-    if (!t) { setPanelMsg('Paste the rules text or JSON first.'); return; }
-    try {
-      var parsed;
-      if (t[0] === '{' || t[0] === '[') {
-        var j = JSON.parse(t);
-        var book = Array.isArray(j) ? null : (j.sections ? j : null);
-        if (!book) throw new Error('JSON does not look like a rulebook (expected a book object with sections)');
-        parsed = P.parseBook(book);
-      } else {
-        parsed = parsePastedText(t);
-      }
-      if (!parsed.entries.length) throw new Error('no rules recognised in that text');
-      adopt(parsed, 'pasted');
-      saveCache(parsed);
-      setPanelMsg('Loaded ' + parsed.entries.length + ' entries from pasted content.');
-      panel.close && panel.close();
-      q.focus();
-    } catch (err) {
-      setPanelMsg('Could not parse that: ' + err.message);
-    }
-  });
-
-  // Very forgiving plain-text importer: split on rule-code headings,
-  // otherwise on blank lines.
-  function parsePastedText(t) {
-    var lines = t.split(/\r?\n/);
-    var entries = [];
-    var cur = null;
-    var headRe = /^\s*\(?([A-Za-z])\)?\s*(\d{1,3})\b[.):\-\s]*(.*)$/;
-    lines.forEach(function (line) {
-      var m = headRe.exec(line);
-      if (m && line.trim().length < 120) {
-        cur = {
-          code: m[1].toUpperCase() + m[2], num: +m[2], letter: m[1].toUpperCase(),
-          kind: 'manual', doc: 'Pasted rules', title: m[3].trim() || ('Rule (' + m[1].toUpperCase() + ')' + m[2]),
-          path: [], html: '', _t: []
-        };
-        entries.push(cur);
-      } else if (line.trim()) {
-        if (!cur) {
-          cur = { code: null, num: null, letter: null, kind: 'guide', doc: 'Pasted rules', title: line.trim().slice(0, 80), path: [], html: '', _t: [] };
-          entries.push(cur);
-        }
-        cur._t.push(line.trim());
-      }
-    });
-    entries.forEach(function (e, i) {
-      e.id = i;
-      e.html = e._t.map(function (p) { return '<p class="l0">' + P.escapeHtml(p) + '</p>'; }).join('');
-      delete e._t;
-    });
-    return { bookId: 0, version: 'pasted', publishedAt: null, year: null, manuals: [], entries: entries };
   }
 
   // ---------------------------------------------------------- pdf export

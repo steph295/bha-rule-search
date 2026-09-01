@@ -97,11 +97,8 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 4px 12px;
-  cursor: pointer;
   flex: none;
-  -webkit-tap-highlight-color: transparent;
 }
-#status:hover { background: var(--blue-pale); }
 #status .dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: var(--amber);
@@ -546,7 +543,17 @@ main {
   border-radius: 12px;
   padding: 16px 18px;
 }
-.def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.def-panel-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); }
+.def-panel-close {
+  flex: none; border: 0; background: #eef2f0; color: var(--ink-soft);
+  width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.def-panel-close:hover { background: var(--blue-pale); color: var(--blue-dark); }
 
 /* Flat list views (search results, "New" tab) get the same persistent
    side panel as the reader instead of a floating popover, so opening a
@@ -993,7 +1000,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 /* ---- data panel ---- */
 
-#panel, #pdfPanel, #historyPanel, #penaltyPanel {
+#pdfPanel, #historyPanel, #penaltyPanel {
   border: none;
   border-radius: 14px;
   padding: 0;
@@ -1001,10 +1008,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   width: calc(100vw - 40px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
 }
-#panel::backdrop, #pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
+#pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
-#panel h2, #pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
-#panel p, #pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
+#pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
 #pdfPanel, #historyPanel, #penaltyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
 .pdf-chapter-list {
   display: grid;
@@ -1026,15 +1033,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   cursor: pointer;
 }
 .pdf-check-row { margin-bottom: 4px; }
-#panel textarea {
-  width: 100%;
-  height: 130px;
-  font-size: 13px;
-  font-family: ui-monospace, Menlo, monospace;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px;
-}
 .panel-btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .btn {
   border: 0;
@@ -1047,7 +1045,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 }
 .btn.ghost { background: var(--blue-pale); color: var(--blue-dark); }
 .btn:disabled { opacity: 0.5; cursor: default; }
-#panelmsg { font-size: 14px; color: var(--ink-soft); min-height: 1.2em; margin-top: 8px; }
 
 #toast {
   position: fixed;

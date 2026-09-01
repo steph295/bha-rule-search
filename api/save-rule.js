@@ -25,11 +25,12 @@ module.exports = async function handler(req, res) {
 
   const body = req.body || {};
   const key = typeof body.key === 'string' ? body.key.trim() : '';
+  const doDelete = body.delete === true;
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const html = typeof body.html === 'string' ? body.html : '';
-  const flag = body.flag === 'new' || body.flag === 'not-new' ? body.flag : undefined;
+  const flag = ['new', 'updated', 'none', 'not-new'].includes(body.flag) ? body.flag : undefined;
   if (!key) { res.status(400).json({ error: 'missing key' }); return; }
-  if (!title && !html) { res.status(400).json({ error: 'nothing to save — provide title and/or html' }); return; }
+  if (!doDelete && !title && !html) { res.status(400).json({ error: 'nothing to save — provide title and/or html' }); return; }
 
   const api = 'https://api.github.com/repos/' + REPO + '/contents/' + FILE_PATH;
 
@@ -52,13 +53,17 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const prev = current.overrides[key] || {};
-  current.overrides[key] = {
-    title: title || prev.title,
-    html: html || prev.html,
-    flag: flag,
-    updatedAt: new Date().toISOString()
-  };
+  if (doDelete) {
+    delete current.overrides[key];
+  } else {
+    const prev = current.overrides[key] || {};
+    current.overrides[key] = {
+      title: title || prev.title,
+      html: html || prev.html,
+      flag: flag,
+      updatedAt: new Date().toISOString()
+    };
+  }
   current.updatedAt = new Date().toISOString();
 
   const newContent = Buffer.from(JSON.stringify(current, null, 1)).toString('base64');
@@ -67,7 +72,7 @@ module.exports = async function handler(req, res) {
       method: 'PUT',
       headers: Object.assign({ 'Content-Type': 'application/json' }, ghHeaders()),
       body: JSON.stringify({
-        message: 'Admin edit: ' + key,
+        message: (doDelete ? 'Admin revert: ' : 'Admin edit: ') + key,
         content: newContent,
         branch: BRANCH,
         sha: sha

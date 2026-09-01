@@ -72,7 +72,7 @@
         </nav>
         <div class="toolbar-right">
           <input id="search" type="text" placeholder="Search code or keyword…">
-          <button id="uploadGuideBtn" class="btn ghost" type="button">Upload guide</button>
+          <button id="uploadGuideBtn" class="btn ghost" type="button">+ New</button>
         </div>
       </div>
 
@@ -96,6 +96,7 @@
           <button type="button" class="crumb-book" id="readerCrumbBook"></button>
           <span class="crumb-sep">/</span>
           <span class="crumb-section" id="readerCrumbSection"></span>
+          <button type="button" class="reader-edit-toggle" id="readerEditToggle">Edit</button>
         </nav>
         <div class="reader-row">
           <nav class="outline" id="readerOutline">
@@ -123,13 +124,16 @@
     </section>
 
     <section id="view-media" class="view" hidden>
-      <div class="soon-panel">
-        <div class="soon-icon">
-          <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1.5"></rect><circle cx="6" cy="6.5" r="1.1"></circle><path d="M13.2 10.5L10 7.5l-5 5"></path></svg>
+      <div class="manuals-toolbar">
+        <nav class="media-breadcrumb" id="mediaBreadcrumb" aria-label="Breadcrumb"></nav>
+        <div class="toolbar-right">
+          <button id="mediaCreateFolderBtn" class="btn ghost" type="button">Create folder</button>
+          <button id="mediaUploadBtn" class="btn" type="button">Upload</button>
+          <input id="mediaFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.svg,.webp" hidden>
         </div>
-        <h2>Media Library</h2>
-        <p>Uploading and managing images and PDF snapshots from this screen is planned but not built yet. For now, files are managed directly in the <code>bha-rule-search</code> GitHub repo.</p>
       </div>
+      <div class="media-grid" id="mediaGrid"></div>
+      <div class="save-msg" id="mediaMsg" style="margin:0 20px"></div>
     </section>
 
     <section id="view-structure" class="view" hidden>
@@ -208,6 +212,10 @@
 
 <dialog id="uploadGuidePanel">
   <div class="editor-card" id="uploadGuideCard"></div>
+</dialog>
+
+<dialog id="mediaFolderPanel">
+  <div class="editor-card" id="mediaFolderCard"></div>
 </dialog>
 
 <script src="../src/pdf-export.js"></script>

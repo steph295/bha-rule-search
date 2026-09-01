@@ -107,10 +107,10 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 /* ---- manuals toolbar + home cards ---- */
 .manuals-toolbar {
   max-width: 1100px; margin: 0 auto; padding: 18px 20px 0;
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: nowrap;
   border-bottom: 1px solid var(--line);
 }
-.tabs { display: flex; gap: 4px; }
+.tabs { display: flex; gap: 4px; flex: none; }
 .tabs button {
   border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--ink-soft);
   padding: 7px 10px 8px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px;
@@ -118,9 +118,11 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 }
 .tabs button:hover { color: var(--blue-dark); }
 .tabs button.active { color: var(--blue-dark); font-weight: 650; border-bottom-color: var(--blue-mid); }
-.toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Stays on the same row as the tabs — the search box is the one thing
+   allowed to shrink so "+ New" never wraps onto its own line. */
+.toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
 .manuals-toolbar input {
-  flex: 0 1 320px; box-sizing: border-box; font-size: 14.5px; padding: 8px 12px;
+  flex: 0 1 320px; min-width: 120px; box-sizing: border-box; font-size: 14.5px; padding: 8px 12px;
   border: 1px solid var(--line); border-radius: 9px;
 }
 
@@ -155,13 +157,46 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 }
 .doc-edit-btn:hover { background: var(--blue-pale); color: var(--blue-dark); border-color: var(--blue-mid); }
 
-#bookMetaPanel, #uploadGuidePanel {
+#bookMetaPanel, #uploadGuidePanel, #mediaFolderPanel {
   border: none; border-radius: 14px; padding: 0; max-width: 480px;
   width: calc(100vw - 40px); max-height: calc(100vh - 60px); overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0,0,0,.3); background: transparent;
 }
-#bookMetaPanel::backdrop, #uploadGuidePanel::backdrop { background: rgba(7,43,31,.55); }
-#bookMetaPanel .editor-card, #uploadGuidePanel .editor-card { border-radius: 14px; }
+#bookMetaPanel::backdrop, #uploadGuidePanel::backdrop, #mediaFolderPanel::backdrop { background: rgba(7,43,31,.55); }
+#bookMetaPanel .editor-card, #uploadGuidePanel .editor-card, #mediaFolderPanel .editor-card { border-radius: 14px; }
+
+/* ---- media library ---- */
+.media-breadcrumb { display: flex; align-items: center; gap: 4px; flex: 1 1 auto; min-width: 0; }
+.media-crumb {
+  border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--ink-soft);
+  padding: 7px 4px 8px; cursor: pointer; white-space: nowrap;
+}
+.media-crumb:last-child { color: var(--ink); font-weight: 650; }
+.media-crumb:hover { color: var(--blue-dark); }
+.media-crumb-sep { color: var(--ink-soft); opacity: .6; }
+.media-grid {
+  max-width: 1100px; margin: 18px auto 0; padding: 0 20px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+}
+.media-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 10px; cursor: pointer; text-decoration: none; color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.media-card:hover { border-color: var(--blue-mid); box-shadow: 0 4px 14px rgba(0,47,113,.12); }
+.media-thumb {
+  width: 100%; height: 80px; object-fit: contain; border-radius: 8px;
+  background: var(--bg); display: flex; align-items: center; justify-content: center;
+  color: var(--blue-mid); flex: none;
+}
+.folder-thumb { background: var(--blue-pale); }
+.file-thumb { background: var(--bg); }
+.media-name {
+  font-size: 13px; font-weight: 600; color: var(--ink); text-align: center;
+  word-break: break-word; line-height: 1.3;
+}
+.media-meta { font-size: 11.5px; color: var(--ink-soft); }
 #uploadGuidePanel input[type=file] {
   display: block; width: 100%; box-sizing: border-box; font-size: 13.5px;
   border: 1px dashed var(--line); border-radius: 9px; padding: 10px; margin-top: 2px;
@@ -322,12 +357,48 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-entry-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
 .reader-entry-title { font-weight: 650; font-size: 14.5px; }
 .reader-entry.selected { background: var(--blue-pale); box-shadow: inset 0 0 0 1px var(--blue-mid); }
-.reader-entry-edit {
+.reader-entry-flag {
   margin-left: auto; flex: none; border: 1px solid var(--line); background: var(--card);
-  color: var(--blue-mid); border-radius: 7px; padding: 3px 10px; font-size: 12px; cursor: pointer;
+  color: var(--ink); border-radius: 7px; padding: 3px 8px; font-size: 12px; cursor: pointer;
 }
-.reader-entry-edit:hover { border-color: var(--blue-mid); background: #fff; }
+.reader-entry-flag:hover { border-color: var(--blue-mid); }
 .reader-entry .edited-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+
+/* ---- reader: edit mode toggle + per-line editing ---- */
+/* Scoped as ".reader-back .reader-edit-toggle" (two classes) rather than
+   ".reader-edit-toggle" alone so it outranks the generic ".reader-back
+   button" rule above (element+class) — otherwise that rule's padding/
+   background/color would win regardless of source order. */
+.reader-back .reader-edit-toggle {
+  margin-left: auto; flex: none; border: 1px solid var(--line); background: var(--card);
+  color: var(--ink); border-radius: 7px; padding: 4px 12px; font-size: 13px;
+  font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.reader-back .reader-edit-toggle:hover { border-color: var(--blue-mid); color: var(--blue-dark); text-decoration: none; }
+.reader-back .reader-edit-toggle.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+.edit-line-row { display: flex; align-items: flex-start; gap: 8px; }
+.edit-line-content { flex: 1; min-width: 0; }
+.edit-line-pencil {
+  flex: none; margin-top: 12px; width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  opacity: 0; transition: opacity .1s;
+}
+.edit-line-row:hover .edit-line-pencil { opacity: 1; }
+.edit-line-pencil:hover { border-color: var(--blue-mid); color: var(--blue-dark); background: var(--blue-pale); }
+
+.edit-line-editing { margin: 10px 0; }
+.edit-line-textarea {
+  width: 100%; box-sizing: border-box; min-height: 70px; font: inherit; font-size: 14px;
+  padding: 8px 10px; border: 1px solid var(--blue-mid); border-radius: 8px; resize: vertical;
+}
+.edit-line-actions { display: flex; gap: 8px; margin-top: 6px; }
+.edit-line-actions button.small {
+  font-size: 12.5px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+}
+.edit-line-actions button.save.small { border: 0; background: var(--blue); color: #fff; }
+.edit-line-actions button.revert.small { border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); }
 
 .rfull-body p { margin: 12px 0; font-size: 14px; line-height: 1.6; color: #3c4540; position: relative; }
 .rfull-body .l1 { padding-left: 40px; font-weight: 500; }
@@ -341,8 +412,10 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rfull-body th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull-body ul { margin: 6px 0; padding-left: 22px; }
 
-#readerEditorSlot { flex: 0 0 360px; }
-#readerEditorSlot .editor-card { position: sticky; top: 14px; }
+/* Rule editing now happens inline (a pencil per line, see .edit-line-*
+   below), not in this side panel — kept in the DOM only as a harmless
+   fallback for selectEntry(), so it's hidden rather than removed. */
+#readerEditorSlot { display: none; }
 
 /* Desktop: pin the header and give the outline/content/editor columns
    their own independent scroll instead of the page — so only "the doc nav"

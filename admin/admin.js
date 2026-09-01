@@ -19,13 +19,16 @@
     readerBook: null,    // 'rules' | 'guides' | 'bhagi'
     readerTree: null,
     readerNewOnly: false,
+    readerEditMode: false,
     definitions: [],        // [{id, term, html, slug}] — ORIGINAL, pre-override
     definitionOverrides: {}, // termId -> {html, updatedAt}
     defQuery: '',
     selectedDefId: null,
     bookOverrides: {}, // 'rules'|'guides'|'bhagi' -> {title, whatsNew, updatedAt}
     customDefinitions: {}, // id -> {term, html, updatedAt} — admin-added terms not in BHA's own Definitions chapter
-    uploadedGuides: {} // id -> {title, cat, dated, url, html, updatedAt} — admin-uploaded Guide Library PDFs
+    uploadedGuides: {}, // id -> {title, cat, dated, url, html, updatedAt} — admin-uploaded Guide Library PDFs
+    mediaPath: 'uploads', // current folder browsed in the Media Library
+    mediaItems: null      // [{name, path, type, size, url}] for state.mediaPath, or null while loading
   };
 
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
@@ -82,12 +85,18 @@
     }).join('');
   }
 
+  // flag is one of: 'new' | 'updated' | 'none' (explicitly not flagged) |
+  // undefined/'' (auto — defers to the BHA's own highlighted-in-source
+  // detection, e.solNew). 'not-new' is accepted too, as an alias for 'none'
+  // — earlier overrides published before "Updated" existed used that name.
   function effective(e) {
     var o = state.overrides[e.key];
+    var flag = o && (o.flag === 'not-new' ? 'none' : o.flag);
     return {
       title: (o && o.title) || e.title,
       html: (o && o.html) || e.html,
-      isNew: o && o.flag === 'new' ? true : o && o.flag === 'not-new' ? false : !!e.isNew,
+      isNew: flag === 'new' ? true : flag ? false : !!e.isNew,
+      isUpdated: flag === 'updated',
       edited: !!o
     };
   }
@@ -264,12 +273,16 @@
       'v' + state.version + ' · ' + (state.year || '') + ' · ' + ruleEntries.length + ' entries',
       function () { enterReader('rules'); },
       { whatsNew: rulesMeta.whatsNew, onEdit: function () { openBookMetaPanel('rules', 'Rules of Racing'); } }));
-    wrap.appendChild(docCard('library', 'Guide Library',
+    var guidesMeta = effectiveBookMeta('guides', 'Guide Library');
+    wrap.appendChild(docCard('library', guidesMeta.title,
       guideEntries.length + ' entries',
-      function () { enterReader('guides'); }));
-    wrap.appendChild(docCard('bhagi', 'BHAGIs',
+      function () { enterReader('guides'); },
+      { whatsNew: guidesMeta.whatsNew, onEdit: function () { openBookMetaPanel('guides', 'Guide Library'); } }));
+    var bhagiMeta = effectiveBookMeta('bhagi', 'BHAGIs');
+    wrap.appendChild(docCard('bhagi', bhagiMeta.title,
       Object.keys(bhagiDocs).length + ' sections · ' + bhagiEntries.length + ' entries',
-      function () { enterReader('bhagi'); }));
+      function () { enterReader('bhagi'); },
+      { whatsNew: bhagiMeta.whatsNew, onEdit: function () { openBookMetaPanel('bhagi', 'BHAGIs'); } }));
   }
 
   // ---- book metadata (title override + "what's new" blurb) --------------
@@ -637,26 +650,212 @@
     head.className = 'reader-heading depth-' + depth;
     head.innerHTML = (n.badge ? '<span class="code">' + escapeHtml(n.badge) + '</span>' : '') + escapeHtml(n.label);
     frag.appendChild(head);
-    n.entries.forEach(function (e) {
-      var eff = effective(e);
-      var block = document.createElement('div');
-      block.className = 'reader-entry' + (e.key === state.selectedKey ? ' selected' : '');
-      block.dataset.key = e.key;
-      block.innerHTML = '<div class="reader-entry-head">' +
-        '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
-        '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>' +
-        (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
-        '<button type="button" class="reader-entry-edit">Edit</button></div>' +
-        '<div class="rfull-body">' + eff.html + '</div>';
-      block.querySelector('.reader-entry-edit').addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        selectEntry(e.key);
-      });
-      frag.appendChild(block);
-    });
+    n.entries.forEach(function (e) { frag.appendChild(renderReaderEntry(e)); });
     n.children.forEach(function (c) { frag.appendChild(renderReaderSection(c, depth + 1)); });
     return frag;
   }
+
+  // Reads the flag currently published for this entry (if any) — used so a
+  // line edit's save doesn't silently clear an existing New/Updated flag,
+  // and vice versa (save-rule.js replaces the whole override record, so
+  // every save has to resend whatever it isn't changing).
+  function currentFlagOverride(e) {
+    var o = state.overrides[e.key];
+    var f = o && o.flag;
+    return f === 'not-new' ? 'none' : (f || '');
+  }
+
+  function renderReaderEntry(e) {
+    var eff = effective(e);
+    var block = document.createElement('div');
+    block.className = 'reader-entry' + (e.key === state.selectedKey ? ' selected' : '');
+    block.dataset.key = e.key;
+    var flagSelectHtml = state.readerEditMode
+      ? '<select class="reader-entry-flag" title="New / Updated flag">' +
+        '<option value=""' + (!eff.isNew && !eff.isUpdated ? ' selected' : '') + '>Auto</option>' +
+        '<option value="new"' + (eff.isNew ? ' selected' : '') + '>New</option>' +
+        '<option value="updated"' + (eff.isUpdated ? ' selected' : '') + '>Updated</option>' +
+        '<option value="none">Not flagged</option>' +
+        '</select>'
+      : '';
+    block.innerHTML = '<div class="reader-entry-head">' +
+      '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
+      '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>' +
+      (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
+      flagSelectHtml +
+      '</div>' +
+      '<div class="rfull-body"></div>';
+    renderEntryBody(block.querySelector('.rfull-body'), e, eff.html);
+    var flagSelect = block.querySelector('.reader-entry-flag');
+    if (flagSelect) flagSelect.addEventListener('change', function () { saveEntryFlag(e, flagSelect); });
+    return block;
+  }
+
+  function saveEntryFlag(e, selectEl) {
+    var newFlag = selectEl.value;
+    var eff = effective(e);
+    selectEl.disabled = true;
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: e.key, html: eff.html, flag: newFlag })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: eff.html, flag: newFlag, updatedAt: new Date().toISOString() });
+      selectEl.disabled = false;
+      var block = selectEl.closest('.reader-entry');
+      if (block && !block.querySelector('.edited-dot')) {
+        var dot = document.createElement('span');
+        dot.className = 'edited-dot';
+        dot.title = 'Has a published edit';
+        block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
+      }
+    }).catch(function (err) {
+      selectEl.disabled = false;
+      alert('Could not publish: ' + err.message);
+      selectEl.value = newFlag === '' ? '' : currentFlagOverride(e); // best-effort revert
+    });
+  }
+
+  // ---- reader: per-line editing --------------------------------------
+  //
+  // Editing happens one rule clause at a time — a pencil next to each line
+  // (only shown once "Edit" is toggled on) opens an inline textarea for
+  // just that line's text, matching the BHA's own editor rather than this
+  // tool's earlier one-big-textarea-per-rule editor. The rule numbering
+  // (the leading "45.1" etc, a <span class="rn">) is preserved untouched —
+  // only the prose after it is ever editable. Only <p> lines get a pencil;
+  // tables/lists stay read-only here rather than risk mangling their
+  // structure through a plain-text round trip.
+  function lineParts(el) {
+    var clone = el.cloneNode(true);
+    var rn = clone.querySelector(':scope > .rn');
+    var rnHtml = rn ? rn.outerHTML : '';
+    if (rn) rn.parentNode.removeChild(rn);
+    return { tag: el.tagName.toLowerCase(), className: el.className, rnHtml: rnHtml, text: stripHtml(clone.innerHTML) };
+  }
+
+  function rebuildLine(parts, newText) {
+    var bodyHtml = escapeHtmlAllowInline(newText).replace(/\n/g, '<br>');
+    var clsAttr = parts.className ? ' class="' + parts.className + '"' : '';
+    return '<' + parts.tag + clsAttr + '>' + parts.rnHtml + bodyHtml + '</' + parts.tag + '>';
+  }
+
+  function renderEntryBody(container, e, html) {
+    if (!state.readerEditMode) { container.innerHTML = html; return; }
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    var lineEls = Array.prototype.slice.call(tmp.children);
+    if (!lineEls.length) { container.innerHTML = html; return; }
+    container.innerHTML = '';
+    lineEls.forEach(function (el) {
+      if (el.tagName !== 'P') { container.appendChild(el); return; }
+      var row = document.createElement('div');
+      row.className = 'edit-line-row';
+      var content = document.createElement('div');
+      content.className = 'edit-line-content';
+      content.appendChild(el);
+      var pencil = document.createElement('button');
+      pencil.type = 'button';
+      pencil.className = 'edit-line-pencil';
+      pencil.title = 'Edit this line';
+      pencil.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
+      row.appendChild(content);
+      row.appendChild(pencil);
+      container.appendChild(row);
+      pencil.addEventListener('click', function () { startLineEdit(e, container, row, el); });
+    });
+  }
+
+  function startLineEdit(e, container, row, lineEl) {
+    var parts = lineParts(lineEl);
+    var wrap = document.createElement('div');
+    wrap.className = 'edit-line-editing';
+    wrap.innerHTML =
+      '<textarea class="edit-line-textarea"></textarea>' +
+      '<div class="edit-line-actions">' +
+      '<button type="button" class="save small">Save</button>' +
+      '<button type="button" class="revert small">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg"></div>';
+    row.replaceWith(wrap);
+    var ta = wrap.querySelector('.edit-line-textarea');
+    ta.value = parts.text;
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(row); });
+    wrap.querySelector('.save').addEventListener('click', function () {
+      confirmSaveLine(e, container, wrap, row, parts, ta.value);
+    });
+  }
+
+  function confirmSaveLine(e, container, wrap, row, parts, newText) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Publish this change?</h3>' +
+      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doSaveLine(e, container, wrap, parts, newText);
+    });
+  }
+
+  function doSaveLine(e, container, wrap, parts, newText) {
+    var btn = wrap.querySelector('.save');
+    var msg = wrap.querySelector('.save-msg');
+    var newLineHtml = rebuildLine(parts, newText);
+    var htmlParts = [];
+    Array.prototype.forEach.call(container.children, function (child) {
+      if (child === wrap) { htmlParts.push(newLineHtml); return; }
+      if (child.classList && child.classList.contains('edit-line-row')) {
+        htmlParts.push(child.querySelector('.edit-line-content').firstElementChild.outerHTML);
+      } else {
+        htmlParts.push(child.outerHTML);
+      }
+    });
+    var fullHtml = htmlParts.join('');
+    btn.disabled = true;
+    msg.textContent = 'Publishing…';
+    msg.className = 'save-msg';
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: e.key, html: fullHtml, flag: currentFlagOverride(e) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      var block = container.closest('.reader-entry');
+      if (block && !block.querySelector('.edited-dot')) {
+        var dot = document.createElement('span');
+        dot.className = 'edited-dot';
+        dot.title = 'Has a published edit';
+        block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
+      }
+      renderEntryBody(container, e, effective(e).html);
+    }).catch(function (err) {
+      msg.textContent = 'Could not publish: ' + err.message;
+      msg.className = 'save-msg err';
+      btn.disabled = false;
+    });
+  }
+
+  function toggleReaderEditMode() {
+    state.readerEditMode = !state.readerEditMode;
+    if ($('readerEditToggle')) {
+      $('readerEditToggle').textContent = state.readerEditMode ? 'Done editing' : 'Edit';
+      $('readerEditToggle').classList.toggle('active', state.readerEditMode);
+    }
+    renderReaderBody($('readerSearch') ? $('readerSearch').value : '');
+  }
+  if ($('readerEditToggle')) $('readerEditToggle').addEventListener('click', toggleReaderEditMode);
 
   // Desktop gives the outline / content / editor columns their own scroll
   // instead of the page's (see the min-width:981px block in admin.css), so
@@ -770,7 +969,8 @@
     $('readerSearch').value = '';
     state.readerNewOnly = false;
     if ($('readerNewOnly')) $('readerNewOnly').checked = false;
-    $('readerEditorSlot').innerHTML = '<div class="empty-state">Click Edit on any entry to change it.</div>';
+    state.readerEditMode = false;
+    if ($('readerEditToggle')) { $('readerEditToggle').textContent = 'Edit'; $('readerEditToggle').classList.remove('active'); }
     renderReaderBody('');
   }
 
@@ -870,10 +1070,17 @@
       '</div>' +
       '<textarea id="editBody"></textarea>' +
       '<div class="hint">Plain text — blank lines start a new paragraph. This replaces the formatted sub-clauses (45.1, 45.2 …) with plain paragraphs; it does not preserve the original numbering structure. Select some text first to bold/italicise/underline it.</div>' +
-      '<label class="checkbox-row" for="editFlagNew"><input type="checkbox" id="editFlagNew"' + (eff.isNew ? ' checked' : '') + '> Flag as New</label>' +
-      '<div class="hint">Controls the "New" badge and the New tab/changelog — independent of the automatic new-entries detection.</div>' +
+      '<label for="editFlag">Flag</label>' +
+      '<select id="editFlag">' +
+      '<option value=""' + (!eff.isNew && !eff.isUpdated ? ' selected' : '') + '>Auto (as published)</option>' +
+      '<option value="new"' + (eff.isNew ? ' selected' : '') + '>New</option>' +
+      '<option value="updated"' + (eff.isUpdated ? ' selected' : '') + '>Updated</option>' +
+      '<option value="none">Not flagged</option>' +
+      '</select>' +
+      '<div class="hint">Controls the "New"/"Updated" badge and the New tab/changelog — independent of the automatic new-entries detection.</div>' +
       '<div class="editor-actions">' +
       '<button class="save" id="saveBtn">Publish change</button>' +
+      (eff.edited ? '<button class="revert" id="revertBtn" type="button">Discard edit</button>' : '') +
       (eff.edited ? '<span class="hint" style="margin:0">Edited ' + new Date(state.overrides[key].updatedAt).toLocaleString() + '</span>' : '') +
       '</div>' +
       '<div class="save-msg" id="saveMsg"></div>' +
@@ -883,6 +1090,45 @@
     $('tbItalic').addEventListener('click', function () { wrapSelection($('editBody'), '<i>', '</i>'); });
     $('tbUnderline').addEventListener('click', function () { wrapSelection($('editBody'), '<u>', '</u>'); });
     $('saveBtn').addEventListener('click', function () { confirmSave(e); });
+    if ($('revertBtn')) $('revertBtn').addEventListener('click', function () { confirmRevert(e); });
+  }
+
+  function confirmRevert(e) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Discard this edit?</h3>' +
+      '<p>Reverts this entry back to BHA’s own published text — live on the public site immediately. There is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Discard edit</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      doRevert(e);
+    });
+  }
+
+  function doRevert(e) {
+    var msg = $('saveMsg');
+    var btn = $('revertBtn');
+    if (btn) btn.disabled = true;
+    if (msg) { msg.textContent = 'Reverting…'; msg.className = 'save-msg'; }
+
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: e.key, delete: true })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'revert failed'); });
+      return r.json();
+    }).then(function () {
+      delete state.overrides[e.key];
+      selectEntry(e.key);
+    }).catch(function (err) {
+      if (msg) { msg.textContent = 'Could not revert: ' + err.message; msg.className = 'save-msg err'; }
+      if (btn) btn.disabled = false;
+    });
   }
 
   // Wraps the textarea's current selection in the given tag pair (or, with
@@ -920,11 +1166,7 @@
     var title = $('editTitle').value.trim();
     var bodyText = $('editBody').value;
     var html = plainTextToHtml(bodyText);
-    var wantNew = $('editFlagNew').checked;
-    // Only sent when it actually differs from the automatic new-entries
-    // detection — matches every other override field here, which only
-    // exists in overrides.json when it's actually overriding something.
-    var flag = wantNew === !!e.isNew ? '' : (wantNew ? 'new' : 'not-new');
+    var flag = $('editFlag').value;
     var msg = $('saveMsg');
     var btn = $('saveBtn');
     btn.disabled = true;
@@ -939,11 +1181,12 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = { title: title, html: html, flag: flag || undefined, updatedAt: new Date().toISOString() };
-      msg.textContent = 'Published — live on the public site now.';
-      msg.className = 'save-msg ok';
-      btn.disabled = false;
-      if (state.manualsView === 'reader') renderReaderBody($('readerSearch').value);
-      else renderList();
+      // Rebuilds the editor pane too (not just the list) so the "Discard
+      // edit" button and "Edited ..." timestamp appear immediately, without
+      // needing to click away and back.
+      selectEntry(e.key);
+      var freshMsg = $('saveMsg');
+      if (freshMsg) { freshMsg.textContent = 'Published — live on the public site now.'; freshMsg.className = 'save-msg ok'; }
     }).catch(function (err) {
       msg.textContent = 'Could not publish: ' + err.message;
       msg.className = 'save-msg err';
@@ -1214,6 +1457,171 @@
     $('who').style.display = state.loggedIn ? 'flex' : 'none';
   }
 
+  // ---- media library ------------------------------------------------
+  //
+  // Browses uploads/ in the GitHub repo (the same folder upload-guide.js
+  // already writes into) via list-media.js, lets an admin drop in new
+  // images/PDFs (upload-media.js) and create subfolders — really just a
+  // .gitkeep placeholder, since git has no empty-directory concept
+  // (create-media-folder.js). Scoped to uploads/ only: never browses the
+  // rest of the repo (source code, admin.js, etc).
+  var MEDIA_ROOT = 'uploads';
+  var MEDIA_MAX_BYTES = 3 * 1024 * 1024;
+  var MEDIA_IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+
+  function fileToBase64Media(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result).split(',')[1] || ''); };
+      reader.onerror = function () { reject(new Error('could not read that file')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function formatBytes(n) {
+    if (!n) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function renderMediaBreadcrumb() {
+    var parts = state.mediaPath.split('/');
+    var crumb = $('mediaBreadcrumb');
+    var acc = '';
+    crumb.innerHTML = parts.map(function (part, i) {
+      acc = i === 0 ? part : acc + '/' + part;
+      var label = i === 0 ? 'Media library' : part;
+      return '<button type="button" class="media-crumb" data-path="' + escapeHtml(acc) + '">' + escapeHtml(label) + '</button>' +
+        (i < parts.length - 1 ? '<span class="media-crumb-sep">/</span>' : '');
+    }).join('');
+    Array.prototype.forEach.call(crumb.querySelectorAll('.media-crumb'), function (btn) {
+      btn.addEventListener('click', function () { loadMediaFolder(btn.dataset.path); });
+    });
+  }
+
+  function renderMediaGrid() {
+    renderMediaBreadcrumb();
+    var grid = $('mediaGrid');
+    if (!grid) return;
+    if (state.mediaItems === null) { grid.innerHTML = '<div class="empty-state">Loading…</div>'; return; }
+    if (!state.mediaItems.length) { grid.innerHTML = '<div class="empty-state">Nothing here yet.</div>'; return; }
+    grid.innerHTML = state.mediaItems.map(function (it) {
+      if (it.type === 'dir') {
+        return '<button type="button" class="media-card media-folder" data-path="' + escapeHtml(it.path) + '">' +
+          '<span class="media-thumb folder-thumb"><svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A1 1 0 0 1 3 3.5h3l1.2 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5z"></path></svg></span>' +
+          '<span class="media-name">' + escapeHtml(it.name) + '</span>' +
+          '</button>';
+      }
+      var ext = (it.name.split('.').pop() || '').toLowerCase();
+      var isImage = MEDIA_IMAGE_EXT.indexOf(ext) !== -1;
+      var thumb = isImage && it.url
+        ? '<img class="media-thumb" src="' + escapeHtml(it.url) + '" alt="">'
+        : '<span class="media-thumb file-thumb"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h5.5L12 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"></path><path d="M9.3 2.5V5H12"></path></svg></span>';
+      return '<a class="media-card" href="' + escapeHtml(it.url || '#') + '" target="_blank" rel="noopener">' +
+        thumb +
+        '<span class="media-name">' + escapeHtml(it.name) + '</span>' +
+        '<span class="media-meta">' + escapeHtml(formatBytes(it.size)) + '</span>' +
+        '</a>';
+    }).join('');
+    Array.prototype.forEach.call(grid.querySelectorAll('.media-folder'), function (btn) {
+      btn.addEventListener('click', function () { loadMediaFolder(btn.dataset.path); });
+    });
+  }
+
+  function loadMediaFolder(path) {
+    state.mediaPath = path || MEDIA_ROOT;
+    state.mediaItems = null;
+    renderMediaGrid();
+    var msg = $('mediaMsg');
+    if (msg) { msg.textContent = ''; msg.className = 'save-msg'; }
+    fetch('/api/list-media?path=' + encodeURIComponent(state.mediaPath))
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'could not load'); });
+        return r.json();
+      })
+      .then(function (j) {
+        state.mediaItems = j.items || [];
+        renderMediaGrid();
+      })
+      .catch(function (err) {
+        state.mediaItems = [];
+        renderMediaGrid();
+        if (msg) { msg.textContent = 'Could not load: ' + err.message; msg.className = 'save-msg err'; }
+      });
+  }
+
+  if ($('mediaUploadBtn')) $('mediaUploadBtn').addEventListener('click', function () { $('mediaFileInput').click(); });
+  if ($('mediaFileInput')) $('mediaFileInput').addEventListener('change', function () {
+    var file = $('mediaFileInput').files[0];
+    $('mediaFileInput').value = '';
+    if (!file) return;
+    if (file.size > MEDIA_MAX_BYTES) {
+      var msg = $('mediaMsg');
+      if (msg) { msg.textContent = 'That file is too large — up to 3MB.'; msg.className = 'save-msg err'; }
+      return;
+    }
+    var msg = $('mediaMsg');
+    if (msg) { msg.textContent = 'Uploading…'; msg.className = 'save-msg'; }
+    fileToBase64Media(file).then(function (b64) {
+      return fetch('/api/upload-media', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: state.mediaPath, filename: file.name, fileBase64: b64 })
+      });
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'upload failed'); });
+      return r.json();
+    }).then(function () {
+      if (msg) { msg.textContent = 'Uploaded.'; msg.className = 'save-msg ok'; }
+      loadMediaFolder(state.mediaPath);
+    }).catch(function (err) {
+      if (msg) { msg.textContent = 'Could not upload: ' + err.message; msg.className = 'save-msg err'; }
+    });
+  });
+
+  function openMediaFolderPanel() {
+    var panel = $('mediaFolderPanel');
+    var card = $('mediaFolderCard');
+    card.innerHTML =
+      '<span class="code-badge">New folder</span>' +
+      '<label for="mediaFolderName">Folder name</label>' +
+      '<input type="text" id="mediaFolderName" placeholder="e.g. Fixture Lists">' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="mediaFolderSaveBtn">Create folder</button>' +
+      '<button class="revert" id="mediaFolderCancelBtn" type="button">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg" id="mediaFolderMsg"></div>';
+    $('mediaFolderCancelBtn').addEventListener('click', function () {
+      panel.close ? panel.close() : panel.removeAttribute('open');
+    });
+    $('mediaFolderSaveBtn').addEventListener('click', function () {
+      var name = $('mediaFolderName').value.trim();
+      var msg = $('mediaFolderMsg');
+      if (!name) { msg.textContent = 'Give the folder a name first.'; msg.className = 'save-msg err'; return; }
+      var btn = $('mediaFolderSaveBtn');
+      btn.disabled = true;
+      msg.textContent = 'Creating…';
+      msg.className = 'save-msg';
+      fetch('/api/create-media-folder', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: state.mediaPath, name: name })
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'could not create folder'); });
+        return r.json();
+      }).then(function () {
+        panel.close ? panel.close() : panel.removeAttribute('open');
+        loadMediaFolder(state.mediaPath);
+      }).catch(function (err) {
+        msg.textContent = 'Could not create folder: ' + err.message;
+        msg.className = 'save-msg err';
+        btn.disabled = false;
+      });
+    });
+    if (typeof panel.showModal === 'function') panel.showModal();
+    else panel.setAttribute('open', '');
+  }
+  if ($('mediaCreateFolderBtn')) $('mediaCreateFolderBtn').addEventListener('click', openMediaFolderPanel);
+
   // ---- sidebar navigation ---------------------------------------------
 
   Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function (item) {
@@ -1225,6 +1633,7 @@
       Array.prototype.forEach.call(document.querySelectorAll('.view'), function (x) {
         x.classList.toggle('active', x.id === 'view-' + view);
       });
+      if (view === 'media' && state.mediaItems === null) loadMediaFolder(MEDIA_ROOT);
     });
   });
   // "Books" is the working screen and the default view.

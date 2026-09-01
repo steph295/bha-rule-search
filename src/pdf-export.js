@@ -19,32 +19,32 @@
 
   var PRINT_CSS = [
     '@page { margin: 2.1cm 1.9cm; }',
-    'body { font-family: Georgia, "Times New Roman", serif; color: #16201b; font-size: 11.2pt; line-height: 1.55; margin: 0; }',
+    'body { font-family: Arial, Helvetica, sans-serif; color: #16201b; font-size: 11.2pt; line-height: 1.55; margin: 0; }',
     '.cover { text-align: center; padding-top: 34vh; page-break-after: always; }',
-    '.cover .mark { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 12pt; letter-spacing: .16em; color: #0a3d2c; font-weight: 700; }',
-    '.cover h1 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 25pt; margin: 10px 0 4px; color: #0a3d2c; }',
+    '.cover .mark { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; letter-spacing: .16em; color: #002f71; font-weight: 700; }',
+    '.cover h1 { font-family: Arial, Helvetica, sans-serif; font-size: 25pt; margin: 10px 0 4px; color: #002f71; }',
     '.cover .sub { font-size: 13pt; color: #3c4540; margin-top: 6px; }',
     '.cover .meta { font-size: 10pt; color: #7a8580; margin-top: 60px; }',
     '.group { page-break-before: always; }',
     '.group:first-of-type { page-break-before: avoid; }',
-    '.group h2 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 17pt; color: #0a3d2c; border-bottom: 2px solid #0a3d2c; padding-bottom: 7px; margin: 0 0 6px; }',
-    '.doc-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 13pt; font-weight: 700; color: #14573f; margin: 20px 0 4px; }',
+    '.group h2 { font-family: Arial, Helvetica, sans-serif; font-size: 17pt; color: #002f71; border-bottom: 2px solid #002f71; padding-bottom: 7px; margin: 0 0 6px; }',
+    '.doc-title { font-family: Arial, Helvetica, sans-serif; font-size: 13pt; font-weight: 700; color: #1b8ec9; margin: 20px 0 4px; }',
     '.entry { margin: 14px 0; }',
     '.entry-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }',
-    '.code-badge { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 10.5pt; color: #fff; background: #0a3d2c; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }',
-    '.entry-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 12pt; color: #16201b; }',
+    '.code-badge { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 10.5pt; color: #fff; background: #002f71; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }',
+    '.entry-title { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 12pt; color: #16201b; }',
     'p { margin: 7px 0; position: relative; }',
     '.l1 { padding-left: 40px; }',
     '.l2 { padding-left: 72px; }',
     '.l3 { padding-left: 104px; }',
     '.l0 { color: #2b332e; }',
-    '.rn { position: absolute; left: 0; color: #14573f; font-weight: 700; }',
+    '.rn { position: absolute; left: 0; color: #1b8ec9; font-weight: 700; }',
     '.l2 .rn { left: 36px; } .l3 .rn { left: 68px; }',
     'table { border-collapse: collapse; margin: 8px 0; font-size: 10pt; }',
     'th, td { border: 1px solid #9db3a8; padding: 4px 8px; text-align: left; vertical-align: top; }',
-    'th { background: #e7f1ec; color: #0a3d2c; }',
+    'th { background: #e9f4fa; color: #002f71; }',
     'ul { margin: 6px 0; padding-left: 22px; }',
-    '.footer-note { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 8.5pt; color: #8a958f; margin-top: 40px; }'
+    '.footer-note { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #8a958f; margin-top: 40px; }'
   ].join('\n');
 
   function renderGroup(title, entries) {

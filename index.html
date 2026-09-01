@@ -5,20 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BHA Rules Search</title>
 <meta name="description" content="Fast search for the British Horseracing Authority Rules of Racing — by rule code, keyword or fuzzy match.">
-<meta name="theme-color" content="#222d71">
+<meta name="theme-color" content="#002f71">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BHA Rules">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23222d71'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23002f71'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
 <style>
+/* BHA Brand Guidelines v1.0, section 3.1 (Primary Colour Palette):
+   Dark Blue #002f71, Light Blue #1b8ec9, Light Blue 10% #e9f4fa.
+   --blue-dark is a manually darkened Dark Blue — the guide doesn't define
+   a fourth shade, but the UI needs one for text/emphasis on pale fills. */
 :root {
-  --green: #222d71;
-  --green-dark: #161d4a;
-  --green-mid: #005680;
-  --green-pale: #ebf3f9;
+  --blue: #002f71;
+  --blue-dark: #001f4d;
+  --blue-mid: #1b8ec9;
+  --blue-pale: #e9f4fa;
   --ink: #1b1f1d;
   --ink-soft: #5a6660;
   --line: #dde4e0;
@@ -35,7 +39,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif; /* BHA Brand Guidelines v1.0 S 2.4: Arial is the specified system typeface for online/electronic use */
   font-size: 17px;
   line-height: 1.5;
   color: var(--ink);
@@ -78,7 +82,7 @@ header h1 {
   border-radius: 6px;
   -webkit-tap-highlight-color: transparent;
 }
-header h1:focus-visible { outline: 2px solid var(--green-mid); outline-offset: 3px; }
+header h1:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: 3px; }
 
 header h1 .thin { font-weight: 400; color: var(--ink-soft); }
 .brand-logo { height: 26px; width: auto; display: block; }
@@ -97,7 +101,7 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   flex: none;
   -webkit-tap-highlight-color: transparent;
 }
-#pdfBtn:hover { background: var(--green-pale); color: var(--green-dark); border-color: var(--green-mid); }
+#pdfBtn:hover { background: var(--blue-pale); color: var(--blue-dark); border-color: var(--blue-mid); }
 
 #status {
   display: flex;
@@ -113,7 +117,7 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   flex: none;
   -webkit-tap-highlight-color: transparent;
 }
-#status:hover { background: var(--green-pale); }
+#status:hover { background: var(--blue-pale); }
 #status .dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: var(--amber);
@@ -133,7 +137,7 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: var(--green-dark);
+  color: var(--blue-dark);
   margin: 0 0 18px;
 }
 .reader-mode .pagehead { display: none; }
@@ -172,10 +176,10 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   display: inline-block;
   -webkit-tap-highlight-color: transparent;
 }
-.tab:hover { color: var(--green-dark); }
-.tab.active { color: var(--green-dark); font-weight: 650; border-bottom-color: var(--green-mid); }
+.tab:hover { color: var(--blue-dark); }
+.tab.active { color: var(--blue-dark); font-weight: 650; border-bottom-color: var(--blue-mid); }
 .tab .n { font-size: 13px; color: var(--ink-soft); font-weight: 400; margin-left: 5px; }
-.tab.active .n { color: var(--green-mid); }
+.tab.active .n { color: var(--blue-mid); }
 .tab[disabled] { opacity: 0.4; cursor: default; }
 
 .searchbox {
@@ -189,7 +193,7 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   min-width: 190px;
   margin-bottom: 8px;
 }
-.searchbox:focus-within { border-color: var(--green-mid); }
+.searchbox:focus-within { border-color: var(--blue-mid); }
 .searchbox-icon { flex: none; color: var(--ink-soft); margin-left: 12px; align-self: center; }
 
 #q {
@@ -248,9 +252,9 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   -webkit-tap-highlight-color: transparent;
 }
 .subtab.active {
-  background: var(--green-pale);
-  border-color: var(--green-mid);
-  color: var(--green-dark);
+  background: var(--blue-pale);
+  border-color: var(--blue-mid);
+  color: var(--blue-dark);
   font-weight: 600;
 }
 
@@ -289,8 +293,8 @@ main {
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .doc-card:hover {
-  border-color: var(--green-mid);
-  box-shadow: 0 4px 14px rgba(10,61,44,0.1);
+  border-color: var(--blue-mid);
+  box-shadow: 0 4px 14px rgba(0,47,113,0.12);
   transform: translateY(-1px);
 }
 .doc-card.disabled { cursor: default; opacity: 0.6; }
@@ -298,7 +302,7 @@ main {
 .doc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .doc-title { font-size: 16px; font-weight: 650; color: var(--ink); }
 .doc-meta { font-size: 13px; color: var(--ink-soft); }
-.doc-whatsnew { font-size: 12.5px; color: var(--green-mid); margin-top: 2px; }
+.doc-whatsnew { font-size: 12.5px; color: var(--blue-mid); margin-top: 2px; }
 
 .home h2 {
   font-size: 14px;
@@ -313,7 +317,7 @@ main {
   display: inline-block;
   font-weight: 700;
   color: #fff;
-  background: var(--green-mid);
+  background: var(--blue-mid);
   border-radius: 6px;
   padding: 0 7px;
   margin-right: 8px;
@@ -322,11 +326,11 @@ main {
 }
 .hint { color: var(--ink-soft); font-size: 15px; margin: 4px 4px 0; }
 .hint code {
-  background: var(--green-pale);
+  background: var(--blue-pale);
   border-radius: 5px;
   padding: 1px 6px;
   font-size: 14px;
-  color: var(--green-dark);
+  color: var(--blue-dark);
 }
 
 /* ---- reader (Word/Docs-style document view + outline sidebar) ---- */
@@ -347,10 +351,10 @@ main {
 .reader-back button {
   display: inline-flex; align-items: center; gap: 5px;
   border: 0; background: none; font: inherit; font-weight: 600;
-  font-size: inherit; color: var(--green-mid); padding: 0; margin: 0;
+  font-size: inherit; color: var(--blue-mid); padding: 0; margin: 0;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.reader-back button:hover { color: var(--green-dark); text-decoration: underline; }
+.reader-back button:hover { color: var(--blue-dark); text-decoration: underline; }
 .reader-back .crumb-sep { color: var(--line); }
 .reader-back .crumb-section { color: var(--ink-soft); font-weight: 500; }
 
@@ -410,9 +414,11 @@ main {
 
 .reader-row { display: flex; align-items: flex-start; gap: 44px; }
 
-/* Mobile-only chrome (bottom sheet trigger bar, backdrop, sheet header) —
-   hidden by default; shown by the max-width:820px block below. */
-.reader-mobile-bar, .outline-sheet-backdrop, .outline-sheet-head { display: none; }
+/* Mobile-only search icon in the breadcrumb — hidden by default; shown by
+   the max-width:820px block below. Specificity has to beat the generic
+   ".reader-back button" rule above (which would otherwise win and leave
+   this visible as inline-flex even on desktop). */
+.reader-back .reader-back-search { display: none; }
 
 .outline {
   flex: 0 0 250px;
@@ -440,8 +446,8 @@ main {
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
-.outline-link:hover { background: var(--green-pale); color: var(--green-dark); }
-.outline-link.active { background: var(--green-pale); color: var(--green-dark); font-weight: 650; }
+.outline-link:hover { background: var(--blue-pale); color: var(--blue-dark); }
+.outline-link.active { background: var(--blue-pale); color: var(--blue-dark); font-weight: 650; }
 .outline-link .cl.sm { font-size: 11px; padding: 0 5px; margin-right: 4px; }
 .outline-link.depth-0 { font-weight: 600; color: var(--ink); margin-top: 4px; }
 
@@ -455,7 +461,7 @@ main {
   border-radius: 50%;
   background: var(--card);
   border: 1px solid var(--line);
-  color: var(--green-mid);
+  color: var(--blue-mid);
   box-shadow: 0 4px 14px rgba(0,0,0,0.15);
   display: flex;
   align-items: center;
@@ -467,12 +473,12 @@ main {
   transition: opacity 0.15s, transform 0.15s;
 }
 .back-to-top.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
-.back-to-top:hover { border-color: var(--green-mid); background: var(--green-pale); }
+.back-to-top:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
 
 .reader-title {
   font-size: 32px;
   font-weight: 750;
-  color: var(--green-dark);
+  color: var(--blue-dark);
   margin-bottom: 24px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
@@ -490,7 +496,7 @@ main {
   color: var(--ink);
   -webkit-appearance: none;
 }
-.reader-search:focus { border-color: var(--green-mid); }
+.reader-search:focus { border-color: var(--blue-mid); }
 .reader-search::-webkit-search-cancel-button { -webkit-appearance: none; }
 .reader-search-count { font-size: 13px; color: var(--ink-soft); margin: 8px 2px 0; }
 .reader-new-toggle {
@@ -501,14 +507,14 @@ main {
 
 .reader-heading {
   font-weight: 700;
-  color: var(--green-dark);
+  color: var(--blue-dark);
   scroll-margin-top: 14px;
 }
 .reader-heading.depth-0 {
   font-size: 22px;
   margin: 52px 0 18px;
   padding-bottom: 12px;
-  border-bottom: 2px solid var(--green);
+  border-bottom: 2px solid var(--blue);
   display: flex; align-items: center; flex-wrap: wrap;
 }
 .reader-heading.depth-0:first-child { margin-top: 4px; }
@@ -525,22 +531,22 @@ main {
 .penalty-link {
   display: block; margin: 10px auto 0; border: 0; background: none; padding: 2px 0;
   font: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--green-mid); border-bottom: 1px dotted var(--green-mid); cursor: pointer; width: fit-content;
+  color: var(--blue-mid); border-bottom: 1px dotted var(--blue-mid); cursor: pointer; width: fit-content;
 }
-.penalty-link:hover { color: var(--green-dark); border-color: var(--green-dark); }
+.penalty-link:hover { color: var(--blue-dark); border-color: var(--blue-dark); }
 .penalty-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .penalty-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .penalty-table th, .penalty-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
-.penalty-table th { background: var(--green-pale); color: var(--green-dark); font-size: 12.5px; }
+.penalty-table th { background: var(--blue-pale); color: var(--blue-dark); font-size: 12.5px; }
 
 /* ---- defined-terms glossary ---- */
 
 .defterm {
-  border-bottom: 1px dotted var(--green-mid);
+  border-bottom: 1px dotted var(--blue-mid);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.defterm:hover { background: var(--green-pale); }
+.defterm:hover { background: var(--blue-pale); }
 
 .def-panel {
   flex: 0 0 300px;
@@ -554,8 +560,8 @@ main {
   padding: 16px 18px;
 }
 .def-panel-hint { color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
-.defterm-sample { border-bottom: 1px dotted var(--green-mid); }
-.def-panel-term { font-size: 17px; font-weight: 750; color: var(--green-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.defterm-sample { border-bottom: 1px dotted var(--blue-mid); }
+.def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 
 /* Flat list views (search results, "New" tab) get the same persistent
    side panel as the reader instead of a floating popover, so opening a
@@ -584,7 +590,7 @@ body.reader-mode #flatDefPanel { display: none; }
 }
 .def-popover-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  font-size: 15.5px; font-weight: 750; color: var(--green-dark);
+  font-size: 15.5px; font-weight: 750; color: var(--blue-dark);
   margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
 }
 .def-popover-close {
@@ -603,77 +609,18 @@ body.reader-mode #flatDefPanel { display: none; }
      the text room not to wrap at all. align-items:stretch fixes both. */
   .reader-row { flex-direction: column; align-items: stretch; }
 
-  /* The full chapter outline no longer sits inline above the content (that
-     pushed the actual rule text below a screen's worth of nav on every
-     document). Instead it becomes a Google-Docs-style bottom sheet, opened
-     from the slim fixed bar at the bottom of the screen. */
-  .outline {
-    position: fixed;
-    top: auto; left: 0; right: 0; bottom: 0;
-    z-index: 60;
-    width: auto;
-    flex-basis: auto;
-    max-height: 75vh;
-    background: var(--card);
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
-    padding: 4px 16px calc(16px + env(safe-area-inset-bottom));
-    transform: translateY(100%);
-    transition: transform 0.25s ease;
+  /* Wikipedia-style mobile reading: no persistent article nav at all —
+     just the breadcrumb up top (with a search icon) and the content
+     scrolling normally underneath. The full chapter outline (and the
+     bottom-sheet/bottom-bar chapter switcher this replaced) is desktop
+     furniture only below this width. */
+  .outline { display: none; }
+  .reader-back .reader-back-search {
+    display: flex; flex: none; width: 30px; height: 30px; align-items: center; justify-content: center;
+    margin-left: auto; border: 0; background: none; color: var(--blue-mid); border-radius: 8px;
+    -webkit-tap-highlight-color: transparent;
   }
-  .outline.open { transform: translateY(0); }
-  .outline-sheet-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0 6px; margin-bottom: 6px; border-bottom: 1px solid var(--line);
-    font-weight: 650; font-size: 15px; color: var(--ink);
-  }
-  .outline-sheet-head button {
-    border: 0; background: none; color: var(--ink-soft); font-size: 18px;
-    line-height: 1; padding: 4px 6px; cursor: pointer;
-  }
-  .outline-sheet-backdrop {
-    display: block;
-    position: fixed; inset: 0; z-index: 59;
-    background: rgba(10,20,15,0.4);
-    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
-  }
-  .outline-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
-
-  /* Slim always-visible bar replacing the inline outline: current chapter
-     plus prev/next paging and a quick way into search, mirroring the
-     compact "‹ doc · N tabs ›" bar Google Docs uses for switching tabs. */
-  .reader-mobile-bar {
-    display: flex; align-items: center; gap: 4px;
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
-    background: var(--card); border-top: 1px solid var(--line);
-    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
-  }
-  .reader-mobile-bar button { border: 0; background: none; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .reader-mobile-bar .mnav-step {
-    flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
-    color: var(--ink-soft); border-radius: 8px;
-  }
-  .reader-mobile-bar .mnav-step:disabled { opacity: 0.35; }
-  .reader-mobile-bar .mnav-step:not(:disabled):active { background: var(--green-pale); }
-  .reader-mobile-bar .mnav-current {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
-    padding: 4px 2px; border-radius: 9px;
-  }
-  .reader-mobile-bar .mnav-current:active { background: var(--green-pale); }
-  .reader-mobile-bar .mnav-label {
-    font-size: 13.5px; font-weight: 650; color: var(--ink);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-  }
-  .reader-mobile-bar .mnav-count { font-size: 11px; color: var(--ink-soft); }
-  .reader-mobile-bar .mnav-search {
-    flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
-    color: var(--green-mid); border-radius: 8px;
-  }
-  .reader-mobile-bar .mnav-search:active { background: var(--green-pale); }
-
-  /* Clears the fixed bottom bar so the last lines of a chapter aren't
-     hidden behind it. */
-  .reader-scroll { padding-bottom: 64px; }
+  .reader-back-search:active { background: var(--blue-pale); }
 
   .def-panel { position: static; max-height: none; width: 100%; flex-basis: auto; }
 }
@@ -699,7 +646,7 @@ body.reader-mode #flatDefPanel { display: none; }
 .history-label { color: var(--ink); }
 .history-link {
   flex: none;
-  color: var(--green-mid);
+  color: var(--blue-mid);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -736,7 +683,7 @@ body.reader-mode #flatDefPanel { display: none; }
 .changelog-dot.current { background: var(--amber); }
 
 .changelog-body { flex: 1; min-width: 0; }
-.changelog-body h3 { margin: 0 0 6px; font-size: 16px; color: var(--green-dark); }
+.changelog-body h3 { margin: 0 0 6px; font-size: 16px; color: var(--blue-dark); }
 .changelog-body p { margin: 0 0 10px; font-size: 14.5px; color: #3c4540; }
 
 .changelog-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -749,13 +696,13 @@ body.reader-mode #flatDefPanel { display: none; }
   cursor: pointer;
   color: var(--ink);
 }
-.changelog-tag:hover { border-color: var(--green-mid); background: var(--green-pale); }
+.changelog-tag:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
 
 .changelog-link {
   display: inline-block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--green-mid);
+  color: var(--blue-mid);
   text-decoration: none;
 }
 .changelog-link:hover { text-decoration: underline; }
@@ -774,7 +721,7 @@ body.reader-mode #flatDefPanel { display: none; }
   margin-bottom: 10px;
   overflow: hidden;
 }
-.result.active { border-color: var(--green-mid); box-shadow: 0 0 0 2px rgba(20,87,63,0.18); }
+.result.active { border-color: var(--blue-mid); box-shadow: 0 0 0 2px rgba(20,87,63,0.18); }
 
 .rhead {
   display: flex;
@@ -803,7 +750,7 @@ body.reader-mode #flatDefPanel { display: none; }
 }
 .crumb-sep { color: #b7c4bd; }
 .crumb-part { white-space: normal; }
-.crumb-part:last-child { color: var(--green-dark); font-weight: 600; }
+.crumb-part:last-child { color: var(--blue-dark); font-weight: 600; }
 .crumb-dated { margin-left: auto; color: var(--ink-soft); font-style: italic; }
 
 .rmain { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -812,19 +759,19 @@ body.reader-mode #flatDefPanel { display: none; }
   font-weight: 700;
   font-size: 16px;
   color: #fff;
-  background: var(--green);
+  background: var(--blue);
   border-radius: 7px;
   padding: 2px 9px;
   white-space: nowrap;
   flex: none;
 }
 .code.kind {
-  background: var(--green-pale);
-  color: var(--green-dark);
+  background: var(--blue-pale);
+  color: var(--blue-dark);
   font-weight: 600;
   font-size: 13px;
 }
-.code.bhagi { background: #1d4ed8; }
+.code.bhagi { background: #6f2075; }
 .code.guidedoc {
   background: #eef2f7;
   color: #33415c;
@@ -838,13 +785,13 @@ body.reader-mode #flatDefPanel { display: none; }
   gap: 5px;
   margin-top: 10px;
   font-size: 14px;
-  color: var(--green-mid);
+  color: var(--blue-mid);
   text-decoration: none;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 11px;
 }
-.srclink:hover { border-color: var(--green-mid); background: var(--green-pale); }
+.srclink:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
 
 .rtitle { font-weight: 650; font-size: 18px; }
 
@@ -865,7 +812,7 @@ body.reader-mode #flatDefPanel { display: none; }
 .rfull .rn {
   position: absolute;
   left: 0;
-  color: var(--green-mid);
+  color: var(--blue-mid);
   font-weight: 700;
   font-size: 0.92em;
 }
@@ -883,7 +830,7 @@ body.reader-mode #flatDefPanel { display: none; }
   text-align: left;
   vertical-align: top;
 }
-.rfull th { background: var(--green-pale); color: var(--green-dark); }
+.rfull th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull ul { margin: 8px 0; padding-left: 26px; }
 
 mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
@@ -897,9 +844,9 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   padding: 10px 22px;
   font-size: 15px;
   cursor: pointer;
-  color: var(--green-dark);
+  color: var(--blue-dark);
 }
-.more:hover { border-color: var(--green-mid); }
+.more:hover { border-color: var(--blue-mid); }
 
 .noresults {
   text-align: center;
@@ -1003,7 +950,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   font: inherit;
   -webkit-tap-highlight-color: transparent;
 }
-.sm-row:hover, .sm-row.active { background: var(--green-pale); }
+.sm-row:hover, .sm-row.active { background: var(--blue-pale); }
 .sm-row-code { font-size: 11px; margin-right: 6px; }
 .sm-row-title { font-weight: 600; font-size: 14px; color: var(--ink); }
 .sm-row-path { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; padding-left: 1px; }
@@ -1011,17 +958,17 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 .sm-preview { flex: 1; min-width: 0; overflow-y: auto; padding: 20px 24px; }
 .sm-empty { color: var(--ink-soft); font-size: 14px; padding: 40px 20px; text-align: center; }
 .sm-preview-path { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px; }
-.sm-preview-title { font-size: 19px; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sm-preview-title { font-size: 19px; font-weight: 700; color: var(--blue-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sm-preview-open {
   display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line); background: #fff; color: var(--green-mid);
+  border: 1px solid var(--line); background: #fff; color: var(--blue-mid);
   border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600;
   cursor: pointer; margin-bottom: 18px;
 }
-.sm-preview-open:hover { background: var(--green-pale); border-color: var(--green-mid); }
+.sm-preview-open:hover { background: var(--blue-pale); border-color: var(--blue-mid); }
 
 @keyframes reader-entry-flash {
-  0% { background: var(--green-pale); }
+  0% { background: var(--blue-pale); }
   100% { background: transparent; }
 }
 .reader-entry.flash { animation: reader-entry-flash 1.6s ease-out; border-radius: 8px; }
@@ -1071,7 +1018,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 }
 #panel::backdrop, #pdfPanel::backdrop, #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
-#panel h2, #pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--green-dark); }
+#panel h2, #pdfPanel h2, #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
 #panel p, #pdfPanel p, #historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
 #pdfPanel, #historyPanel, #penaltyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
 .pdf-chapter-list {
@@ -1106,14 +1053,14 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 .panel-btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .btn {
   border: 0;
-  background: var(--green);
+  background: var(--blue);
   color: #fff;
   border-radius: 9px;
   padding: 9px 16px;
   font-size: 15px;
   cursor: pointer;
 }
-.btn.ghost { background: var(--green-pale); color: var(--green-dark); }
+.btn.ghost { background: var(--blue-pale); color: var(--blue-dark); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 #panelmsg { font-size: 14px; color: var(--ink-soft); min-height: 1.2em; margin-top: 8px; }
 
@@ -1121,7 +1068,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   position: fixed;
   bottom: 22px; left: 50%;
   transform: translateX(-50%) translateY(80px);
-  background: var(--green-dark);
+  background: var(--blue-dark);
   color: #fff;
   padding: 11px 20px;
   border-radius: 10px;
@@ -1687,32 +1634,32 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
   var PRINT_CSS = [
     '@page { margin: 2.1cm 1.9cm; }',
-    'body { font-family: Georgia, "Times New Roman", serif; color: #16201b; font-size: 11.2pt; line-height: 1.55; margin: 0; }',
+    'body { font-family: Arial, Helvetica, sans-serif; color: #16201b; font-size: 11.2pt; line-height: 1.55; margin: 0; }',
     '.cover { text-align: center; padding-top: 34vh; page-break-after: always; }',
-    '.cover .mark { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 12pt; letter-spacing: .16em; color: #0a3d2c; font-weight: 700; }',
-    '.cover h1 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 25pt; margin: 10px 0 4px; color: #0a3d2c; }',
+    '.cover .mark { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; letter-spacing: .16em; color: #002f71; font-weight: 700; }',
+    '.cover h1 { font-family: Arial, Helvetica, sans-serif; font-size: 25pt; margin: 10px 0 4px; color: #002f71; }',
     '.cover .sub { font-size: 13pt; color: #3c4540; margin-top: 6px; }',
     '.cover .meta { font-size: 10pt; color: #7a8580; margin-top: 60px; }',
     '.group { page-break-before: always; }',
     '.group:first-of-type { page-break-before: avoid; }',
-    '.group h2 { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 17pt; color: #0a3d2c; border-bottom: 2px solid #0a3d2c; padding-bottom: 7px; margin: 0 0 6px; }',
-    '.doc-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 13pt; font-weight: 700; color: #14573f; margin: 20px 0 4px; }',
+    '.group h2 { font-family: Arial, Helvetica, sans-serif; font-size: 17pt; color: #002f71; border-bottom: 2px solid #002f71; padding-bottom: 7px; margin: 0 0 6px; }',
+    '.doc-title { font-family: Arial, Helvetica, sans-serif; font-size: 13pt; font-weight: 700; color: #1b8ec9; margin: 20px 0 4px; }',
     '.entry { margin: 14px 0; }',
     '.entry-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }',
-    '.code-badge { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 10.5pt; color: #fff; background: #0a3d2c; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }',
-    '.entry-title { font-family: -apple-system, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 12pt; color: #16201b; }',
+    '.code-badge { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 10.5pt; color: #fff; background: #002f71; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }',
+    '.entry-title { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 12pt; color: #16201b; }',
     'p { margin: 7px 0; position: relative; }',
     '.l1 { padding-left: 40px; }',
     '.l2 { padding-left: 72px; }',
     '.l3 { padding-left: 104px; }',
     '.l0 { color: #2b332e; }',
-    '.rn { position: absolute; left: 0; color: #14573f; font-weight: 700; }',
+    '.rn { position: absolute; left: 0; color: #1b8ec9; font-weight: 700; }',
     '.l2 .rn { left: 36px; } .l3 .rn { left: 68px; }',
     'table { border-collapse: collapse; margin: 8px 0; font-size: 10pt; }',
     'th, td { border: 1px solid #9db3a8; padding: 4px 8px; text-align: left; vertical-align: top; }',
-    'th { background: #e7f1ec; color: #0a3d2c; }',
+    'th { background: #e9f4fa; color: #002f71; }',
     'ul { margin: 6px 0; padding-left: 22px; }',
-    '.footer-note { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 8.5pt; color: #8a958f; margin-top: 40px; }'
+    '.footer-note { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #8a958f; margin-top: 40px; }'
   ].join('\n');
 
   function renderGroup(title, entries) {
@@ -2735,20 +2682,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       });
       var crumbSection = $('breadcrumbSection');
       if (crumbSection) crumbSection.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
-
-      var mobileBar = document.querySelector('.reader-mobile-bar');
-      if (mobileBar) {
-        var topNodes = state.readerTree || [];
-        var topId = activeTopHeading ? activeTopHeading.dataset.outlineId : '';
-        var topIdx = topNodes.findIndex(function (n) { return n.id === topId; });
-        mobileBar.dataset.activeTopId = topId;
-        var mnavLabel = $('mnavLabel'), mnavCount = $('mnavCount');
-        if (mnavLabel) mnavLabel.textContent = activeTopHeading ? activeTopHeading.dataset.outlineLabel : '';
-        if (mnavCount) mnavCount.textContent = topIdx >= 0 ? (topIdx + 1) + ' / ' + topNodes.length : '';
-        var mnavPrev = $('mnavPrev'), mnavNext = $('mnavNext');
-        if (mnavPrev) mnavPrev.disabled = topIdx <= 0;
-        if (mnavNext) mnavNext.disabled = topIdx < 0 || topIdx >= topNodes.length - 1;
-      }
     }
     readerScrollHandler = function () {
       if (ticking) return;
@@ -2872,17 +2805,20 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       '<span class="crumb-sep">/</span>' +
       '<button type="button" class="crumb-book">' + P.escapeHtml(titleText) + '</button>' +
       '<span class="crumb-sep">/</span>' +
-      '<span class="crumb-section" id="breadcrumbSection"></span>';
+      '<span class="crumb-section" id="breadcrumbSection"></span>' +
+      '<button type="button" class="reader-back-search" aria-label="Search">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg></button>';
     back.querySelector('.crumb-home').addEventListener('click', goHome);
     back.querySelector('.crumb-book').addEventListener('click', function () { scroll.scrollTo({ top: 0, behavior: 'smooth' }); });
+    // Below 820px (see styles.css) there's no room for the persistent
+    // outline pane and its own "search within" box, so this icon is the
+    // mobile entry point instead — it opens the same global search used
+    // everywhere else in the app, Wikipedia-style simplicity over a
+    // dedicated in-doc nav.
+    back.querySelector('.reader-back-search').addEventListener('click', openSearchModal);
 
     var nav = document.createElement('nav');
     nav.className = 'outline';
-
-    var sheetHead = document.createElement('div');
-    sheetHead.className = 'outline-sheet-head';
-    sheetHead.innerHTML = '<span>Chapters</span><button type="button" class="outline-sheet-close" aria-label="Close">✕</button>';
-    nav.appendChild(sheetHead);
 
     state.readerNewOnly = false;
 
@@ -2945,51 +2881,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
     row.appendChild(nav);
     row.appendChild(content);
 
-    // Mobile fallback (see max-width:820px in styles.css): the full chapter
-    // outline no longer sits inline above the content — it opens as a
-    // bottom sheet from this slim bar instead, Google-Docs-tabs-style, so
-    // the reader opens straight into the text rather than a screen of nav.
-    var sheetBackdrop = document.createElement('div');
-    sheetBackdrop.className = 'outline-sheet-backdrop';
-
-    var mobileBar = document.createElement('div');
-    mobileBar.className = 'reader-mobile-bar';
-    mobileBar.innerHTML =
-      '<button type="button" class="mnav-step" id="mnavPrev" aria-label="Previous chapter">' +
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5L5 8l5 4.5"></path></svg></button>' +
-      '<button type="button" class="mnav-current"><span class="mnav-label" id="mnavLabel"></span><span class="mnav-count" id="mnavCount"></span></button>' +
-      '<button type="button" class="mnav-step" id="mnavNext" aria-label="Next chapter">' +
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l5 4.5-5 4.5"></path></svg></button>' +
-      '<button type="button" class="mnav-search" aria-label="Search within ' + P.escapeHtml(titleText) + '">' +
-      '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg></button>';
-
-    function openOutlineSheet(focusSearch) {
-      nav.classList.add('open');
-      sheetBackdrop.classList.add('show');
-      if (focusSearch) setTimeout(function () { searchInput.focus(); }, 260);
-    }
-    function closeOutlineSheet() {
-      nav.classList.remove('open');
-      sheetBackdrop.classList.remove('show');
-    }
-    sheetHead.querySelector('.outline-sheet-close').addEventListener('click', closeOutlineSheet);
-    sheetBackdrop.addEventListener('click', closeOutlineSheet);
-    navList.addEventListener('click', function (ev) { if (ev.target.closest('.outline-link')) closeOutlineSheet(); });
-    mobileBar.querySelector('.mnav-current').addEventListener('click', function () { openOutlineSheet(false); });
-    mobileBar.querySelector('.mnav-search').addEventListener('click', function () { openOutlineSheet(true); });
-
-    function stepChapter(dir) {
-      var topNodes = state.readerTree || [];
-      var curId = mobileBar.dataset.activeTopId;
-      var idx = topNodes.findIndex(function (n) { return n.id === curId; });
-      var targetIdx = idx + dir;
-      if (targetIdx < 0 || targetIdx >= topNodes.length) return;
-      var el = document.getElementById(topNodes[targetIdx].id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    mobileBar.querySelector('#mnavPrev').addEventListener('click', function () { stepChapter(-1); });
-    mobileBar.querySelector('#mnavNext').addEventListener('click', function () { stepChapter(1); });
-
     if (state.glossaryState === 'ready') {
       state.activeDefTerm = null;
       var defPanel = document.createElement('div');
@@ -3000,8 +2891,6 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
     wrap.appendChild(back);
     wrap.appendChild(row);
-    wrap.appendChild(sheetBackdrop);
-    wrap.appendChild(mobileBar);
     results.appendChild(wrap);
 
     document.body.classList.add('reader-mode');

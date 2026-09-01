@@ -28,7 +28,8 @@
     customDefinitions: {}, // id -> {term, html, updatedAt} — admin-added terms not in BHA's own Definitions chapter
     uploadedGuides: {}, // id -> {title, cat, dated, url, html, updatedAt} — admin-uploaded Guide Library PDFs
     mediaPath: 'uploads', // current folder browsed in the Media Library
-    mediaItems: null      // [{name, path, type, size, url}] for state.mediaPath, or null while loading
+    mediaItems: null,     // [{name, path, type, size, url}] for state.mediaPath, or null while loading
+    users: null           // email -> {name, grantedAt}, or null while loading — see loadUsers()
   };
 
   function isGuideEntry(e) { return e.kind === 'bhagi' || e.kind === 'guidedoc'; }
@@ -1820,6 +1821,152 @@
   }
   if ($('mediaCreateFolderBtn')) $('mediaCreateFolderBtn').addEventListener('click', openMediaFolderPanel);
 
+  // ---- users -------------------------------------------------------
+  //
+  // A roster of who has admin access — not a real per-user login. This app
+  // still authenticates everyone with the one shared password (see
+  // api/login.js); adding/removing someone here records who currently has
+  // access, it doesn't itself grant or revoke the ability to sign in.
+  // Kept in its own admin-users.json (via api/list-users.js /
+  // api/save-user.js) rather than overrides.json, since that file is served
+  // publicly and this one holds team members' names and emails.
+
+  function loadUsers() {
+    state.users = null;
+    renderUsersList();
+    fetch('/api/list-users')
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'could not load'); });
+        return r.json();
+      })
+      .then(function (j) {
+        state.users = j.users || {};
+        renderUsersList();
+      })
+      .catch(function (err) {
+        state.users = {};
+        renderUsersList();
+        var list = $('usersList');
+        if (list) list.innerHTML = '<div class="empty-state">Could not load: ' + escapeHtml(err.message) + '</div>';
+      });
+  }
+
+  function userInitials(name, email) {
+    var label = (name || email || '').trim();
+    if (!label) return '?';
+    if (name) {
+      var parts = name.trim().split(/\s+/);
+      return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+    }
+    return label[0].toUpperCase();
+  }
+
+  function renderUsersList() {
+    var list = $('usersList');
+    if (!list) return;
+    if (state.users === null) { list.innerHTML = '<div class="empty-state">Loading…</div>'; return; }
+    var emails = Object.keys(state.users).sort(function (a, b) {
+      return (state.users[a].grantedAt || '').localeCompare(state.users[b].grantedAt || '');
+    });
+    if (!emails.length) { list.innerHTML = '<div class="empty-state">No one added yet — use "+ Add user" above.</div>'; return; }
+    list.innerHTML = '<div class="users-row head"><div>Name</div><div>Email</div><div>Access granted</div><div></div></div>' +
+      emails.map(function (email) {
+        var u = state.users[email];
+        var when = u.grantedAt ? new Date(u.grantedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        return '<div class="users-row" data-email="' + escapeHtml(email) + '">' +
+          '<div class="user-name-cell"><div class="user-avatar">' + escapeHtml(userInitials(u.name, email)) + '</div>' +
+          '<span class="user-name">' + escapeHtml(u.name || email) + '</span></div>' +
+          '<div class="user-email">' + escapeHtml(email) + '</div>' +
+          '<div class="user-since">' + when + '</div>' +
+          '<button type="button" class="icon-btn" title="Remove admin access" aria-label="Remove admin access">' +
+          '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4h10"></path><path d="M6.5 4V2.7c0-.4.3-.7.7-.7h1.6c.4 0 .7.3.7.7V4"></path><path d="M4.2 4l.6 8.7c0 .7.6 1.3 1.3 1.3h3.8c.7 0 1.3-.6 1.3-1.3L11.8 4"></path></svg>' +
+          '</button></div>';
+      }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('.users-row[data-email] .icon-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        var row = btn.closest('.users-row');
+        confirmRemoveUser(row.dataset.email, state.users[row.dataset.email].name);
+      });
+    });
+  }
+
+  function confirmRemoveUser(email, name) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>Remove admin access?</h3>' +
+      '<p><b>' + escapeHtml(name || email) + '</b> (' + escapeHtml(email) + ') will be removed from this list. ' +
+      'Since everyone signs in with the same shared password, this is a record-keeping change — it doesn’t on its own change who can sign in.</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Remove</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      fetch('/api/save-user', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, delete: true })
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'remove failed'); });
+        return r.json();
+      }).then(function () {
+        delete state.users[email];
+        renderUsersList();
+      }).catch(function (err) {
+        alert('Could not remove: ' + err.message);
+      });
+    });
+  }
+
+  function openAddUserPanel() {
+    var panel = $('userAddPanel');
+    var card = $('userAddCard');
+    card.innerHTML =
+      '<span class="code-badge">Add a new admin user</span>' +
+      '<label for="userAddEmail">Email address</label>' +
+      '<input type="email" id="userAddEmail" placeholder="name@bha.co.uk">' +
+      '<label for="userAddName">Name <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></label>' +
+      '<input type="text" id="userAddName" placeholder="e.g. Charlotte Reid">' +
+      '<div class="hint">They’ll get full admin access — the same as everyone else on this list. There’s no partial or view-only option.</div>' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="userAddSaveBtn">Grant admin access</button>' +
+      '<button class="revert" id="userAddCancelBtn" type="button">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg" id="userAddMsg"></div>';
+    $('userAddCancelBtn').addEventListener('click', function () {
+      panel.close ? panel.close() : panel.removeAttribute('open');
+    });
+    $('userAddSaveBtn').addEventListener('click', function () {
+      var email = $('userAddEmail').value.trim();
+      var name = $('userAddName').value.trim();
+      var msg = $('userAddMsg');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = 'Enter a valid email address.'; msg.className = 'save-msg err'; return; }
+      var btn = $('userAddSaveBtn');
+      btn.disabled = true;
+      msg.textContent = 'Adding…';
+      msg.className = 'save-msg';
+      fetch('/api/save-user', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, name: name })
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'could not add'); });
+        return r.json();
+      }).then(function (j) {
+        state.users = j.users || state.users;
+        renderUsersList();
+        panel.close ? panel.close() : panel.removeAttribute('open');
+      }).catch(function (err) {
+        msg.textContent = 'Could not add: ' + err.message;
+        msg.className = 'save-msg err';
+        btn.disabled = false;
+      });
+    });
+    if (typeof panel.showModal === 'function') panel.showModal();
+    else panel.setAttribute('open', '');
+  }
+  if ($('userAddBtn')) $('userAddBtn').addEventListener('click', openAddUserPanel);
+
   // ---- sidebar navigation ---------------------------------------------
 
   Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function (item) {
@@ -1832,6 +1979,7 @@
         x.classList.toggle('active', x.id === 'view-' + view);
       });
       if (view === 'media' && state.mediaItems === null) loadMediaFolder(MEDIA_ROOT);
+      if (view === 'users' && state.users === null) loadUsers();
     });
   });
   // "Books" is the working screen and the default view.

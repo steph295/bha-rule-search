@@ -110,6 +110,7 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: nowrap;
   border-bottom: 1px solid var(--line);
 }
+.manuals-toolbar > .hint { flex: 1 1 auto; min-width: 0; margin: 0; }
 .tabs { display: flex; gap: 4px; flex: none; }
 .tabs button {
   border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--ink-soft);
@@ -157,13 +158,13 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 }
 .doc-edit-btn:hover { background: var(--blue-pale); color: var(--blue-dark); border-color: var(--blue-mid); }
 
-#bookMetaPanel, #uploadGuidePanel, #mediaFolderPanel {
+#bookMetaPanel, #uploadGuidePanel, #mediaFolderPanel, #userAddPanel {
   border: none; border-radius: 14px; padding: 0; max-width: 480px;
   width: calc(100vw - 40px); max-height: calc(100vh - 60px); overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0,0,0,.3); background: transparent;
 }
-#bookMetaPanel::backdrop, #uploadGuidePanel::backdrop, #mediaFolderPanel::backdrop { background: rgba(7,43,31,.55); }
-#bookMetaPanel .editor-card, #uploadGuidePanel .editor-card, #mediaFolderPanel .editor-card { border-radius: 14px; }
+#bookMetaPanel::backdrop, #uploadGuidePanel::backdrop, #mediaFolderPanel::backdrop, #userAddPanel::backdrop { background: rgba(7,43,31,.55); }
+#bookMetaPanel .editor-card, #uploadGuidePanel .editor-card, #mediaFolderPanel .editor-card, #userAddPanel .editor-card { border-radius: 14px; }
 
 /* ---- media library ---- */
 .media-breadcrumb { display: flex; align-items: center; gap: 4px; flex: 1 1 auto; min-width: 0; }
@@ -233,6 +234,31 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .editor-card .code-badge.custom-badge { background: var(--blue-mid); }
 .result-row .title { font-weight: 550; }
 .result-row .doc { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+
+/* ---- users ---- */
+.users-wrap { max-width: 1100px; margin: 18px auto 0; padding: 0 20px 40px; }
+.users-list { overflow: hidden; }
+.users-row {
+  display: grid; grid-template-columns: 1.3fr 1.7fr 1fr 44px;
+  align-items: center; gap: 14px; padding: 12px 14px;
+  border-bottom: 1px solid #eef2ef; font-size: 14px;
+}
+.users-row:last-child { border-bottom: none; }
+.users-row.head {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink-soft); background: var(--bg); padding: 10px 14px;
+}
+.users-row:not(.head):hover { background: var(--blue-pale); }
+.user-name-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: var(--blue-pale); color: var(--blue-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.user-name { font-weight: 550; color: var(--ink); }
+.user-email { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-since { color: var(--ink-soft); font-size: 13px; }
 
 .editor-pane { flex: 1; min-width: 0; }
 .editor-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
@@ -526,7 +552,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 
 .btn {
   border: 0; background: var(--blue); color: #fff; border-radius: 9px;
-  padding: 9px 16px; font-size: 15px; cursor: pointer;
+  padding: 9px 16px; font-size: 15px; cursor: pointer; white-space: nowrap; flex: none;
 }
 .btn.ghost { background: var(--blue-pale); color: var(--blue-dark); }
 

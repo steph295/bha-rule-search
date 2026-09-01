@@ -394,6 +394,14 @@ main {
 .pill-new { background: #5b6472; }
 .pill-updated { background: var(--blue-mid); }
 
+/* Admin-set line-level flags (see groupFlaggedLines) — consecutive lines
+   sharing a flag are shown as one merged block with a single tag, rather
+   than repeating a pill on every line. */
+.flagged-group { border-left: 3px solid var(--blue-mid); padding: 4px 0 4px 14px; margin: 16px 0; }
+.flagged-group.updated { border-left-color: var(--amber); }
+.flagged-group-tag { margin-bottom: 4px; }
+.flagged-group > p:first-of-type { margin-top: 0; }
+
 .reader-row { display: flex; align-items: flex-start; gap: 44px; }
 
 /* Mobile-only search icon in the breadcrumb — hidden by default; shown by

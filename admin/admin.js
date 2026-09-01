@@ -673,16 +673,22 @@
     // Two independent checkboxes (New / Updated) rather than a single
     // four-option dropdown — matches the BHA's own editor exactly, and
     // "auto" is simply neither box checked (defers to automatic
-    // new-entries detection), so there's nothing extra to explain.
+    // new-entries detection), so there's nothing extra to explain. This is
+    // a "flag the whole entry" shortcut, kept alongside the per-line flags
+    // below it — the two are independent, not merged into one control.
     var flagHtml = state.readerEditMode
       ? '<div class="reader-entry-flag">' +
         '<label><input type="checkbox" class="flag-new"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
         '<label><input type="checkbox" class="flag-updated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
         '</div>'
       : '';
+    // The pencil only shows on hovering the title (see .reader-entry-title
+    // .title-pencil in admin.css) and is itself the click target — clicking
+    // the title text otherwise does nothing, so a stray click can't drop an
+    // editor open by accident.
     var titleHtml = state.readerEditMode
-      ? '<span class="reader-entry-title editable" tabindex="0" title="Click to edit the title">' + escapeHtml(eff.title) +
-        '<svg class="title-pencil" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg></span>'
+      ? '<span class="reader-entry-title editable">' + escapeHtml(eff.title) +
+        '<button type="button" class="title-pencil" title="Edit the title"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg></button></span>'
       : '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>';
     block.innerHTML = '<div class="reader-entry-head">' +
       '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
@@ -691,12 +697,12 @@
       flagHtml +
       '</div>' +
       '<div class="rfull-body"></div>';
-    renderEntryBody(block.querySelector('.rfull-body'), e, eff.html);
+    renderEntryBody(block.querySelector('.rfull-body'), e, eff.html, block);
     var newCb = block.querySelector('.flag-new'), updCb = block.querySelector('.flag-updated');
     if (newCb) newCb.addEventListener('change', function () { applyFlag(e, block, newCb.checked ? 'new' : ''); });
     if (updCb) updCb.addEventListener('change', function () { applyFlag(e, block, updCb.checked ? 'updated' : ''); });
-    var titleEl = block.querySelector('.reader-entry-title.editable');
-    if (titleEl) titleEl.addEventListener('click', function () { startTitleEdit(e, block, titleEl); });
+    var titlePencil = block.querySelector('.reader-entry-title.editable .title-pencil');
+    if (titlePencil) titlePencil.addEventListener('click', function () { openTitleEditor(e, block); });
     return block;
   }
 
@@ -732,45 +738,40 @@
     });
   }
 
-  function startTitleEdit(e, block, titleEl) {
+  // The reader's shared right-hand editor — one at a time, so clicking a
+  // different pencil (or the title's) simply replaces whatever was open
+  // rather than letting several edits pile up inline through the document.
+  function readerEditorPane() { return $('readerEditorSlot'); }
+  function clearReaderEditor() { readerEditorPane().innerHTML = ''; }
+
+  function openTitleEditor(e, block) {
     var eff = effective(e);
-    var wrap = document.createElement('span');
-    wrap.className = 'title-editing';
-    wrap.innerHTML =
-      '<input type="text" class="title-input" value="' + escapeHtml(eff.title) + '">' +
-      '<button type="button" class="save small">Save</button>' +
-      '<button type="button" class="revert small">Cancel</button>';
-    titleEl.replaceWith(wrap);
-    var input = wrap.querySelector('.title-input');
+    var pane = readerEditorPane();
+    pane.innerHTML =
+      '<div class="editor-card">' +
+      '<span class="code-badge">' + escapeHtml(dispCode(e)) + ' — title</span>' +
+      '<label for="titleEditInput">Title</label>' +
+      '<input type="text" id="titleEditInput" value="' + escapeHtml(eff.title) + '">' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="titleSaveBtn">Publish change</button>' +
+      '<button class="revert" id="titleCancelBtn" type="button">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg" id="titleSaveMsg"></div>' +
+      '</div>';
+    var input = $('titleEditInput');
     input.focus();
     input.select();
-    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(titleEl); });
-    wrap.querySelector('.save').addEventListener('click', function () {
-      confirmSaveTitle(e, block, wrap, titleEl, input.value.trim());
+    $('titleCancelBtn').addEventListener('click', clearReaderEditor);
+    $('titleSaveBtn').addEventListener('click', function () {
+      var newTitle = input.value.trim();
+      if (!newTitle) { alert('Give it a title first.'); return; }
+      confirmPublish('Publish this title?', function () { saveTitleChange(e, block, newTitle); });
     });
   }
 
-  function confirmSaveTitle(e, block, wrap, titleEl, newTitle) {
-    if (!newTitle) { alert('Give it a title first.'); return; }
-    var overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.innerHTML =
-      '<div class="confirm-box">' +
-      '<h3>Publish this title?</h3>' +
-      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
-      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
-    overlay.querySelector('.confirm').addEventListener('click', function () {
-      overlay.remove();
-      doSaveTitle(e, block, wrap, newTitle);
-    });
-  }
-
-  function doSaveTitle(e, block, wrap, newTitle) {
-    var btn = wrap.querySelector('.save');
-    btn.disabled = true;
+  function saveTitleChange(e, block, newTitle) {
+    var btn = $('titleSaveBtn');
+    if (btn) btn.disabled = true;
     fetch('/api/save-rule', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: e.key, title: newTitle, flag: currentFlagOverride(e) })
@@ -779,44 +780,68 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { title: newTitle, updatedAt: new Date().toISOString() });
-      var fresh = document.createElement('span');
-      fresh.className = 'reader-entry-title editable';
-      fresh.tabIndex = 0;
-      fresh.title = 'Click to edit the title';
-      fresh.innerHTML = escapeHtml(newTitle) +
-        '<svg class="title-pencil" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg>';
-      fresh.addEventListener('click', function () { startTitleEdit(e, block, fresh); });
-      wrap.replaceWith(fresh);
-      // Only findable now that the title span exists again in place of wrap.
+      block.querySelector('.reader-entry-title').firstChild.textContent = newTitle;
       markEdited(block);
+      clearReaderEditor();
     }).catch(function (err) {
       alert('Could not publish: ' + err.message);
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  // Shared confirm step for every publish from the reader's right-hand
+  // editor (title, line edits, new lines) — goes live immediately, so this
+  // is the one pause before that happens.
+  function confirmPublish(question, onConfirm) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-box">' +
+      '<h3>' + escapeHtml(question) + '</h3>' +
+      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
+      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.confirm').addEventListener('click', function () {
+      overlay.remove();
+      onConfirm();
     });
   }
 
   // ---- reader: per-line editing --------------------------------------
   //
   // Editing happens one rule clause at a time — a pencil next to each line
-  // (only shown once "Edit" is toggled on) opens an inline textarea for
-  // just that line's text, matching the BHA's own editor rather than this
-  // tool's earlier one-big-textarea-per-rule editor. The rule numbering
-  // (the leading "45.1" etc, a <span class="rn">) is preserved untouched —
-  // only the prose after it is ever editable. Only <p> lines get a pencil;
-  // tables/lists stay read-only here rather than risk mangling their
-  // structure through a plain-text round trip.
+  // (only shown once "Edit" is toggled on, and only on hovering that line)
+  // opens that line in the reader's shared right-hand editor, rather than
+  // expanding a textarea inline in the document — only one line is ever
+  // being edited at a time, and the reading pane itself stays uncluttered.
+  // The rule numbering (the leading "45.1" etc, a <span class="rn">) is
+  // preserved untouched — only the prose after it is ever editable. Only
+  // <p> lines get a pencil; tables/lists stay read-only here rather than
+  // risk mangling their structure through a plain-text round trip.
+  //
+  // New/Updated flags live at this same per-line level (a data-flag
+  // attribute on the <p>, set from the line's own editor) rather than only
+  // on the whole entry — an update often touches one clause, not the whole
+  // rule. Consecutive lines sharing a flag are shown under one merged tag
+  // rather than repeating it per line (see renderEntryBody's grouping).
   function lineParts(el) {
     var clone = el.cloneNode(true);
     var rn = clone.querySelector(':scope > .rn');
     var rnHtml = rn ? rn.outerHTML : '';
     if (rn) rn.parentNode.removeChild(rn);
-    return { tag: el.tagName.toLowerCase(), className: el.className, rnHtml: rnHtml, text: stripHtml(clone.innerHTML) };
+    return {
+      tag: el.tagName.toLowerCase(), className: el.className, rnHtml: rnHtml,
+      text: stripHtml(clone.innerHTML), flag: el.getAttribute('data-flag') || ''
+    };
   }
 
-  function rebuildLine(parts, newText) {
+  function rebuildLine(parts, newText, flag) {
     var bodyHtml = escapeHtmlAllowInline(newText).replace(/\n/g, '<br>');
     var clsAttr = parts.className ? ' class="' + parts.className + '"' : '';
-    return '<' + parts.tag + clsAttr + '>' + parts.rnHtml + bodyHtml + '</' + parts.tag + '>';
+    var flagAttr = flag ? ' data-flag="' + flag + '"' : '';
+    return '<' + parts.tag + clsAttr + flagAttr + '>' + parts.rnHtml + bodyHtml + '</' + parts.tag + '>';
   }
 
   function makePencilBtn(title) {
@@ -836,18 +861,58 @@
     return gap;
   }
 
-  function renderEntryBody(container, e, html) {
-    if (!state.readerEditMode) { container.innerHTML = html; return; }
+  function flagGroupStart(flag) {
+    var group = document.createElement('div');
+    group.className = 'flagged-group ' + flag;
+    var tag = document.createElement('div');
+    tag.className = 'flagged-group-tag';
+    tag.innerHTML = '<span class="pill-' + flag + '">' + (flag === 'new' ? 'New' : 'Updated') + '</span>';
+    group.appendChild(tag);
+    return group;
+  }
+
+  // Renders an entry's body, grouping consecutive same-flagged lines under
+  // one tag (read mode and edit mode alike), and — only in edit mode —
+  // adding a hover-reveal pencil per line plus "+" gaps between lines.
+  // `lineEls` (the original flat line elements, before any grouping/edit
+  // wrappers) is stashed on the container so a save can reconstruct the
+  // full entry HTML without caring how the DOM is currently decorated.
+  function renderEntryBody(container, e, html, block) {
     var tmp = document.createElement('div');
     tmp.innerHTML = html;
     var lineEls = Array.prototype.slice.call(tmp.children);
-    if (!lineEls.length) { container.innerHTML = html; return; }
     container.innerHTML = '';
-    var leadGap = makeAddGap();
-    container.appendChild(leadGap);
-    leadGap.querySelector('.edit-line-add').addEventListener('click', function () { startNewLine(e, container, leadGap, null); });
+    if (!lineEls.length) { container.innerHTML = html; return; }
+    container._lineEls = lineEls;
+
+    if (state.readerEditMode) {
+      var leadGap = makeAddGap();
+      container.appendChild(leadGap);
+      leadGap.querySelector('.edit-line-add').addEventListener('click', function () {
+        openLineEditor(e, container, block, 'insert', null);
+      });
+    }
+
+    var group = null, groupFlag = null;
     lineEls.forEach(function (el) {
-      if (el.tagName !== 'P') { container.appendChild(el); return; }
+      if (el.tagName !== 'P') {
+        group = null; groupFlag = null;
+        container.appendChild(el);
+        return;
+      }
+      var flag = el.getAttribute('data-flag') || '';
+      var target;
+      if (flag && flag === groupFlag) {
+        target = group;
+      } else {
+        group = flag ? flagGroupStart(flag) : null;
+        groupFlag = flag;
+        if (group) container.appendChild(group);
+        target = group || container;
+      }
+
+      if (!state.readerEditMode) { target.appendChild(el); return; }
+
       var row = document.createElement('div');
       row.className = 'edit-line-row';
       var content = document.createElement('div');
@@ -856,34 +921,14 @@
       var pencil = makePencilBtn('Edit this line');
       row.appendChild(content);
       row.appendChild(pencil);
-      container.appendChild(row);
-      pencil.addEventListener('click', function () { startLineEdit(e, container, row, el); });
+      target.appendChild(row);
+      pencil.addEventListener('click', function () { openLineEditor(e, container, block, 'edit', el); });
 
       var gap = makeAddGap();
-      container.appendChild(gap);
-      gap.querySelector('.edit-line-add').addEventListener('click', function () { startNewLine(e, container, gap, el); });
-    });
-  }
-
-  function startLineEdit(e, container, row, lineEl) {
-    var parts = lineParts(lineEl);
-    var wrap = document.createElement('div');
-    wrap.className = 'edit-line-editing';
-    wrap.innerHTML =
-      '<textarea class="edit-line-textarea"></textarea>' +
-      '<div class="edit-line-actions">' +
-      '<button type="button" class="save small">Save</button>' +
-      '<button type="button" class="revert small">Cancel</button>' +
-      '</div>' +
-      '<div class="save-msg"></div>';
-    row.replaceWith(wrap);
-    var ta = wrap.querySelector('.edit-line-textarea');
-    ta.value = parts.text;
-    ta.focus();
-    ta.selectionStart = ta.selectionEnd = ta.value.length;
-    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(row); });
-    wrap.querySelector('.save').addEventListener('click', function () {
-      confirmLineChange(e, container, wrap, 'Publish this change?', function () { return rebuildLine(parts, ta.value); });
+      target.appendChild(gap);
+      gap.querySelector('.edit-line-add').addEventListener('click', function () {
+        openLineEditor(e, container, block, 'insert', el);
+      });
     });
   }
 
@@ -903,71 +948,80 @@
     return m[1] + (m[2] ? String.fromCharCode(m[2].charCodeAt(0) + 1) : 'A');
   }
 
-  function startNewLine(e, container, gap, afterEl) {
-    var className = afterEl ? afterEl.className : 'l0';
-    var newNumber = nextInsertedNumber(afterEl);
-    var wrap = document.createElement('div');
-    wrap.className = 'edit-line-editing';
-    wrap.innerHTML =
-      (newNumber ? '<div class="new-line-number">Numbered <b>' + escapeHtml(newNumber) + '</b> — sits here without renumbering anything below.</div>' : '') +
-      '<textarea class="edit-line-textarea" placeholder="New line…"></textarea>' +
-      '<div class="edit-line-actions">' +
-      '<button type="button" class="save small">Add line</button>' +
-      '<button type="button" class="revert small">Cancel</button>' +
+  // The one editor for both "edit this line" (mode 'edit', targetEl is the
+  // line) and "add a line" (mode 'insert', targetEl is the line to insert
+  // after, or null for the very top) — rendered into the reader's shared
+  // right-hand panel.
+  function openLineEditor(e, container, block, mode, targetEl) {
+    var isInsert = mode === 'insert';
+    var parts = isInsert ? null : lineParts(targetEl);
+    var newNumber = isInsert ? nextInsertedNumber(targetEl) : null;
+    var pane = readerEditorPane();
+    pane.innerHTML =
+      '<div class="editor-card">' +
+      '<span class="code-badge">' + escapeHtml(dispCode(e)) + (isInsert ? ' — new line' : ' — line') + '</span>' +
+      (isInsert && newNumber ? '<div class="new-line-number">Numbered <b>' + escapeHtml(newNumber) + '</b> — sits here without renumbering anything below.</div>' : '') +
+      '<label for="lineEditText">Text</label>' +
+      '<textarea id="lineEditText" class="edit-line-textarea" placeholder="' + (isInsert ? 'New line…' : '') + '"></textarea>' +
+      '<label>Flag</label>' +
+      '<div class="reader-entry-flag" style="margin-left:0">' +
+      '<label><input type="checkbox" id="lineFlagNew"' + (!isInsert && parts.flag === 'new' ? ' checked' : '') + '> New</label>' +
+      '<label><input type="checkbox" id="lineFlagUpdated"' + (!isInsert && parts.flag === 'updated' ? ' checked' : '') + '> Updated</label>' +
       '</div>' +
-      '<div class="save-msg"></div>';
-    gap.replaceWith(wrap);
-    var ta = wrap.querySelector('.edit-line-textarea');
+      '<div class="hint">Flags this specific line — leave both unchecked for none.</div>' +
+      '<div class="editor-actions">' +
+      '<button class="save" id="lineSaveBtn">' + (isInsert ? 'Add line' : 'Publish change') + '</button>' +
+      '<button class="revert" id="lineCancelBtn" type="button">Cancel</button>' +
+      '</div>' +
+      '<div class="save-msg" id="lineSaveMsg"></div>' +
+      '</div>';
+    var ta = $('lineEditText');
+    ta.value = isInsert ? '' : parts.text;
     ta.focus();
-    wrap.querySelector('.revert').addEventListener('click', function () { wrap.replaceWith(gap); });
-    wrap.querySelector('.save').addEventListener('click', function () {
-      if (!ta.value.trim()) { alert('Give the new line some text first.'); return; }
-      confirmLineChange(e, container, wrap, 'Publish this new line?', function () {
+    if (!isInsert) ta.selectionStart = ta.selectionEnd = ta.value.length;
+    $('lineFlagNew').addEventListener('change', function () { if (this.checked) $('lineFlagUpdated').checked = false; });
+    $('lineFlagUpdated').addEventListener('change', function () { if (this.checked) $('lineFlagNew').checked = false; });
+    $('lineCancelBtn').addEventListener('click', clearReaderEditor);
+    $('lineSaveBtn').addEventListener('click', function () {
+      var text = ta.value;
+      if (isInsert && !text.trim()) { alert('Give the new line some text first.'); return; }
+      var flag = $('lineFlagNew').checked ? 'new' : $('lineFlagUpdated').checked ? 'updated' : '';
+      var newHtml;
+      if (isInsert) {
+        var className = targetEl ? targetEl.className : 'l0';
         var rnHtml = newNumber ? '<span class="rn">' + escapeHtml(newNumber) + '</span>' : '';
-        var bodyHtml = escapeHtmlAllowInline(ta.value).replace(/\n/g, '<br>');
+        var bodyHtml = escapeHtmlAllowInline(text).replace(/\n/g, '<br>');
         var clsAttr = className ? ' class="' + className + '"' : '';
-        return '<p' + clsAttr + '>' + rnHtml + bodyHtml + '</p>';
+        var flagAttr = flag ? ' data-flag="' + flag + '"' : '';
+        newHtml = '<p' + clsAttr + flagAttr + '>' + rnHtml + bodyHtml + '</p>';
+      } else {
+        newHtml = rebuildLine(parts, text, flag);
+      }
+      confirmPublish(isInsert ? 'Publish this new line?' : 'Publish this change?', function () {
+        saveLineChange(e, container, block, mode, targetEl, newHtml);
       });
     });
   }
 
-  function confirmLineChange(e, container, wrap, question, buildLineHtml) {
-    var overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.innerHTML =
-      '<div class="confirm-box">' +
-      '<h3>' + escapeHtml(question) + '</h3>' +
-      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
-      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
-    overlay.querySelector('.confirm').addEventListener('click', function () {
-      overlay.remove();
-      doSaveLine(e, container, wrap, buildLineHtml());
+  // Rebuilds the full entry HTML from the original flat line list (stashed
+  // by renderEntryBody), substituting or inserting just the one changed
+  // line — independent of however the live DOM is currently wrapped for
+  // display, so grouping/edit decoration never has to be undone first.
+  function reconstructEntryHtml(lineEls, mode, targetEl, newHtml) {
+    var out = [];
+    if (mode === 'insert' && targetEl === null) out.push(newHtml);
+    lineEls.forEach(function (el) {
+      if (mode === 'edit' && el === targetEl) { out.push(newHtml); return; }
+      out.push(el.outerHTML);
+      if (mode === 'insert' && el === targetEl) out.push(newHtml);
     });
+    return out.join('');
   }
 
-  // Shared by both editing an existing line and inserting a new one: `wrap`
-  // sits exactly where the changed/new content belongs, so walking the
-  // container's current children and swapping `wrap` for `lineHtml`
-  // reconstructs the full entry body either way — add-line gaps contribute
-  // nothing of their own.
-  function doSaveLine(e, container, wrap, lineHtml) {
-    var btn = wrap.querySelector('.save');
-    var msg = wrap.querySelector('.save-msg');
-    var htmlParts = [];
-    Array.prototype.forEach.call(container.children, function (child) {
-      if (child === wrap) { htmlParts.push(lineHtml); return; }
-      if (child.classList && child.classList.contains('edit-line-row')) {
-        htmlParts.push(child.querySelector('.edit-line-content').firstElementChild.outerHTML);
-      } else if (child.classList && child.classList.contains('edit-line-gap')) {
-        return;
-      } else {
-        htmlParts.push(child.outerHTML);
-      }
-    });
-    var fullHtml = htmlParts.join('');
+  function saveLineChange(e, container, block, mode, targetEl, newHtml) {
+    var btn = $('lineSaveBtn');
+    var msg = $('lineSaveMsg');
+    var fullHtml = reconstructEntryHtml(container._lineEls, mode, targetEl, newHtml);
     btn.disabled = true;
     msg.textContent = 'Publishing…';
     msg.className = 'save-msg';
@@ -979,8 +1033,9 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: fullHtml, updatedAt: new Date().toISOString() });
-      markEdited(container.closest('.reader-entry'));
-      renderEntryBody(container, e, effective(e).html);
+      markEdited(block);
+      renderEntryBody(container, e, effective(e).html, block);
+      clearReaderEditor();
     }).catch(function (err) {
       msg.textContent = 'Could not publish: ' + err.message;
       msg.className = 'save-msg err';
@@ -994,6 +1049,7 @@
       $('readerEditToggle').textContent = state.readerEditMode ? 'Done editing' : 'Edit';
       $('readerEditToggle').classList.toggle('active', state.readerEditMode);
     }
+    if ($('readerEditorSlot')) clearReaderEditor();
     renderReaderBody($('readerSearch') ? $('readerSearch').value : '');
   }
   if ($('readerEditToggle')) $('readerEditToggle').addEventListener('click', toggleReaderEditMode);
@@ -1112,6 +1168,7 @@
     if ($('readerNewOnly')) $('readerNewOnly').checked = false;
     state.readerEditMode = false;
     if ($('readerEditToggle')) { $('readerEditToggle').textContent = 'Edit'; $('readerEditToggle').classList.remove('active'); }
+    if ($('readerEditorSlot')) clearReaderEditor();
     renderReaderBody('');
   }
 

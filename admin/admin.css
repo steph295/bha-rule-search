@@ -356,9 +356,17 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-entry:hover { background: var(--blue-pale); }
 .reader-entry-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
 .reader-entry-title { font-weight: 650; font-size: 14.5px; }
-.reader-entry-title.editable { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 5px; padding: 1px 4px; margin: -1px -4px; }
-.reader-entry-title.editable:hover { background: var(--blue-pale); }
-.reader-entry-title.editable .title-pencil { color: var(--ink-soft); flex: none; }
+.reader-entry-title.editable { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 1px 4px; margin: -1px -4px; }
+/* The pencil — not the title text — is the click target, and only shows on
+   hovering the title, matching the per-line pencils' hover-reveal below. */
+.reader-entry-title.editable .title-pencil {
+  flex: none; width: 20px; height: 20px; padding: 0; border: 0; background: none;
+  color: var(--ink-soft); border-radius: 5px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .1s;
+}
+.reader-entry-title.editable:hover .title-pencil { opacity: 1; }
+.reader-entry-title.editable .title-pencil:hover { background: var(--blue-pale); color: var(--blue-dark); }
 .reader-entry.selected { background: var(--blue-pale); box-shadow: inset 0 0 0 1px var(--blue-mid); }
 .reader-entry-flag {
   margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px;
@@ -445,10 +453,27 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rfull-body th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull-body ul { margin: 6px 0; padding-left: 22px; }
 
-/* Rule editing now happens inline (a pencil per line, see .edit-line-*
-   below), not in this side panel — kept in the DOM only as a harmless
-   fallback for selectEntry(), so it's hidden rather than removed. */
-#readerEditorSlot { display: none; }
+/* Consecutive lines sharing a New/Updated flag are grouped under one tag
+   (see renderEntryBody) instead of repeating a pill per line — matches the
+   public site's same treatment. */
+.pill-new, .pill-updated {
+  display: inline-block; color: #fff; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; border-radius: 4px; padding: 1.5px 6px;
+}
+.pill-new { background: #5b6472; }
+.pill-updated { background: var(--blue-mid); }
+.flagged-group { border-left: 3px solid var(--blue-mid); padding: 4px 0 4px 12px; margin: 14px 0; }
+.flagged-group.updated { border-left-color: var(--amber); }
+.flagged-group-tag { margin-bottom: 4px; }
+.flagged-group > p:first-of-type,
+.flagged-group > .edit-line-row:first-child p { margin-top: 0; }
+
+/* The reader's per-line/title editor (see openLineEditor/openTitleEditor)
+   lives here, on the right — a shared panel rather than a dozen inline
+   textareas scattered through the document. Empty (nothing being edited,
+   or edit mode off) collapses it entirely rather than reserving a column. */
+#readerEditorSlot:empty { display: none; }
+#readerEditorSlot { flex: 0 0 360px; }
 
 /* Desktop: pin the header and give the outline/content/editor columns
    their own independent scroll instead of the page — so only "the doc nav"

@@ -323,6 +323,38 @@
     });
   }
 
+  // The admin can flag individual lines (not just a whole rule) as New or
+  // Updated — a data-flag attribute set on that <p> in the published html.
+  // Consecutive lines sharing a flag are shown under one merged tag rather
+  // than repeating a pill per line, since an editor flags a run of related
+  // clauses together, not each one separately.
+  function groupFlaggedLines(html) {
+    if (html.indexOf('data-flag') === -1) return html;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    var out = document.createElement('div');
+    var group = null, groupFlag = null;
+    Array.prototype.forEach.call(tmp.childNodes, function (node) {
+      var flag = node.nodeType === 1 ? node.getAttribute('data-flag') : null;
+      if (flag && flag === groupFlag) { group.appendChild(node); return; }
+      group = null; groupFlag = null;
+      if (flag) {
+        groupFlag = flag;
+        group = document.createElement('div');
+        group.className = 'flagged-group ' + flag;
+        var tag = document.createElement('div');
+        tag.className = 'flagged-group-tag';
+        tag.innerHTML = flag === 'new' ? NEW_PILL : UPDATED_PILL;
+        group.appendChild(tag);
+        group.appendChild(node);
+        out.appendChild(group);
+        return;
+      }
+      out.appendChild(node);
+    });
+    return out.innerHTML;
+  }
+
   function loadGlossary() {
     if (state.glossaryState === 'loading' || state.glossaryState === 'ready') return;
     state.glossaryState = 'loading';
@@ -912,7 +944,7 @@
         (e.code ? '' : '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>') +
         statusPill(e) +
         '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
-        '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>' +
+        '<div class="rfull reader-body">' + highlightHtml(glossarize(groupFlaggedLines(e.html)), terms) + '</div>' +
         (e.penalties ? '<button type="button" class="penalty-link">Penalty</button>' : '');
       if (e.penalties) block.querySelector('.penalty-link').addEventListener('click', function () { showPenaltyModal(e); });
       frag.appendChild(block);
@@ -1603,7 +1635,7 @@
     var e = state.data.entries[+div.dataset.id];
     full = document.createElement('div');
     full.className = 'rfull';
-    full.innerHTML = highlightHtml(glossarize(e.html), state.lastTerms);
+    full.innerHTML = highlightHtml(glossarize(groupFlaggedLines(e.html)), state.lastTerms);
     if (isGuideEntry(e) && e.url) {
       var a = document.createElement('a');
       a.className = 'srclink';

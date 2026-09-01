@@ -231,7 +231,10 @@
             };
             entries.push(current);
             flushPendingInto(current);
-            current.html += '<p class="l1"><span class="rn">' + (letter ? '(' + letter + ')' : '') + rule + '</span>' + b.html + '</p>';
+            // Bare number only — matches how sub-clauses below are numbered,
+            // and how BHA's own site numbers every level; the manual letter
+            // is never repeated inline in their own text either.
+            current.html += '<p class="l1"><span class="rn">' + rule + '</span>' + b.html + '</p>';
             current.text += ' ' + b.text;
           } else if (b.level === 2 && current) {
             sub2 += 1; sub3 = 0;

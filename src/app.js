@@ -584,10 +584,15 @@
 
   // ------------------------------------------------------------- render
 
+  // BHA's own site numbers a rule with a bare number only (30, 31, 32…) —
+  // it never repeats the manual letter on the number itself, relying on
+  // the surrounding heading/breadcrumb for that context instead. The
+  // "(A)"/"(C)" prefix was this app's own invention; dropped so the
+  // badge matches BHA's real format.
   function dispCode(e) {
     if (e.kind === 'bhagi') return e.code || 'BHAGI';
     if (e.kind === 'guidedoc') return e.cat === 'BHA General Instructions (BHAGIs)' ? 'BHAGI' : 'Guide';
-    if (e.code) return '(' + e.letter + ')' + e.num;
+    if (e.code) return String(e.num);
     if (e.num != null) return '¶' + e.num;
     if (e.kind === 'code') return 'Code';
     if (e.kind === 'guide') return 'Guide';

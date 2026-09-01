@@ -532,6 +532,8 @@ main {
   -webkit-tap-highlight-color: transparent;
 }
 .defterm:hover { background: var(--blue-pale); }
+.defterm-icon { color: var(--blue-mid); margin-left: 1px; vertical-align: -1px; }
+.defterm:hover .defterm-icon { color: var(--blue-dark); }
 
 .def-panel {
   flex: 0 0 300px;

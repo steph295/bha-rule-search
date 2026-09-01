@@ -307,13 +307,18 @@
   // Wraps every occurrence of a known defined term in matching text nodes
   // with a clickable span — safe against the surrounding markup because it
   // only ever touches text between ">" and "<", same trick as highlightHtml.
+  // Trailing icon on every defined term — the rulebook's own prose also uses
+  // plain <u> underlines for sub-headings (e.g. "Reserving a name"), which
+  // look identical to the dotted defterm underline at a glance. The icon is
+  // the affordance that says "this one is clickable", not just the underline.
+  var DEFTERM_ICON = '<svg class="defterm-icon" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.75" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.25V11.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="4.85" r="0.95" fill="currentColor"/></svg>';
   function glossarize(html) {
     var re = state.glossaryRe;
     if (!re) return html;
     return html.replace(/>([^<]+)</g, function (_, txt) {
       return '>' + txt.replace(re, function (match) {
         var t = state.glossaryByLower[match.toLowerCase()];
-        return t ? '<span class="defterm" data-term-id="' + t.id + '">' + match + '</span>' : match;
+        return t ? '<span class="defterm" data-term-id="' + t.id + '">' + match + DEFTERM_ICON + '</span>' : match;
       }) + '<';
     });
   }

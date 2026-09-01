@@ -36,6 +36,13 @@
   // Keep only harmless inline formatting; drop every attribute.
   function cleanHtml(h) {
     h = String(h || '').replace(/[\n\r\t]+/g, ' ');
+    // BHA's source uses <div> as a soft line break inside table cells (e.g.
+    // "Disqualify horse<div>£1,000 or</div><div>Disqualify/exclude 3
+    // months</div>", sometimes nested) rather than <br> — without this,
+    // stripping the <div> tags below as "unknown markup" ran the separate
+    // lines together with no space at all (see extractPenalties' rows).
+    h = h.replace(/<div[^>]*>/gi, '<br>').replace(/<\/div>/gi, '');
+    h = h.replace(/(?:<br>\s*){2,}/gi, '<br>').replace(/^(?:<br>\s*)+|(?:<br>\s*)+$/gi, '');
     h = h.replace(new RegExp('<(\\/?)(' + ALLOWED_TAGS + ')\\b[^>]*>', 'gi'), '<$1$2>');
     h = h.replace(new RegExp('<(?!\\/?(?:' + ALLOWED_TAGS + ')>)[^>]*>', 'gi'), '');
     h = h.replace(/\s{2,}/g, ' ');

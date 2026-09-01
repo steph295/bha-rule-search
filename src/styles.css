@@ -521,7 +521,7 @@ main {
 .penalty-link:hover { color: var(--blue-dark); border-color: var(--blue-dark); }
 .penalty-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .penalty-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.penalty-table th, .penalty-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+.penalty-table th, .penalty-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; white-space: pre-line; }
 .penalty-table th { background: var(--blue-pale); color: var(--blue-dark); font-size: 12.5px; }
 
 /* ---- defined-terms glossary ---- */
@@ -544,8 +544,6 @@ main {
   border-radius: 12px;
   padding: 16px 18px;
 }
-.def-panel-hint { color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
-.defterm-sample { border-bottom: 1px dotted var(--blue-mid); }
 .def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 
 /* Flat list views (search results, "New" tab) get the same persistent
@@ -555,7 +553,7 @@ main {
    popover (see the matching matchMedia check in app.js). */
 .results-row { display: flex; align-items: flex-start; gap: 24px; }
 .results-row #results { flex: 1; min-width: 0; }
-#flatDefPanel:empty { display: none; }
+#defPanel:empty, #flatDefPanel:empty { display: none; }
 body.reader-mode #flatDefPanel { display: none; }
 @media (max-width: 900px) {
   #flatDefPanel { display: none; }

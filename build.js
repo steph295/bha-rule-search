@@ -44,21 +44,36 @@ function loadLocal() {
 // "Penalty" quick-look on each rule, by reading the plain rule-code text
 // each row already carries (e.g. "(E)14") — no invented data, no needing
 // to resolve BHA's internal cross-reference IDs.
+// <br> (BHA's own soft line-break inside a cell — see parser.js cleanHtml)
+// needs to survive as a real line break, not get merged into the
+// surrounding text like every other tag this strips.
+function cellText(html) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+}
+
 function extractPenalties(entries) {
   var byCode = {};
   entries.forEach(function (e) {
     if (e.doc !== 'Table Of Penalties') return;
     var rowRe = /<tr>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<\/tr>/g;
-    var m;
+    var m, lastRule = '', lastCode = '';
     while ((m = rowRe.exec(e.html))) {
-      var code = m[1].replace(/<[^>]+>/g, '').replace(/[()]/g, '').trim();
-      if (!code) continue;
-      if (!byCode[code]) byCode[code] = { sectionKey: 'Table Of Penalties::' + e.title, rows: [] };
-      byCode[code].rows.push({
-        summary: m[2].replace(/<[^>]+>/g, '').trim(),
-        entryPoint: m[3].replace(/<[^>]+>/g, '').trim(),
-        range: m[4].replace(/<[^>]+>/g, '').trim(),
-        rc: m[5].replace(/<[^>]+>/g, '').trim()
+      var ruleText = cellText(m[1]);
+      var code = ruleText.replace(/[()]/g, '').trim();
+      // A rule's later rows (offence breakdowns, "- 1st offence" etc.) often
+      // leave the Rule cell blank on BHA's own site, relying on the row
+      // above it — carry the last seen rule forward instead of dropping them.
+      if (code) { lastRule = ruleText; lastCode = code; } else if (!lastCode) continue;
+      if (!byCode[lastCode]) byCode[lastCode] = { sectionKey: 'Table Of Penalties::' + e.title, rows: [] };
+      byCode[lastCode].rows.push({
+        rule: lastRule,
+        summary: cellText(m[2]),
+        entryPoint: cellText(m[3]),
+        range: cellText(m[4]),
+        rc: cellText(m[5])
       });
     }
   });

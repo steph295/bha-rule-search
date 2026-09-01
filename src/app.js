@@ -894,8 +894,14 @@
       var block = document.createElement('div');
       block.className = 'reader-entry';
       block.dataset.key = entryKey(e);
+      // A numbered rule (e.code) already carries its own number inline as
+      // the first thing in its body (the .rn span) — matching BHA's own
+      // site, which has no separate heading number either. Repeating it
+      // in a badge up here was this app's own redundant addition. Guide/
+      // BHAGI/Code entries have no such inline number, so they keep the
+      // badge as their only visible identifier.
       block.innerHTML = '<div class="reader-entry-head">' +
-        '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>' +
+        (e.code ? '' : '<span class="' + codeClass(e) + '">' + P.escapeHtml(dispCode(e)) + '</span>') +
         statusPill(e) +
         '<span class="reader-entry-title">' + highlight(P.escapeHtml(e.title), terms) + '</span></div>' +
         '<div class="rfull reader-body">' + highlightHtml(glossarize(e.html), terms) + '</div>' +
@@ -1165,7 +1171,11 @@
     var panel = $(state.mode === 'reader' ? 'defPanel' : 'flatDefPanel');
     if (!panel) return;
     if (state.activeDefTerm == null) {
-      panel.innerHTML = '<div class="def-panel-hint">Click any <span class="defterm-sample">underlined term</span> in the text to see its definition here.</div>';
+      // Empty rather than a hint placeholder — the panel (see #defPanel:empty
+      // / #flatDefPanel:empty in styles.css) collapses entirely until the
+      // reader actually clicks a term, instead of reserving a column with
+      // "click a term" filler text sitting there by default.
+      panel.innerHTML = '';
       return;
     }
     var t = state.glossary.terms.filter(function (x) { return x.id === state.activeDefTerm; })[0];
@@ -1740,11 +1750,11 @@
   function showPenaltyModal(e) {
     $('penaltyTitle').textContent = dispCode(e) + ' — Penalty';
     var rows = e.penalties.rows.map(function (r) {
-      return '<tr><td>' + P.escapeHtml(r.summary) + '</td><td>' + P.escapeHtml(r.entryPoint) + '</td>' +
+      return '<tr><td>' + P.escapeHtml(r.rule) + '</td><td>' + P.escapeHtml(r.summary) + '</td><td>' + P.escapeHtml(r.entryPoint) + '</td>' +
         '<td>' + P.escapeHtml(r.range) + '</td><td>' + P.escapeHtml(r.rc) + '</td></tr>';
     }).join('');
     $('penaltyTable').innerHTML = '<div class="penalty-table-wrap"><table class="penalty-table"><thead><tr>' +
-      '<th>Summary</th><th>Entry Point</th><th>Range</th><th></th></tr></thead>' +
+      '<th>Rule</th><th>Summary</th><th>Entry Point</th><th>Range</th><th></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>';
     penaltyVisitKey = e.penalties.sectionKey;
     if (typeof penaltyPanel.showModal === 'function') penaltyPanel.showModal();

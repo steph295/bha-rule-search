@@ -898,11 +898,20 @@
   var RICH_CMDS = ['b', 'i', 'u', 'sub', 'sup'];
   var RICH_LABELS = { b: '<b>B</b>', i: '<i>I</i>', u: '<u>U</u>', sub: 'X<sub>2</sub>', sup: 'X<sup>2</sup>' };
   var RICH_TITLES = { b: 'Bold', i: 'Italic', u: 'Underline', sub: 'Subscript', sup: 'Superscript' };
+  var SECTION_ICONS = {
+    up: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"></path></svg>',
+    down: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>',
+    trash: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M4.5 4.5l.6 8.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.4"></path></svg>'
+  };
 
+  // Bare buttons (no wrapping toolbar div) — the caller drops them into a
+  // shared .toolbar-group alongside whatever move/flag controls that row
+  // also has, so the whole thing reads as one tidy icon bar rather than a
+  // stack of differently-styled control rows.
   function renderRichToolbarHtml() {
-    return '<div class="text-toolbar">' + RICH_CMDS.map(function (cmd) {
-      return '<button type="button" data-cmd="' + cmd + '" title="' + RICH_TITLES[cmd] + '">' + RICH_LABELS[cmd] + '</button>';
-    }).join('') + '</div>';
+    return RICH_CMDS.map(function (cmd) {
+      return '<button type="button" class="section-tool-btn rich-btn" data-cmd="' + cmd + '" title="' + RICH_TITLES[cmd] + '">' + RICH_LABELS[cmd] + '</button>';
+    }).join('');
   }
 
   // Wraps (or, on a second click over the same span, unwraps) the
@@ -921,8 +930,8 @@
     textarea.setSelectionRange(already ? selEnd : start + openTag.length, already ? selEnd : start + openTag.length + selected.length);
   }
 
-  function wireRichToolbar(toolbarEl, textarea) {
-    Array.prototype.forEach.call(toolbarEl.querySelectorAll('button'), function (btn) {
+  function wireRichToolbar(scopeEl, textarea) {
+    Array.prototype.forEach.call(scopeEl.querySelectorAll('.rich-btn'), function (btn) {
       btn.addEventListener('click', function () { wrapSelectionTag(textarea, btn.dataset.cmd); });
     });
   }
@@ -965,13 +974,14 @@
     var wrap = document.createElement('div');
     wrap.className = 'section-sub-row';
     wrap.dataset.subIndex = j;
-    wrap.innerHTML = renderRichToolbarHtml() +
-      '<div class="section-sub-main">' +
-      '<textarea class="section-sub-textarea"></textarea>' +
-      '<button type="button" class="section-sub-remove" title="Remove this sub-clause">✕</button>' +
-      '</div>';
+    wrap.innerHTML =
+      '<div class="section-sub-toolbar">' +
+      '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
+      '<button type="button" class="section-tool-btn danger section-sub-remove" title="Remove this sub-clause">' + SECTION_ICONS.trash + '</button>' +
+      '</div>' +
+      '<textarea class="section-sub-textarea"></textarea>';
     wrap.querySelector('.section-sub-textarea').value = sub.text;
-    wireRichToolbar(wrap.querySelector(':scope > .text-toolbar'), wrap.querySelector('.section-sub-textarea'));
+    wireRichToolbar(wrap.querySelector('.section-sub-toolbar'), wrap.querySelector('.section-sub-textarea'));
     wrap.querySelector('.section-sub-remove').addEventListener('click', function () {
       syncSectionEditRowsFromDom();
       row.subs.splice(j, 1);
@@ -989,29 +999,37 @@
     wrap.innerHTML =
       '<div class="section-rule-top">' +
       '<span class="section-rule-num">' + escapeHtml(badge) + '</span>' +
-      (numbered ?
-        '<div class="section-rule-move">' +
-        '<button type="button" class="sec-up" title="Move up"' + (i === 0 ? ' disabled' : '') + '>&#8593;</button>' +
-        '<button type="button" class="sec-down" title="Move down"' + (i === total - 1 ? ' disabled' : '') + '>&#8595;</button>' +
-        '</div>' : '') +
-      '<label class="section-rule-flag"><input type="checkbox" class="sec-flag-new"' + (row.flag === 'new' ? ' checked' : '') + '> New</label>' +
-      '<label class="section-rule-flag"><input type="checkbox" class="sec-flag-updated"' + (row.flag === 'updated' ? ' checked' : '') + '> Updated</label>' +
-      (numbered && total > 1 ? '<button type="button" class="section-rule-remove" title="Remove this rule">Remove</button>' : '') +
+      (numbered && total > 1 ? '<button type="button" class="section-tool-btn danger section-rule-remove" title="Remove this rule">' + SECTION_ICONS.trash + '</button>' : '') +
       '</div>' +
-      renderRichToolbarHtml() +
+      '<div class="section-rule-toolbar">' +
+      (numbered ?
+        '<div class="toolbar-group">' +
+        '<button type="button" class="section-tool-btn sec-up" title="Move up"' + (i === 0 ? ' disabled' : '') + '>' + SECTION_ICONS.up + '</button>' +
+        '<button type="button" class="section-tool-btn sec-down" title="Move down"' + (i === total - 1 ? ' disabled' : '') + '>' + SECTION_ICONS.down + '</button>' +
+        '</div>' : '') +
+      '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
+      '<div class="toolbar-group">' +
+      '<button type="button" class="section-tool-btn flag-toggle sec-flag-new" title="Mark this rule New">New</button>' +
+      '<button type="button" class="section-tool-btn flag-toggle sec-flag-updated" title="Mark this rule Updated">Updated</button>' +
+      '</div>' +
+      '</div>' +
       '<textarea class="section-rule-lead"></textarea>' +
       '<div class="section-subs"></div>' +
       '<button type="button" class="section-add-sub">+ Add sub-clause</button>';
     wrap.querySelector('.section-rule-lead').value = row.lead.text;
-    wireRichToolbar(wrap.querySelector(':scope > .text-toolbar'), wrap.querySelector('.section-rule-lead'));
+    wireRichToolbar(wrap.querySelector('.section-rule-toolbar'), wrap.querySelector('.section-rule-lead'));
 
     var subsEl = wrap.querySelector('.section-subs');
     row.subs.forEach(function (sub, j) { subsEl.appendChild(renderSectionSubRow(row, sub, j)); });
 
-    var flagNew = wrap.querySelector('.sec-flag-new'), flagUpdated = wrap.querySelector('.sec-flag-updated');
-    function syncFlag() { row.flag = flagNew.checked ? 'new' : flagUpdated.checked ? 'updated' : ''; }
-    flagNew.addEventListener('change', function () { if (this.checked) flagUpdated.checked = false; syncFlag(); });
-    flagUpdated.addEventListener('change', function () { if (this.checked) flagNew.checked = false; syncFlag(); });
+    var flagNewBtn = wrap.querySelector('.sec-flag-new'), flagUpdatedBtn = wrap.querySelector('.sec-flag-updated');
+    function syncFlagUI() {
+      flagNewBtn.classList.toggle('active', row.flag === 'new');
+      flagUpdatedBtn.classList.toggle('active', row.flag === 'updated');
+    }
+    syncFlagUI();
+    flagNewBtn.addEventListener('click', function () { row.flag = row.flag === 'new' ? '' : 'new'; syncFlagUI(); });
+    flagUpdatedBtn.addEventListener('click', function () { row.flag = row.flag === 'updated' ? '' : 'updated'; syncFlagUI(); });
 
     var upBtn = wrap.querySelector('.sec-up'), downBtn = wrap.querySelector('.sec-down');
     if (upBtn) upBtn.addEventListener('click', function () {

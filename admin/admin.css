@@ -278,12 +278,6 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   width: 100%; box-sizing: border-box; font-size: 14.5px; line-height: 1.6; padding: 11px 12px;
   border: 1px solid var(--line); border-radius: 9px; min-height: 220px; font-family: inherit; resize: vertical;
 }
-.text-toolbar { display: flex; gap: 4px; margin-bottom: 6px; }
-.text-toolbar button {
-  width: 30px; height: 28px; border: 1px solid var(--line); background: var(--card);
-  border-radius: 7px; font-size: 13.5px; color: var(--ink); cursor: pointer;
-}
-.text-toolbar button:hover { background: var(--blue-pale); border-color: var(--blue-mid); }
 .editor-card label.checkbox-row {
   display: flex; align-items: center; gap: 7px;
   font-size: 13.5px; font-weight: 500; color: var(--ink);
@@ -472,25 +466,43 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .section-rule-row {
   border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--bg);
 }
-.section-rule-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.section-rule-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .section-rule-num { font-weight: 700; font-size: 12.5px; color: var(--blue-dark); }
-.section-rule-move { display: flex; gap: 4px; }
-.section-rule-move button, .section-rule-remove, .section-sub-remove {
-  border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
-  border-radius: 6px; cursor: pointer;
+
+/* One tidy icon bar per rule/sub-clause — move, format and flag controls
+   as same-sized square buttons in visually separated groups, rather than
+   a row of checkboxes-with-labels and a separate text-button toolbar
+   glued on above it. */
+.section-rule-toolbar, .section-sub-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
 }
-.section-rule-move button { width: 24px; height: 24px; font-size: 12px; line-height: 1; }
-.section-rule-move button:disabled { opacity: .35; cursor: default; }
-.section-rule-move button:not(:disabled):hover, .section-rule-remove:hover { border-color: var(--blue-mid); color: var(--blue-dark); }
-.section-rule-flag { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink); cursor: pointer; }
-.section-rule-flag input { margin: 0; }
-.section-rule-remove { margin-left: auto; font-size: 12px; padding: 3px 10px; }
+.toolbar-group { display: flex; gap: 3px; padding-right: 8px; border-right: 1px solid var(--line); }
+.toolbar-group:last-child { border-right: 0; padding-right: 0; }
+/* Named apart from the header/Users .icon-btn (a different, circular 30px
+   button elsewhere in this file) — same idea, sized and shaped for a dense
+   row of controls instead. */
+.section-tool-btn {
+  width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
+  border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 700; padding: 0;
+}
+.section-tool-btn:hover { border-color: var(--blue-mid); color: var(--blue-dark); background: var(--blue-pale); }
+.section-tool-btn:disabled { opacity: .35; cursor: default; }
+.section-tool-btn:disabled:hover { border-color: var(--line); color: var(--ink-soft); background: var(--card); }
+.section-tool-btn.danger { color: #b42318; }
+.section-tool-btn.danger:hover { border-color: #b42318; background: #fdecea; color: #b42318; }
+.section-rule-top .section-tool-btn.danger { margin-left: auto; }
+.flag-toggle {
+  width: auto; height: 26px; padding: 0 9px; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.flag-toggle.sec-flag-new.active { background: #5b6472; border-color: #5b6472; color: #fff; }
+.flag-toggle.sec-flag-updated.active { background: var(--blue-mid); border-color: var(--blue-mid); color: #fff; }
 .editor-card textarea.section-rule-lead { min-height: 90px; }
-.section-subs { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.section-subs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .section-sub-row { padding-left: 18px; border-left: 2px solid var(--line); }
-.section-sub-main { display: flex; align-items: flex-start; gap: 8px; }
-.editor-card textarea.section-sub-textarea { flex: 1; min-height: 54px; }
-.section-sub-remove { flex: none; width: 26px; height: 26px; font-size: 12px; }
+.section-sub-toolbar { margin-bottom: 6px; }
+.editor-card textarea.section-sub-textarea { min-height: 54px; }
 .section-add-sub, .section-add-rule {
   border: 1px dashed var(--line); background: none; color: var(--blue-mid);
   border-radius: 7px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer;

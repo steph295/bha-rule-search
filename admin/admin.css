@@ -409,16 +409,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 }
 .discard-edit-btn:hover { color: #8f1c13; }
 
-.title-editing { display: inline-flex; align-items: center; gap: 6px; }
-.title-editing .title-input {
-  font: inherit; font-weight: 650; font-size: 14.5px; padding: 3px 7px;
-  border: 1px solid var(--blue-mid); border-radius: 6px; min-width: 220px;
-}
-.title-editing button.small { font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
-.title-editing button.save.small { border: 0; background: var(--blue); color: #fff; }
-.title-editing button.revert.small { border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); }
-
-/* ---- reader: edit mode toggle + per-line editing ---- */
+/* ---- reader: edit mode toggle + section editing ---- */
 /* Scoped as ".reader-back .reader-edit-toggle" (two classes) rather than
    ".reader-edit-toggle" alone so it outranks the generic ".reader-back
    button" rule above (element+class) — otherwise that rule's padding/
@@ -431,50 +422,13 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-back .reader-edit-toggle:hover { border-color: var(--blue-mid); color: var(--blue-dark); text-decoration: none; }
 .reader-back .reader-edit-toggle.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 
-.edit-line-row { display: flex; align-items: flex-start; gap: 8px; }
-.edit-line-content { flex: 1; min-width: 0; }
 .edit-line-pencil {
   flex: none; margin-top: 12px; width: 24px; height: 24px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   opacity: 0; transition: opacity .1s;
 }
-.edit-line-row:hover .edit-line-pencil { opacity: 1; }
 .edit-line-pencil:hover { border-color: var(--blue-mid); color: var(--blue-dark); background: var(--blue-pale); }
-
-.edit-line-editing { margin: 10px 0; }
-.edit-line-textarea {
-  width: 100%; box-sizing: border-box; min-height: 70px; font: inherit; font-size: 14px;
-  padding: 8px 10px; border: 1px solid var(--blue-mid); border-radius: 8px; resize: vertical;
-}
-.edit-line-actions { display: flex; gap: 8px; margin-top: 6px; }
-.edit-line-actions button.small {
-  font-size: 12.5px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
-}
-.edit-line-actions button.save.small { border: 0; background: var(--blue); color: #fff; }
-.edit-line-actions button.revert.small { border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); }
-.new-line-number { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
-.new-line-number b { color: var(--blue-dark); }
-
-/* Hover-to-reveal strip between lines — "+" inserts a new line right
-   there, lettered off its predecessor (see nextInsertedNumber) so nothing
-   below ever renumbers. Tall enough to hover onto deliberately — a thin
-   14px strip made the "+" flicker in and out on the slightest mouse
-   movement instead of staying put while aiming for it. */
-.edit-line-gap { position: relative; height: 28px; }
-.edit-line-add {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.9);
-  width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--blue); color: #fff;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  opacity: 0; transition: opacity .1s, transform .1s;
-}
-.edit-line-gap::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
-  background: var(--line); opacity: 0; transition: opacity .1s;
-}
-.edit-line-gap:hover::before { opacity: 1; }
-.edit-line-gap:hover .edit-line-add { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.edit-line-add:hover { background: var(--blue-dark); }
 
 .rfull-body p { margin: 12px 0; font-size: 14px; line-height: 1.6; color: #3c4540; position: relative; }
 .rfull-body .l1 { padding-left: 40px; font-weight: 500; }
@@ -503,12 +457,45 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .flagged-group > p:first-of-type,
 .flagged-group > .edit-line-row:first-child p { margin-top: 0; }
 
-/* The reader's per-line/title editor (see openLineEditor/openTitleEditor)
-   lives here, on the right — a shared panel rather than a dozen inline
-   textareas scattered through the document. Empty (nothing being edited,
-   or edit mode off) collapses it entirely rather than reserving a column. */
+/* The reader's section editor (see openSectionEditor) lives here, on the
+   right — a shared panel rather than a dozen inline textareas scattered
+   through the document. Empty (nothing being edited, or edit mode off)
+   collapses it entirely rather than reserving a column. */
 #readerEditorSlot:empty { display: none; }
 #readerEditorSlot { flex: 0 0 360px; }
+
+/* ---- section editor ---- */
+.section-editor-card .code-badge { margin-bottom: 10px; }
+.section-rules { display: flex; flex-direction: column; gap: 16px; margin-top: 10px; }
+.section-rule-row {
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--bg);
+}
+.section-rule-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.section-rule-num { font-weight: 700; font-size: 12.5px; color: var(--blue-dark); }
+.section-rule-move { display: flex; gap: 4px; }
+.section-rule-move button, .section-rule-remove, .section-sub-remove {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
+  border-radius: 6px; cursor: pointer;
+}
+.section-rule-move button { width: 24px; height: 24px; font-size: 12px; line-height: 1; }
+.section-rule-move button:disabled { opacity: .35; cursor: default; }
+.section-rule-move button:not(:disabled):hover, .section-rule-remove:hover { border-color: var(--blue-mid); color: var(--blue-dark); }
+.section-rule-flag { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink); cursor: pointer; }
+.section-rule-flag input { margin: 0; }
+.section-rule-remove { margin-left: auto; font-size: 12px; padding: 3px 10px; }
+.editor-card textarea.section-rule-lead { min-height: 90px; }
+.section-subs { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.section-sub-row { padding-left: 18px; border-left: 2px solid var(--line); }
+.section-sub-main { display: flex; align-items: flex-start; gap: 8px; }
+.editor-card textarea.section-sub-textarea { flex: 1; min-height: 54px; }
+.section-sub-remove { flex: none; width: 26px; height: 26px; font-size: 12px; }
+.section-add-sub, .section-add-rule {
+  border: 1px dashed var(--line); background: none; color: var(--blue-mid);
+  border-radius: 7px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.section-add-sub { margin-top: 8px; }
+.section-add-rule { width: 100%; margin-top: 4px; padding: 9px 12px; }
+.section-add-sub:hover, .section-add-rule:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
 
 /* Desktop: pin the header and give the outline/content/editor columns
    their own independent scroll instead of the page — so only "the doc nav"
@@ -538,6 +525,21 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   .outline { position: static; max-height: none; width: 100%; }
   #readerEditorSlot { width: 100%; flex-basis: auto; }
 }
+
+/* Word/Google-Docs-style popup for tagging a text selection New/Updated
+   without opening the section editor — see applyLineFlag. */
+.line-flag-popup {
+  position: absolute; z-index: 30; display: flex; gap: 4px;
+  background: var(--ink); border-radius: 8px; padding: 5px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+.line-flag-popup button {
+  border: 0; border-radius: 6px; padding: 5px 11px; font-size: 12px; font-weight: 600;
+  cursor: pointer; color: #fff; background: rgba(255,255,255,.14);
+}
+.line-flag-popup button:hover { background: rgba(255,255,255,.26); }
+.line-flag-popup button[data-flag="new"]:hover { background: #5b6472; }
+.line-flag-popup button[data-flag="updated"]:hover { background: var(--blue-mid); }
 
 .confirm-overlay {
   position: fixed; inset: 0; background: rgba(7,43,31,.45); display: flex; align-items: center; justify-content: center; z-index: 20;

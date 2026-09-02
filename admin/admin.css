@@ -387,14 +387,16 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-entry:hover { background: var(--blue-pale); }
 .reader-entry-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
 .reader-entry-title { font-weight: 650; font-size: 14.5px; }
-/* The title's pencil reuses the exact per-line pencil box (see
-   .edit-line-pencil below) and shows on hovering anywhere in the head row —
-   not just the title text — same as a line's pencil showing on hovering the
-   whole line. Pinned to the row's right edge rather than sitting right after
-   the title text, since the row can also carry a pill/edited-dot/discard
-   link before it. */
+/* The section's pencil reuses the exact per-line pencil box (see
+   .edit-line-pencil below), sitting in the head row but revealed on
+   hovering anywhere in the WHOLE card — a section can now span several
+   rules' worth of body text underneath the head row, and that whole card
+   already highlights blue on hover, so the pencil needs to match that same
+   hover area rather than only the narrow title row above it. Pinned to the
+   row's right edge rather than sitting right after the title text, since
+   the row can also carry a pill/edited-dot/discard link before it. */
 .reader-entry-head > .edit-line-pencil { margin-top: 0; margin-left: auto; align-self: center; }
-.reader-entry-head.editable:hover > .edit-line-pencil { opacity: 1; }
+.reader-entry:hover > .reader-entry-head.editable > .edit-line-pencil { opacity: 1; }
 .reader-entry.selected { background: var(--blue-pale); box-shadow: inset 0 0 0 1px var(--blue-mid); }
 .reader-entry-flag {
   margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px;

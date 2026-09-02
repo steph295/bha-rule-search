@@ -1046,7 +1046,7 @@
   }
 
   function exitReader() {
-    if (state.mode !== 'reader') return;
+    if (state.mode !== 'reader' && state.mode !== 'pdf') return;
     state.mode = 'search';
     state.activeDefTerm = null;
     document.body.classList.remove('reader-mode');
@@ -1452,6 +1452,7 @@
     if (!d) { meta.textContent = 'Loading…'; return; }
 
     if (state.mode === 'reader') { renderReaderView(); return; }
+    if (state.mode === 'pdf') { renderPdfView(); return; }
     document.body.classList.remove('reader-mode');
     // renderResults() (below, for the "new" tab) repopulates this — clearing
     // it here first means non-card views (home cards, changelog) don't show
@@ -1981,51 +1982,188 @@
   }
 
   // ---------------------------------------------------------- pdf export
+  //
+  // Its own full page (breadcrumb, like the reader) rather than a modal,
+  // with an expandable chapter → section tree so a chapter can be included
+  // whole or drilled into for just the parts you want — matching the BHA's
+  // own "Generate PDF" page rather than the flat chapter checklist this
+  // used to be.
 
-  var pdfPanel = $('pdfPanel');
-  function populatePdfChapters() {
-    var list = $('pdfChapterList');
-    if (!state.data || !state.data.manuals.length) {
-      list.innerHTML = '<div class="hint">No chapters loaded yet.</div>';
+  function openPdfView() {
+    q.value = '';
+    $('clear').classList.remove('show');
+    state.mode = 'pdf';
+    renderTabs();
+    renderIdle();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  $('pdfBtn').addEventListener('click', openPdfView);
+
+  // A node is "checked" only once every descendant is (or it has no
+  // children and is itself picked) — a parent with some-but-not-all
+  // descendants picked shows as indeterminate, standard tri-state tree
+  // behaviour. Selecting a node clears any of its descendants' own
+  // selections (now redundant) rather than supporting "select the whole
+  // chapter except this one bit", which no one asked for and isn't worth
+  // the extra complexity.
+  function pdfNodeState(node) {
+    if (state.pdfSelected[node.id]) return 'checked';
+    if (!node.children.length) return 'unchecked';
+    // A node's own direct entries (rules with no further heading of their
+    // own) are only ever covered by selecting the node itself — checked
+    // above and already false here — so if it has any, every child being
+    // individually checked still isn't the whole node, just indeterminate.
+    var any = false, all = node.entries.length === 0;
+    node.children.forEach(function (c) {
+      var s = pdfNodeState(c);
+      if (s !== 'unchecked') any = true;
+      if (s !== 'checked') all = false;
+    });
+    if (all) return 'checked';
+    return any ? 'indeterminate' : 'unchecked';
+  }
+
+  function togglePdfNode(node) {
+    if (pdfNodeState(node) === 'checked') {
+      delete state.pdfSelected[node.id];
+    } else {
+      state.pdfSelected[node.id] = true;
+      (function clear(n) {
+        n.children.forEach(function (c) { delete state.pdfSelected[c.id]; clear(c); });
+      })(node);
+    }
+    renderPdfTree();
+  }
+
+  function collectSelectedEntries(node, ancestorSelected, out) {
+    var selected = ancestorSelected || !!state.pdfSelected[node.id];
+    if (selected) out.push.apply(out, node.entries);
+    node.children.forEach(function (c) { collectSelectedEntries(c, selected, out); });
+  }
+
+  function renderPdfNodeRow(node, ancestorChecked) {
+    var st = ancestorChecked ? 'checked' : pdfNodeState(node);
+    var hasChildren = node.children.length > 0;
+    var expanded = !!state.pdfExpanded[node.id];
+    var container = document.createElement('div');
+    container.className = 'pdf-tree-node';
+    var row = document.createElement('div');
+    row.className = 'pdf-tree-row';
+    row.innerHTML =
+      (hasChildren
+        ? '<button type="button" class="pdf-tree-chevron' + (expanded ? ' expanded' : '') + '" aria-label="' + (expanded ? 'Collapse' : 'Expand') + '"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5L5 6.5L7.5 3.5"></path></svg></button>'
+        : '<span class="pdf-tree-chevron-spacer"></span>') +
+      '<label class="pdf-tree-label">' +
+      '<input type="checkbox"' + (st === 'checked' ? ' checked' : '') + (ancestorChecked ? ' disabled' : '') + '>' +
+      (node.badge ? '<span class="cl sm">' + P.escapeHtml(node.badge) + '</span>' : '') +
+      '<span>' + P.escapeHtml(node.label) + '</span>' +
+      '</label>';
+    var cb = row.querySelector('input');
+    if (st === 'indeterminate') cb.indeterminate = true;
+    if (!ancestorChecked) cb.addEventListener('change', function () { togglePdfNode(node); });
+    if (hasChildren) {
+      row.querySelector('.pdf-tree-chevron').addEventListener('click', function () {
+        state.pdfExpanded[node.id] = !expanded;
+        renderPdfTree();
+      });
+    }
+    container.appendChild(row);
+    if (hasChildren && expanded) {
+      var childWrap = document.createElement('div');
+      childWrap.className = 'pdf-tree-children';
+      node.children.forEach(function (c) { childWrap.appendChild(renderPdfNodeRow(c, st === 'checked')); });
+      container.appendChild(childWrap);
+    }
+    return container;
+  }
+
+  function renderPdfTree() {
+    var container = $('pdfTree');
+    if (!container) return;
+    container.innerHTML = '';
+    state.pdfTree.forEach(function (node) { container.appendChild(renderPdfNodeRow(node, false)); });
+  }
+
+  function generatePdfWhole() {
+    if (!state.data || !state.data.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; $('pdfMsg').className = 'hint err'; return; }
+    var html = BHAPdfExport.buildHtml(state.data.entries, state.data.manuals, {
+      chapters: state.data.manuals.map(function (m) { return m.letter; }),
+      includeCodes: true, includeGuides: true,
+      version: state.data.version, dateLabel: state.data.year, title: 'BHA Rules of Racing'
+    });
+    BHAPdfExport.openAndPrint(html);
+  }
+
+  function generatePdfSelection() {
+    if (!state.data || !state.data.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; $('pdfMsg').className = 'hint err'; return; }
+    var ruleEntries = [];
+    state.pdfTree.forEach(function (node) { collectSelectedEntries(node, false, ruleEntries); });
+    var includeCodes = $('pdfCodes').checked;
+    var includeGuides = $('pdfGuides').checked;
+    if (!ruleEntries.length && !includeCodes && !includeGuides) {
+      $('pdfMsg').textContent = 'Pick at least one chapter or section, or Codes & Guides, or the Guide Library.';
+      $('pdfMsg').className = 'hint err';
       return;
     }
-    list.innerHTML = state.data.manuals.map(function (m) {
-      return '<label><input type="checkbox" value="' + m.letter + '"> ' + m.letter + ' — ' + P.escapeHtml(m.title) + '</label>';
-    }).join('');
-  }
-  function openPdfPanel() {
-    populatePdfChapters();
-    $('pdfMsg').textContent = '';
-    if (typeof pdfPanel.showModal === 'function') pdfPanel.showModal();
-    else pdfPanel.setAttribute('open', '');
-  }
-  $('pdfBtn').addEventListener('click', openPdfPanel);
-  $('pdfPanelClose').addEventListener('click', function () { pdfPanel.close ? pdfPanel.close() : pdfPanel.removeAttribute('open'); });
-
-  function generatePdf(chapters, includeCodes, includeGuides) {
-    if (!state.data || !state.data.entries.length) { $('pdfMsg').textContent = 'No rules data loaded yet.'; return; }
-    var html = BHAPdfExport.buildHtml(state.data.entries, state.data.manuals, {
+    var chapters = [];
+    ruleEntries.forEach(function (e) { if (chapters.indexOf(e.letter) === -1) chapters.push(e.letter); });
+    // Codes & Guides / the Guide Library are controlled by their own
+    // checkboxes, not the chapter tree, so always hand buildHtml the full
+    // set of that content — it filters by opts.includeCodes/includeGuides
+    // itself, same contract as before.
+    var otherEntries = state.data.entries.filter(function (e) { return e.kind === 'code' || e.kind === 'guide' || isGuideEntry(e); });
+    var html = BHAPdfExport.buildHtml(ruleEntries.concat(otherEntries), state.data.manuals, {
       chapters: chapters, includeCodes: includeCodes, includeGuides: includeGuides,
       version: state.data.version, dateLabel: state.data.year, title: 'BHA Rules of Racing'
     });
     BHAPdfExport.openAndPrint(html);
   }
 
-  $('pdfWholeBtn').addEventListener('click', function () {
-    if (!state.data) return;
-    generatePdf(state.data.manuals.map(function (m) { return m.letter; }), true, true);
-  });
+  function renderPdfView() {
+    var d = state.data;
+    meta.textContent = '';
+    results.innerHTML = '';
+    if (!d) return;
 
-  $('pdfGenerate').addEventListener('click', function () {
-    var chapters = Array.prototype.map.call($('pdfChapterList').querySelectorAll('input:checked'), function (i) { return i.value; });
-    var includeCodes = $('pdfCodes').checked;
-    var includeGuides = $('pdfGuides').checked;
-    if (!chapters.length && !includeCodes && !includeGuides) {
-      $('pdfMsg').textContent = 'Pick at least one chapter, or Codes & Guides, or the Guide Library.';
-      return;
+    if (!state.pdfTree) {
+      state.pdfTree = buildRulesOutline(d.manuals, d.entries.filter(function (e) { return e.kind === 'manual'; }));
+      state.pdfSelected = {};
+      state.pdfExpanded = {};
     }
-    generatePdf(chapters, includeCodes, includeGuides);
-  });
+
+    var wrap = document.createElement('div');
+    wrap.className = 'pdf-view';
+
+    var back = document.createElement('nav');
+    back.className = 'reader-back';
+    back.setAttribute('aria-label', 'Breadcrumb');
+    back.innerHTML =
+      '<button type="button" class="crumb-home" title="Home">' +
+      '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L8 2.5l5.5 5"></path><path d="M4 6.5V13h8V6.5"></path></svg>Home</button>' +
+      '<span class="crumb-sep">/</span><span class="crumb-section">Download PDF</span>';
+    back.querySelector('.crumb-home').addEventListener('click', goHome);
+
+    var content = document.createElement('div');
+    content.className = 'pdf-content';
+    content.innerHTML =
+      '<h1 class="pdf-title">Download as PDF</h1>' +
+      '<p class="hint">Opens your browser’s print dialog — choose <b>Save as PDF</b> as the destination. Handy for building a printed hearing bundle.</p>' +
+      '<button type="button" class="btn pdf-whole-btn" id="pdfWholeBtn">Download whole rulebook (PDF)</button>' +
+      '<p class="hint pdf-or">Or choose specific chapters — expand one to pick just its sections:</p>' +
+      '<div class="pdf-tree" id="pdfTree"></div>' +
+      '<div class="pdf-check-row"><label><input type="checkbox" id="pdfCodes"> Codes &amp; Guides</label></div>' +
+      '<div class="pdf-check-row"><label><input type="checkbox" id="pdfGuides"> General Instructions &amp; Guide Library</label></div>' +
+      '<div class="pdf-actions"><button type="button" class="btn" id="pdfGenerate">Generate PDF</button></div>' +
+      '<div class="hint" id="pdfMsg"></div>';
+
+    wrap.appendChild(back);
+    wrap.appendChild(content);
+    results.appendChild(wrap);
+
+    renderPdfTree();
+    $('pdfWholeBtn').addEventListener('click', generatePdfWhole);
+    $('pdfGenerate').addEventListener('click', generatePdfSelection);
+  }
 
   // -------------------------------------------------------------- toast
 

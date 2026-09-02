@@ -24,7 +24,7 @@
 <header>
   <h1 id="homeBtn" role="button" tabindex="0" title="Home"><img class="brand-logo" src="bha-logo.svg" alt="BHA"></h1>
   <button id="pdfBtn" type="button" title="Download as PDF" aria-label="Download as PDF">
-    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.2"></path><path d="M5 7l3 3 3-3"></path><path d="M3 12v1.2A1.3 1.3 0 0 0 4.3 14.5h7.4A1.3 1.3 0 0 0 13 13.2V12"></path></svg>
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 2h7l4 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M12 2v4h4" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><text x="10.5" y="15.2" text-anchor="middle" font-size="6" font-weight="700" font-family="Arial, Helvetica, sans-serif" fill="currentColor">PDF</text></svg>
   </button>
   <span id="status"><span class="dot"></span><span class="stxt">Loading…</span></span>
 </header>
@@ -109,23 +109,6 @@
       <button id="penaltyVisitBtn" class="btn ghost">Visit Table of Penalties</button>
       <button id="penaltyPanelClose" class="btn ghost">Close</button>
     </div>
-  </div>
-</dialog>
-
-<dialog id="pdfPanel">
-  <div class="panel-inner">
-    <h2>Download as PDF</h2>
-    <p>Opens your browser's print dialog — choose <b>Save as PDF</b> as the destination. Handy for building a printed hearing bundle.</p>
-    <button id="pdfWholeBtn" class="btn" style="width:100%;margin-bottom:14px">Download whole rulebook (PDF)</button>
-    <p class="hint" style="margin:0 0 8px">Or choose specific sections:</p>
-    <div id="pdfChapterList" class="pdf-chapter-list"></div>
-    <div class="pdf-check-row"><label><input type="checkbox" id="pdfCodes"> Codes &amp; Guides</label></div>
-    <div class="pdf-check-row"><label><input type="checkbox" id="pdfGuides"> General Instructions &amp; Guide Library</label></div>
-    <div class="panel-btns">
-      <button id="pdfGenerate" class="btn">Generate PDF</button>
-      <button id="pdfPanelClose" class="btn ghost">Close</button>
-    </div>
-    <div id="pdfMsg" class="hint"></div>
   </div>
 </dialog>
 

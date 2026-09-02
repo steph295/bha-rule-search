@@ -848,24 +848,30 @@
     var clone = el.cloneNode(true);
     var rn = clone.querySelector(':scope > .rn');
     if (rn) rn.parentNode.removeChild(rn);
-    return { className: el.className || '', flag: el.getAttribute('data-flag') || '', text: stripHtml(clone.innerHTML) };
+    return { className: el.className || '', flag: el.getAttribute('data-flag') || '', text: stripHtml(clone.innerHTML), subs: [] };
   }
 
-  // Splits one entry's html into its lead line, its numbered sub-clauses
-  // and anything else (tables etc, kept verbatim and re-appended unedited).
-  // `numbered` records whether this entry ever had a real rule number at
-  // all — codes/guides don't, and must never have one synthesised for them.
+  // Splits one entry's html into its lead line, its (possibly two levels
+  // deep) numbered sub-clauses, and anything else (tables etc, kept
+  // verbatim and re-appended unedited). BHA's own rules occasionally go a
+  // clause deeper still (2.1.1 under 2.1, rendered with the "l3" class) —
+  // the html itself is just a flat run of <p class="l2"|"l3"> siblings, no
+  // real DOM nesting, so an l3 line is folded into whichever l2 line most
+  // recently preceded it. `numbered` records whether this entry ever had a
+  // real rule number at all — codes/guides don't, and must never have one
+  // synthesised for them.
   function parseEntryRows(e) {
     var eff = effective(e);
     var tmp = document.createElement('div');
     tmp.innerHTML = eff.html;
     var lead = null, subs = [], otherHtml = '';
+    var currentSub = null;
     Array.prototype.forEach.call(tmp.children, function (el) {
-      if (el.tagName === 'P') {
-        if (!lead) lead = extractLineText(el); else subs.push(extractLineText(el));
-      } else {
-        otherHtml += el.outerHTML;
-      }
+      if (el.tagName !== 'P') { otherHtml += el.outerHTML; currentSub = null; return; }
+      if (!lead) { lead = extractLineText(el); return; }
+      var isSubsub = el.classList.contains('l3') && currentSub;
+      var parsed = extractLineText(el);
+      if (isSubsub) { currentSub.subs.push(parsed); } else { subs.push(parsed); currentSub = parsed; }
     });
     if (!lead) lead = { className: 'l1', flag: '', text: '' };
     return {
@@ -888,15 +894,19 @@
     var html = buildLineHtml('p', row.lead.className || 'l1', row.lead.flag, row.lead.text, leadNum);
     row.subs.forEach(function (sub, i) {
       var subNum = row.numbered ? (newNum + '.' + (i + 1)) : '';
-      html += buildLineHtml('p', sub.className || 'l2', sub.flag, sub.text, subNum);
+      html += buildLineHtml('p', 'l2', sub.flag, sub.text, subNum);
+      (sub.subs || []).forEach(function (subsub, j) {
+        var subsubNum = row.numbered ? (subNum + '.' + (j + 1)) : '';
+        html += buildLineHtml('p', 'l3', subsub.flag, subsub.text, subsubNum);
+      });
     });
     html += row.otherHtml || '';
     return html;
   }
 
-  var RICH_CMDS = ['b', 'i', 'u', 'sub', 'sup'];
-  var RICH_LABELS = { b: '<b>B</b>', i: '<i>I</i>', u: '<u>U</u>', sub: 'X<sub>2</sub>', sup: 'X<sup>2</sup>' };
-  var RICH_TITLES = { b: 'Bold', i: 'Italic', u: 'Underline', sub: 'Subscript', sup: 'Superscript' };
+  var RICH_CMDS = ['b', 'i', 'u'];
+  var RICH_LABELS = { b: '<b>B</b>', i: '<i>I</i>', u: '<u>U</u>' };
+  var RICH_TITLES = { b: 'Bold', i: 'Italic', u: 'Underline' };
   var SECTION_ICONS = {
     up: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"></path></svg>',
     down: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>',
@@ -913,20 +923,42 @@
     }).join('');
   }
 
-  // Wraps (or, on a second click over the same span, unwraps) the
-  // textarea's current selection in a literal <tag>...</tag> — the same
-  // inline tags stripHtml/escapeHtmlAllowInline know to preserve.
+  // Wraps the textarea's current selection in a literal <tag>...</tag> —
+  // the same inline tags stripHtml/escapeHtmlAllowInline know to preserve —
+  // or unwraps it if it's already tagged. "Already tagged" is checked two
+  // ways: the selection itself starts/ends with the tags (selected the
+  // whole "<u>...</u>" span, tags included), or the tags sit just outside
+  // the selection (the more natural case — selecting only the visible
+  // words a second time to toggle the formatting back off). Missing the
+  // second case was producing a nested "<u><u>text</u></u>" instead of
+  // toggling off, since the selection alone never mentioned any tag.
   function wrapSelectionTag(textarea, tag) {
     var start = textarea.selectionStart, end = textarea.selectionEnd;
     var val = textarea.value;
     var selected = val.slice(start, end);
     var openTag = '<' + tag + '>', closeTag = '</' + tag + '>';
-    var already = selected.slice(0, openTag.length) === openTag && selected.slice(-closeTag.length) === closeTag;
-    var replacement = already ? selected.slice(openTag.length, selected.length - closeTag.length) : openTag + selected + closeTag;
-    textarea.value = val.slice(0, start) + replacement + val.slice(end);
+
+    var innerWrapped = selected.slice(0, openTag.length) === openTag && selected.slice(-closeTag.length) === closeTag;
+    if (innerWrapped) {
+      var inner = selected.slice(openTag.length, selected.length - closeTag.length);
+      textarea.value = val.slice(0, start) + inner + val.slice(end);
+      textarea.focus();
+      textarea.setSelectionRange(start, start + inner.length);
+      return;
+    }
+
+    var outerWrapped = val.slice(start - openTag.length, start) === openTag && val.slice(end, end + closeTag.length) === closeTag;
+    if (outerWrapped) {
+      textarea.value = val.slice(0, start - openTag.length) + selected + val.slice(end + closeTag.length);
+      textarea.focus();
+      var newStart = start - openTag.length;
+      textarea.setSelectionRange(newStart, newStart + selected.length);
+      return;
+    }
+
+    textarea.value = val.slice(0, start) + openTag + selected + closeTag + val.slice(end);
     textarea.focus();
-    var selEnd = start + replacement.length;
-    textarea.setSelectionRange(already ? selEnd : start + openTag.length, already ? selEnd : start + openTag.length + selected.length);
+    textarea.setSelectionRange(start + openTag.length, start + openTag.length + selected.length);
   }
 
   function wireRichToolbar(scopeEl, textarea) {
@@ -947,6 +979,20 @@
   // Reads whatever's currently typed back into state._sectionEditRows —
   // called before any structural change (add/remove/reorder a rule or
   // sub-clause) or before save, so in-progress typing survives a re-render.
+  // Recurses into .section-subsubs too, since a sub-clause can itself carry
+  // its own nested sub-clauses (BHA's rules occasionally go one level
+  // deeper still, e.g. 2.1.1 under 2.1).
+  function syncSubRowsFromDom(containerEl, subsArray) {
+    if (!containerEl) return;
+    Array.prototype.forEach.call(containerEl.children, function (subEl) {
+      var sub = subsArray[Number(subEl.dataset.subIndex)];
+      if (!sub) return;
+      var ta = subEl.querySelector(':scope > .section-sub-textarea');
+      if (ta) sub.text = ta.value;
+      syncSubRowsFromDom(subEl.querySelector(':scope > .section-subsubs'), sub.subs || []);
+    });
+  }
+
   function syncSectionEditRowsFromDom() {
     var rulesEl = $('secRules');
     if (!rulesEl) return;
@@ -956,36 +1002,47 @@
       if (!row) return;
       var leadTa = rowEl.querySelector(':scope > .section-rule-lead');
       if (leadTa) row.lead.text = leadTa.value;
-      var subsEl = rowEl.querySelector(':scope > .section-subs');
-      if (subsEl) {
-        Array.prototype.forEach.call(subsEl.children, function (subEl) {
-          var sub = row.subs[Number(subEl.dataset.subIndex)];
-          var ta = subEl.querySelector('.section-sub-textarea');
-          if (sub && ta) sub.text = ta.value;
-        });
-      }
+      syncSubRowsFromDom(rowEl.querySelector(':scope > .section-subs'), row.subs);
     });
     var titleInput = $('secTitleInput');
     if (titleInput) state._sectionEditTitle = titleInput.value;
   }
 
-  function renderSectionSubRow(row, sub, j) {
+  // Renders one sub-clause row — and, one level deep only (matching the
+  // "l2"/"l3" ceiling BHA's own rule text actually uses), its own nested
+  // "+ Add sub-clause" for a sub-clause under THIS sub-clause. `parentArray`
+  // is whichever array this row actually lives in (a rule's own .subs, or
+  // another sub-clause's .subs) — removing this row splices out of that,
+  // not always the top-level rule.
+  function renderSectionSubRow(parentArray, sub, j, depth) {
+    depth = depth || 1;
     var wrap = document.createElement('div');
-    wrap.className = 'section-sub-row';
+    wrap.className = 'section-sub-row' + (depth > 1 ? ' nested' : '');
     wrap.dataset.subIndex = j;
     wrap.innerHTML =
       '<div class="section-sub-toolbar">' +
       '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
       '<button type="button" class="section-tool-btn danger section-sub-remove" title="Remove this sub-clause">' + SECTION_ICONS.trash + '</button>' +
       '</div>' +
-      '<textarea class="section-sub-textarea"></textarea>';
+      '<textarea class="section-sub-textarea"></textarea>' +
+      (depth < 2 ? '<div class="section-subsubs"></div><button type="button" class="section-add-subsub">+ Add sub-clause</button>' : '');
     wrap.querySelector('.section-sub-textarea').value = sub.text;
     wireRichToolbar(wrap.querySelector('.section-sub-toolbar'), wrap.querySelector('.section-sub-textarea'));
     wrap.querySelector('.section-sub-remove').addEventListener('click', function () {
       syncSectionEditRowsFromDom();
-      row.subs.splice(j, 1);
+      parentArray.splice(j, 1);
       renderSectionEditor();
     });
+    if (depth < 2) {
+      var subsubEl = wrap.querySelector('.section-subsubs');
+      (sub.subs || []).forEach(function (subsub, k) { subsubEl.appendChild(renderSectionSubRow(sub.subs, subsub, k, depth + 1)); });
+      wrap.querySelector('.section-add-subsub').addEventListener('click', function () {
+        syncSectionEditRowsFromDom();
+        sub.subs = sub.subs || [];
+        sub.subs.push({ className: 'l3', flag: '', text: '', subs: [] });
+        renderSectionEditor();
+      });
+    }
     return wrap;
   }
 
@@ -1019,7 +1076,7 @@
     wireRichToolbar(wrap.querySelector('.section-rule-toolbar'), wrap.querySelector('.section-rule-lead'));
 
     var subsEl = wrap.querySelector('.section-subs');
-    row.subs.forEach(function (sub, j) { subsEl.appendChild(renderSectionSubRow(row, sub, j)); });
+    row.subs.forEach(function (sub, j) { subsEl.appendChild(renderSectionSubRow(row.subs, sub, j, 1)); });
 
     var flagNewBtn = wrap.querySelector('.sec-flag-new'), flagUpdatedBtn = wrap.querySelector('.sec-flag-updated');
     function syncFlagUI() {
@@ -1051,7 +1108,7 @@
     });
     wrap.querySelector('.section-add-sub').addEventListener('click', function () {
       syncSectionEditRowsFromDom();
-      row.subs.push({ className: 'l2', flag: '', text: '' });
+      row.subs.push({ className: 'l2', flag: '', text: '', subs: [] });
       renderSectionEditor();
     });
     return wrap;

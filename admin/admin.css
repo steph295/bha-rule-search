@@ -478,20 +478,25 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   width: auto; height: 26px; padding: 0 9px; font-size: 10.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em;
 }
-.flag-toggle.sec-flag-new.active { background: #5b6472; border-color: #5b6472; color: #fff; }
-.flag-toggle.sec-flag-updated.active { background: var(--blue-mid); border-color: var(--blue-mid); color: #fff; }
+.flag-toggle.active { background: var(--blue-mid); border-color: var(--blue-mid); color: #fff; }
 .editor-card textarea.section-rule-lead { min-height: 90px; }
-.section-subs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.section-subs, .section-subsubs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .section-sub-row { padding-left: 18px; border-left: 2px solid var(--line); }
+/* A sub-clause's own nested sub-clause (BHA's rules occasionally go one
+   level deeper, e.g. 2.1.1 under 2.1) — a second indent + border, same
+   idea as the first, so the nesting reads visually rather than needing a
+   label to explain it. */
+.section-sub-row.nested { padding-left: 16px; margin-top: 0; }
 .section-sub-toolbar { margin-bottom: 6px; }
 .editor-card textarea.section-sub-textarea { min-height: 54px; }
-.section-add-sub, .section-add-rule {
+.section-add-sub, .section-add-rule, .section-add-subsub {
   border: 1px dashed var(--line); background: none; color: var(--blue-mid);
   border-radius: 7px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer;
 }
-.section-add-sub { margin-top: 8px; }
+.section-add-sub, .section-add-subsub { margin-top: 8px; }
+.section-add-subsub { padding: 5px 10px; font-size: 12px; }
 .section-add-rule { width: 100%; margin-top: 4px; padding: 9px 12px; }
-.section-add-sub:hover, .section-add-rule:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
+.section-add-sub:hover, .section-add-rule:hover, .section-add-subsub:hover { border-color: var(--blue-mid); background: var(--blue-pale); }
 
 /* Desktop: pin the header and give the outline/content/editor columns
    their own independent scroll instead of the page — so only "the doc nav"

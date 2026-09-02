@@ -214,6 +214,11 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 
 /* ---- editor ---- */
 main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex; gap: 18px; }
+/* The flat rules/guides search results list — clicking a row jumps into the
+   reader instead of opening a side panel here (see enterReaderAtEntry), so
+   this is just the one list column, narrower than the two-pane definitions
+   editor below which still uses list-pane + editor-pane side by side. */
+#listAndEditor { max-width: 700px; }
 .list-pane { width: 360px; flex: none; }
 .result-list { max-height: 70vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
 .result-row {
@@ -401,6 +406,11 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-entry-flag label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink); cursor: pointer; }
 .reader-entry-flag input { margin: 0; }
 .reader-entry .edited-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+.discard-edit-btn {
+  border: 0; background: none; color: #b42318; cursor: pointer;
+  font-size: 12px; font-weight: 600; padding: 2px 4px; text-decoration: underline;
+}
+.discard-edit-btn:hover { color: #8f1c13; }
 
 .title-editing { display: inline-flex; align-items: center; gap: 6px; }
 .title-editing .title-input {

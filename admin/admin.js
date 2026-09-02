@@ -695,6 +695,7 @@
       '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
       titleHtml +
       (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
+      (eff.edited && state.readerEditMode ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
       flagHtml +
       '</div>' +
       '<div class="rfull-body"></div>';
@@ -704,15 +705,26 @@
     if (updCb) updCb.addEventListener('change', function () { applyFlag(e, block, updCb.checked ? 'updated' : ''); });
     var titlePencil = block.querySelector('.reader-entry-title.editable .title-pencil');
     if (titlePencil) titlePencil.addEventListener('click', function () { openTitleEditor(e, block); });
+    var discardBtn = block.querySelector('.discard-edit-btn');
+    if (discardBtn) discardBtn.addEventListener('click', function () { confirmDiscardEdit(e); });
     return block;
   }
 
-  function markEdited(block) {
-    if (block && !block.querySelector('.edited-dot')) {
+  function markEdited(block, e) {
+    if (!block) return;
+    if (!block.querySelector('.edited-dot')) {
       var dot = document.createElement('span');
       dot.className = 'edited-dot';
       dot.title = 'Has a published edit';
       block.querySelector('.reader-entry-title').insertAdjacentElement('afterend', dot);
+    }
+    if (e && state.readerEditMode && !block.querySelector('.discard-edit-btn')) {
+      var discardBtn = document.createElement('button');
+      discardBtn.type = 'button';
+      discardBtn.className = 'discard-edit-btn';
+      discardBtn.textContent = 'Discard edit';
+      discardBtn.addEventListener('click', function () { confirmDiscardEdit(e); });
+      block.querySelector('.edited-dot').insertAdjacentElement('afterend', discardBtn);
     }
   }
 
@@ -731,7 +743,7 @@
       newCb.disabled = updCb.disabled = false;
       newCb.checked = newFlag === 'new';
       updCb.checked = newFlag === 'updated';
-      markEdited(block);
+      markEdited(block, e);
     }).catch(function (err) {
       newCb.disabled = updCb.disabled = false;
       alert('Could not publish: ' + err.message);
@@ -782,7 +794,7 @@
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { title: newTitle, updatedAt: new Date().toISOString() });
       block.querySelector('.reader-entry-title').firstChild.textContent = newTitle;
-      markEdited(block);
+      markEdited(block, e);
       clearReaderEditor();
     }).catch(function (err) {
       alert('Could not publish: ' + err.message);
@@ -1034,7 +1046,7 @@
       return r.json();
     }).then(function () {
       state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: fullHtml, updatedAt: new Date().toISOString() });
-      markEdited(block);
+      markEdited(block, e);
       renderEntryBody(container, e, effective(e).html, block);
       clearReaderEditor();
     }).catch(function (err) {
@@ -1183,6 +1195,26 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // Jumping to an entry from the flat search/list view used to open its own
+  // whole-entry textarea editor, which flattened numbered sub-clauses to
+  // plain paragraphs and lost the structure. All editing now goes through
+  // the reader's per-line editor instead, which preserves each line's real
+  // numbering — so a result row jumps straight into the reader, scrolled to
+  // and with Edit already on, rather than opening its own panel.
+  function enterReaderAtEntry(e) {
+    var book = e.kind === 'bhagi' ? 'bhagi' : isGuideEntry(e) ? 'guides' : 'rules';
+    enterReader(book);
+    state.selectedKey = e.key;
+    state.readerEditMode = true;
+    if ($('readerEditToggle')) {
+      $('readerEditToggle').textContent = 'Done editing';
+      $('readerEditToggle').classList.add('active');
+    }
+    renderReaderBody('');
+    var target = document.querySelector('.reader-entry[data-key="' + CSS.escape(e.key) + '"]');
+    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
   $('readerCrumbHome').addEventListener('click', function () {
     teardownScrollSpy();
     updateManualsViewFromFilters();
@@ -1239,60 +1271,21 @@
         '<span class="title">' + escapeHtml(eff.title) + '</span>' +
         (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
         '<span class="doc">' + escapeHtml(e.doc) + '</span>';
-      row.addEventListener('click', function () { selectEntry(e.key); });
+      row.addEventListener('click', function () { enterReaderAtEntry(e); });
       frag.appendChild(row);
     });
     list.appendChild(frag);
   }
 
-  // ---- editor -----------------------------------------------------------
+  // ---- discard edit (reader) ---------------------------------------------
+  //
+  // Reverts an entry's override entirely, back to BHA's own published text
+  // — the one thing the old whole-entry editor could do that per-line
+  // editing has no equivalent for otherwise. Lives next to the edited-dot
+  // in the reader's entry header, only shown once there's actually an
+  // override to discard.
 
-  function selectEntry(key) {
-    state.selectedKey = key;
-    if (state.manualsView === 'reader') renderReaderBody($('readerSearch').value);
-    else renderList();
-    var e = state.entries.filter(function (x) { return x.key === key; })[0];
-    if (!e) return;
-    var eff = effective(e);
-    var pane = state.manualsView === 'reader' ? $('readerEditorSlot') : $('editorPane');
-    pane.innerHTML =
-      '<div class="editor-card">' +
-      '<span class="code-badge">' + escapeHtml(e.code || e.kind) + '</span>' +
-      '<div style="font-size:12.5px;color:#5a6660">' + escapeHtml(e.doc) + (e.path.length ? ' &rsaquo; ' + e.path.map(escapeHtml).join(' &rsaquo; ') : '') + '</div>' +
-      '<label for="editTitle">Title</label>' +
-      '<input type="text" id="editTitle" value="' + escapeHtml(eff.title) + '">' +
-      '<label for="editBody">Body text</label>' +
-      '<div class="text-toolbar">' +
-      '<button type="button" id="tbBold" title="Bold"><b>B</b></button>' +
-      '<button type="button" id="tbItalic" title="Italic"><i>I</i></button>' +
-      '<button type="button" id="tbUnderline" title="Underline"><u>U</u></button>' +
-      '</div>' +
-      '<textarea id="editBody"></textarea>' +
-      '<div class="hint">Plain text — blank lines start a new paragraph. This replaces the formatted sub-clauses (45.1, 45.2 …) with plain paragraphs; it does not preserve the original numbering structure. Select some text first to bold/italicise/underline it.</div>' +
-      '<label>Flag</label>' +
-      '<div class="reader-entry-flag" style="margin-left:0">' +
-      '<label><input type="checkbox" id="editFlagNew"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
-      '<label><input type="checkbox" id="editFlagUpdated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
-      '</div>' +
-      '<div class="hint">Leave both unchecked for Auto — deferring to the automatic new-entries detection.</div>' +
-      '<div class="editor-actions">' +
-      '<button class="save" id="saveBtn">Publish change</button>' +
-      (eff.edited ? '<button class="revert" id="revertBtn" type="button">Discard edit</button>' : '') +
-      (eff.edited ? '<span class="hint" style="margin:0">Edited ' + new Date(state.overrides[key].updatedAt).toLocaleString() + '</span>' : '') +
-      '</div>' +
-      '<div class="save-msg" id="saveMsg"></div>' +
-      '</div>';
-    $('editBody').value = stripHtml(eff.html);
-    $('tbBold').addEventListener('click', function () { wrapSelection($('editBody'), '<b>', '</b>'); });
-    $('tbItalic').addEventListener('click', function () { wrapSelection($('editBody'), '<i>', '</i>'); });
-    $('tbUnderline').addEventListener('click', function () { wrapSelection($('editBody'), '<u>', '</u>'); });
-    $('saveBtn').addEventListener('click', function () { confirmSave(e); });
-    if ($('revertBtn')) $('revertBtn').addEventListener('click', function () { confirmRevert(e); });
-    $('editFlagNew').addEventListener('change', function () { if (this.checked) $('editFlagUpdated').checked = false; });
-    $('editFlagUpdated').addEventListener('change', function () { if (this.checked) $('editFlagNew').checked = false; });
-  }
-
-  function confirmRevert(e) {
+  function confirmDiscardEdit(e) {
     var overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML =
@@ -1305,16 +1298,11 @@
     overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
     overlay.querySelector('.confirm').addEventListener('click', function () {
       overlay.remove();
-      doRevert(e);
+      doDiscardEdit(e);
     });
   }
 
-  function doRevert(e) {
-    var msg = $('saveMsg');
-    var btn = $('revertBtn');
-    if (btn) btn.disabled = true;
-    if (msg) { msg.textContent = 'Reverting…'; msg.className = 'save-msg'; }
-
+  function doDiscardEdit(e) {
     fetch('/api/save-rule', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: e.key, delete: true })
@@ -1323,73 +1311,10 @@
       return r.json();
     }).then(function () {
       delete state.overrides[e.key];
-      selectEntry(e.key);
+      clearReaderEditor();
+      renderReaderBody($('readerSearch') ? $('readerSearch').value : '');
     }).catch(function (err) {
-      if (msg) { msg.textContent = 'Could not revert: ' + err.message; msg.className = 'save-msg err'; }
-      if (btn) btn.disabled = false;
-    });
-  }
-
-  // Wraps the textarea's current selection in the given tag pair (or, with
-  // nothing selected, inserts an empty pair with the cursor left in between)
-  // — a plain-textarea stand-in for a real rich-text toolbar, since the
-  // editor is otherwise just markdown-free plain text.
-  function wrapSelection(textarea, before, after) {
-    var start = textarea.selectionStart, end = textarea.selectionEnd;
-    var val = textarea.value;
-    var selected = val.slice(start, end);
-    textarea.value = val.slice(0, start) + before + selected + after + val.slice(end);
-    textarea.focus();
-    textarea.selectionStart = start + before.length;
-    textarea.selectionEnd = start + before.length + selected.length;
-  }
-
-  function confirmSave(e) {
-    var overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.innerHTML =
-      '<div class="confirm-box">' +
-      '<h3>Publish this change?</h3>' +
-      '<p>This goes live on the public site immediately — there is no draft or review step to undo it from here (though every change is a normal git commit, so it can always be reverted from GitHub).</p>' +
-      '<div class="row"><button class="cancel">Cancel</button><button class="confirm">Publish now</button></div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('.cancel').addEventListener('click', function () { overlay.remove(); });
-    overlay.querySelector('.confirm').addEventListener('click', function () {
-      overlay.remove();
-      doSave(e);
-    });
-  }
-
-  function doSave(e) {
-    var title = $('editTitle').value.trim();
-    var bodyText = $('editBody').value;
-    var html = plainTextToHtml(bodyText);
-    var flag = $('editFlagNew').checked ? 'new' : $('editFlagUpdated').checked ? 'updated' : '';
-    var msg = $('saveMsg');
-    var btn = $('saveBtn');
-    btn.disabled = true;
-    msg.textContent = 'Publishing…';
-    msg.className = 'save-msg';
-
-    fetch('/api/save-rule', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: e.key, title: title, html: html, flag: flag })
-    }).then(function (r) {
-      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
-      return r.json();
-    }).then(function () {
-      state.overrides[e.key] = { title: title, html: html, flag: flag || undefined, updatedAt: new Date().toISOString() };
-      // Rebuilds the editor pane too (not just the list) so the "Discard
-      // edit" button and "Edited ..." timestamp appear immediately, without
-      // needing to click away and back.
-      selectEntry(e.key);
-      var freshMsg = $('saveMsg');
-      if (freshMsg) { freshMsg.textContent = 'Published — live on the public site now.'; freshMsg.className = 'save-msg ok'; }
-    }).catch(function (err) {
-      msg.textContent = 'Could not publish: ' + err.message;
-      msg.className = 'save-msg err';
-      btn.disabled = false;
+      alert('Could not revert: ' + err.message);
     });
   }
 

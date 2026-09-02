@@ -387,17 +387,14 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-entry:hover { background: var(--blue-pale); }
 .reader-entry-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
 .reader-entry-title { font-weight: 650; font-size: 14.5px; }
-.reader-entry-title.editable { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 1px 4px; margin: -1px -4px; }
-/* The pencil — not the title text — is the click target, and only shows on
-   hovering the title, matching the per-line pencils' hover-reveal below. */
-.reader-entry-title.editable .title-pencil {
-  flex: none; width: 20px; height: 20px; padding: 0; border: 0; background: none;
-  color: var(--ink-soft); border-radius: 5px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity .1s;
-}
-.reader-entry-title.editable:hover .title-pencil { opacity: 1; }
-.reader-entry-title.editable .title-pencil:hover { background: var(--blue-pale); color: var(--blue-dark); }
+/* The title's pencil reuses the exact per-line pencil box (see
+   .edit-line-pencil below) and shows on hovering anywhere in the head row —
+   not just the title text — same as a line's pencil showing on hovering the
+   whole line. Pinned to the row's right edge rather than sitting right after
+   the title text, since the row can also carry a pill/edited-dot/discard
+   link before it. */
+.reader-entry-head > .edit-line-pencil { margin-top: 0; margin-left: auto; align-self: center; }
+.reader-entry-head.editable:hover > .edit-line-pencil { opacity: 1; }
 .reader-entry.selected { background: var(--blue-pale); box-shadow: inset 0 0 0 1px var(--blue-mid); }
 .reader-entry-flag {
   margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px;

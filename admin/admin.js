@@ -675,24 +675,22 @@
     // (opened via its pencil) rather than sitting as a checkbox pair next to
     // every single title all the time — quieter, and consistent with every
     // other edit control here only appearing once you click in to edit.
-    // The pencil only shows on hovering the title (see .reader-entry-title
-    // .title-pencil in admin.css) and is itself the click target — clicking
-    // the title text otherwise does nothing, so a stray click can't drop an
-    // editor open by accident.
-    var titleHtml = state.readerEditMode
-      ? '<span class="reader-entry-title editable">' + escapeHtml(eff.title) +
-        '<button type="button" class="title-pencil" title="Edit the title"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z"></path></svg></button></span>'
-      : '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>';
-    block.innerHTML = '<div class="reader-entry-head">' +
+    // The pencil sits at the right of the whole head row (same box style as
+    // a line's pencil) and shows on hovering anywhere in that row, not just
+    // when the mouse is right over the title text — matching how a line's
+    // pencil reveals on hovering the whole line, not just its text.
+    var titleHtml = '<span class="reader-entry-title">' + escapeHtml(eff.title) + '</span>';
+    block.innerHTML = '<div class="reader-entry-head' + (state.readerEditMode ? ' editable' : '') + '">' +
       '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
       titleHtml +
       (eff.isNew ? '<span class="pill-new">New</span>' : eff.isUpdated ? '<span class="pill-updated">Updated</span>' : '') +
       (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
       (eff.edited && state.readerEditMode ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
+      (state.readerEditMode ? makePencilBtn('Edit the title').outerHTML : '') +
       '</div>' +
       '<div class="rfull-body"></div>';
     renderEntryBody(block.querySelector('.rfull-body'), e, eff.html, block);
-    var titlePencil = block.querySelector('.reader-entry-title.editable .title-pencil');
+    var titlePencil = block.querySelector('.reader-entry-head > .edit-line-pencil');
     if (titlePencil) titlePencil.addEventListener('click', function () { openTitleEditor(e, block); });
     var discardBtn = block.querySelector('.discard-edit-btn');
     if (discardBtn) discardBtn.addEventListener('click', function () { confirmDiscardEdit(e); });

@@ -95,8 +95,14 @@
           <button type="button" class="crumb-book" id="readerCrumbBook"></button>
           <span class="crumb-sep">/</span>
           <span class="crumb-section" id="readerCrumbSection"></span>
+          <button type="button" class="icon-btn panel-toggle-btn" id="outlineToggleBtn" title="Collapse navigation" aria-label="Collapse navigation">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M6.5 3v10"></path></svg>
+          </button>
+          <button type="button" class="icon-btn panel-toggle-btn" id="editorToggleBtn" title="Collapse editor" aria-label="Collapse editor" hidden>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M9.5 3v10"></path></svg>
+          </button>
         </nav>
-        <div class="reader-row">
+        <div class="reader-row" id="readerRow">
           <nav class="outline" id="readerOutline">
             <div class="reader-search-wrap">
               <input id="readerSearch" type="search" placeholder="Search within…" aria-label="Search within this document">
@@ -107,6 +113,7 @@
             </div>
             <div class="outline-list" id="readerOutlineList"></div>
           </nav>
+          <div class="reader-resize-handle" id="outlineResizeHandle"></div>
           <div class="reader-content" id="readerContent">
             <div class="reader-scroll" id="readerScroll">
               <div class="reader-title" id="readerTitle"></div>
@@ -116,6 +123,7 @@
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V3.5"></path><path d="M4 7.5L8 3.5l4 4"></path></svg>
             </button>
           </div>
+          <div class="reader-resize-handle" id="editorResizeHandle"></div>
           <div class="editor-pane" id="readerEditorSlot"></div>
         </div>
       </div>

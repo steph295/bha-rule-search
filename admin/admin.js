@@ -1494,6 +1494,102 @@
     if (state.manualsView === 'reader' && desktopReaderMQ.matches && window.scrollY !== 0) window.scrollTo(0, 0);
   }, { passive: true });
 
+  // ---- reader: resizable / collapsible panels --------------------------
+  //
+  // The outline nav and the editor pane both get a draggable width (via a
+  // thin handle on their inner edge) and a collapse toggle (in the
+  // breadcrumb row, same pattern as the outer #sidebarCollapseToggle) —
+  // widths and collapsed state persist across sessions. Desktop-only: a
+  // fixed pixel width means nothing once the layout stacks into one column
+  // below 981px, so inline widths are only ever applied above that
+  // breakpoint and cleared below it, leaving the existing responsive CSS
+  // (100% width, no handles) in charge there.
+  var PANEL_LS_PREFIX = 'bha-admin-reader-';
+  function readPanelNum(key, fallback) {
+    try {
+      var v = parseInt(localStorage.getItem(PANEL_LS_PREFIX + key), 10);
+      return isNaN(v) ? fallback : v;
+    } catch (e) { return fallback; }
+  }
+  function writePanelNum(key, value) {
+    try { localStorage.setItem(PANEL_LS_PREFIX + key, String(value)); } catch (e) { /* ignore */ }
+  }
+  function readPanelFlag(key) {
+    try { return localStorage.getItem(PANEL_LS_PREFIX + key) === '1'; } catch (e) { return false; }
+  }
+  function writePanelFlag(key, value) {
+    try { localStorage.setItem(PANEL_LS_PREFIX + key, value ? '1' : '0'); } catch (e) { /* ignore */ }
+  }
+
+  function setupResizablePanel(opts) {
+    // opts: {panel, handle, toggleBtn, widthKey, collapsedKey, defaultWidth, min, max}
+    var panel = opts.panel, handle = opts.handle, toggleBtn = opts.toggleBtn;
+    var collapsed = readPanelFlag(opts.collapsedKey);
+    var width = readPanelNum(opts.widthKey, opts.defaultWidth);
+
+    function apply() {
+      if (!desktopReaderMQ.matches) { panel.style.width = ''; handle.style.display = ''; return; }
+      panel.style.width = (collapsed ? 0 : width) + 'px';
+      handle.style.display = collapsed ? 'none' : '';
+      if (toggleBtn) toggleBtn.classList.toggle('active', collapsed);
+    }
+    apply();
+    desktopReaderMQ.addEventListener ? desktopReaderMQ.addEventListener('change', apply) : desktopReaderMQ.addListener(apply);
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        collapsed = !collapsed;
+        writePanelFlag(opts.collapsedKey, collapsed);
+        apply();
+      });
+    }
+
+    handle.addEventListener('mousedown', function (ev) {
+      if (!desktopReaderMQ.matches || collapsed) return;
+      ev.preventDefault();
+      var startX = ev.clientX, startWidth = width;
+      var sign = opts.growsRight ? 1 : -1;
+      document.body.classList.add('panel-resizing');
+      function onMove(mv) {
+        var next = startWidth + sign * (mv.clientX - startX);
+        width = Math.max(opts.min, Math.min(opts.max, next));
+        panel.style.width = width + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.classList.remove('panel-resizing');
+        writePanelNum(opts.widthKey, width);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    return { expand: function () { collapsed = false; writePanelFlag(opts.collapsedKey, false); apply(); } };
+  }
+
+  var outlinePanel = setupResizablePanel({
+    panel: $('readerOutline'), handle: $('outlineResizeHandle'), toggleBtn: $('outlineToggleBtn'),
+    widthKey: 'outline-w', collapsedKey: 'outline-collapsed', defaultWidth: 240, min: 170, max: 420,
+    growsRight: true
+  });
+  var editorPanel = setupResizablePanel({
+    panel: $('readerEditorSlot'), handle: $('editorResizeHandle'), toggleBtn: $('editorToggleBtn'),
+    widthKey: 'editor-w', collapsedKey: 'editor-collapsed', defaultWidth: 360, min: 280, max: 640,
+    growsRight: false
+  });
+
+  // The editor's collapse button only makes sense once there's actually
+  // something open to collapse — hidden the rest of the time, matching
+  // #readerEditorSlot's own :empty { display: none }. A freshly-opened
+  // section always starts expanded, even if a previous one was left
+  // collapsed, since collapsing an editor you haven't seen yet isn't useful.
+  new MutationObserver(function () {
+    var hasContent = $('readerEditorSlot').children.length > 0;
+    $('editorToggleBtn').hidden = !hasContent;
+    if (hasContent) editorPanel.expand();
+  }).observe($('readerEditorSlot'), { childList: true });
+
   function renderReaderBody(rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
     var newOnly = !!state.readerNewOnly;

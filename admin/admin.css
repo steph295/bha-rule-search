@@ -314,12 +314,20 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .reader-back button:hover { color: var(--blue-dark); text-decoration: underline; }
 .reader-back .crumb-sep { color: var(--line); }
 .reader-back .crumb-section { color: var(--ink-soft); font-weight: 500; }
+/* Outranks the plain ".reader-back button" rule above (class+element beats
+   a single class) so the collapse toggles keep their round icon-button
+   look instead of the breadcrumb's plain blue text-link style. */
+.reader-back .icon-btn { border: 1px solid var(--line); background: var(--bg); color: var(--ink-soft); }
+.reader-back .icon-btn:hover { color: var(--blue-dark); text-decoration: none; }
+.reader-back .panel-toggle-btn { margin-left: auto; }
+.reader-back .panel-toggle-btn.active { color: var(--blue-mid); border-color: var(--blue-mid); }
+#editorToggleBtn { margin-left: 8px; }
 
-.reader-row { display: flex; align-items: flex-start; gap: 34px; }
+.reader-row { display: flex; align-items: flex-start; gap: 0; }
 
 .outline {
-  flex: 0 0 240px; position: sticky; top: 14px;
-  max-height: calc(100vh - 28px); overflow-y: auto;
+  flex: 0 0 auto; width: 240px; min-width: 0; position: sticky; top: 14px;
+  max-height: calc(100vh - 28px); overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column;
 }
 .reader-search-wrap { margin-bottom: 8px; }
@@ -437,10 +445,24 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 
 /* The reader's section editor (see openSectionEditor) lives here, on the
    right — a shared panel rather than a dozen inline textareas scattered
-   through the document. Empty (nothing being edited, or edit mode off)
-   collapses it entirely rather than reserving a column. */
+   through the document. Empty (nothing being edited) collapses it
+   entirely rather than reserving a column. */
 #readerEditorSlot:empty { display: none; }
-#readerEditorSlot { flex: 0 0 360px; }
+#readerEditorSlot { flex: 0 0 auto; width: 360px; min-width: 0; overflow-x: hidden; }
+
+/* A thin draggable divider between two panels (see setupResizablePanel) —
+   a wide invisible hit area around a slim visible line, matching the
+   forgiving drag targets of an IDE's own split-pane resizers. */
+.reader-resize-handle {
+  flex: 0 0 14px; align-self: stretch; cursor: col-resize; position: relative;
+}
+.reader-resize-handle::after {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+  background: var(--line); transform: translateX(-50%); transition: background .1s;
+}
+.reader-resize-handle:hover::after { background: var(--blue-mid); width: 3px; }
+body.panel-resizing { cursor: col-resize; user-select: none; }
+body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); width: 3px; }
 
 /* ---- section editor ---- */
 .section-editor-card .code-badge { margin-bottom: 10px; }
@@ -522,9 +544,14 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 }
 
 @media (max-width: 980px) {
-  .reader-row { flex-direction: column; }
+  .reader-row { flex-direction: column; gap: 24px; }
   .outline { position: static; max-height: none; width: 100%; }
   #readerEditorSlot { width: 100%; flex-basis: auto; }
+  /* Resizing (and its toggle buttons) is a desktop-only affordance — a
+     fixed pixel width means nothing once the layout stacks into one
+     column, and the collapse toggles have nothing useful to do here
+     either since there's no shared row width to reclaim. */
+  .reader-resize-handle, .panel-toggle-btn { display: none; }
 }
 
 /* Word/Google-Docs-style popup for tagging a text selection New/Updated

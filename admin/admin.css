@@ -459,10 +459,12 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .new-line-number { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
 .new-line-number b { color: var(--blue-dark); }
 
-/* Thin hover-to-reveal strip between lines — "+" inserts a new line right
+/* Hover-to-reveal strip between lines — "+" inserts a new line right
    there, lettered off its predecessor (see nextInsertedNumber) so nothing
-   below ever renumbers. */
-.edit-line-gap { position: relative; height: 14px; }
+   below ever renumbers. Tall enough to hover onto deliberately — a thin
+   14px strip made the "+" flicker in and out on the slightest mouse
+   movement instead of staying put while aiming for it. */
+.edit-line-gap { position: relative; height: 28px; }
 .edit-line-add {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.9);
   width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--blue); color: #fff;

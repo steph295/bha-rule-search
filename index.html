@@ -1937,6 +1937,9 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
       prepareEntries(data.entries);
       buildVocab();
     }
+    var changed = mergeAddedEntries();
+    if (applyDeletedEntries()) changed = true;
+    if (changed) { prepareEntries(state.data.entries); buildVocab(); }
     applyOverrides();
     renderStatus();
     renderTabs();
@@ -1958,15 +1961,53 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
         state.bookOverrides = (j && j.bookOverrides) || {};
         state.customDefinitions = (j && j.customDefinitions) || {};
         state.uploadedGuides = (j && j.uploadedGuides) || {};
+        state.addedEntries = (j && j.addedEntries) || {};
+        state.deletedEntries = (j && j.deletedEntries) || {};
+        var entriesChanged = mergeAddedEntries();
+        if (applyDeletedEntries()) entriesChanged = true;
+        if (entriesChanged && state.data) { prepareEntries(state.data.entries); buildVocab(); }
         applyOverrides();
         applyDefinitionOverrides();
         mergeCustomDefinitions();
         if (mergeUploadedGuides() && state.guidesState === 'ready') { mergeGuides(); refreshView(); }
-        if (Object.keys(state.overrides).length) refreshView();
+        if (Object.keys(state.overrides).length || entriesChanged) refreshView();
         if ((Object.keys(state.definitionOverrides).length || Object.keys(state.customDefinitions).length) && state.mode === 'reader') renderIdle();
         if (Object.keys(state.bookOverrides).length && state.mode !== 'reader') renderIdle();
       })
       .catch(function () { /* no overrides file yet — fine */ });
+  }
+
+  // ---- admin-created / admin-deleted whole rules -------------------------
+  //
+  // rules.json is a fixed snapshot built from BHA's own source — overrides
+  // can patch an existing entry's text, but can't add or drop a list item.
+  // addedEntries/deletedEntries (also published to overrides.json) are the
+  // extra layer that makes whole-rule creation and removal possible: an
+  // added entry is keyed by a permanent id rather than its number, so
+  // renumbering it later never means moving it to a new key.
+  function mergeAddedEntries() {
+    if (!state.data || !state.addedEntries) return false;
+    var have = {};
+    state.data.entries.forEach(function (e) { if (e._addedId) have[e._addedId] = true; });
+    var added = false;
+    Object.keys(state.addedEntries).forEach(function (id) {
+      if (have[id]) return;
+      var a = state.addedEntries[id];
+      state.data.entries.push({
+        kind: 'manual', code: id, letter: a.letter, num: a.num, doc: a.doc,
+        title: a.title, html: a.html, path: a.path || [], isNew: false, _addedId: id
+      });
+      added = true;
+    });
+    return added;
+  }
+
+  function applyDeletedEntries() {
+    if (!state.data || !state.deletedEntries || !Object.keys(state.deletedEntries).length) return false;
+    var deleted = state.deletedEntries;
+    var before = state.data.entries.length;
+    state.data.entries = state.data.entries.filter(function (e) { return !deleted[entryKey(e)]; });
+    return state.data.entries.length !== before;
   }
 
   function applyDefinitionOverrides() {
@@ -1999,7 +2040,10 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   function applyOverrides() {
     if (!state.overrides || !state.data) return;
     state.data.entries.forEach(function (e) {
-      var o = state.overrides[entryKey(e)];
+      // An added entry's own content lives in addedEntries (it has no BHA
+      // original to patch against), everything else in the usual overrides
+      // patch layer — same {title, html, flag} shape either way.
+      var o = e._addedId ? (state.addedEntries && state.addedEntries[e._addedId]) : state.overrides[entryKey(e)];
       if (!o) return;
       if (o.title) e.title = o.title;
       if (o.html) { e.html = o.html; e.plain = undefined; }

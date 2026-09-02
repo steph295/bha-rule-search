@@ -19,7 +19,6 @@
     readerBook: null,    // 'rules' | 'guides' | 'bhagi'
     readerTree: null,
     readerNewOnly: false,
-    readerEditMode: false,
     definitions: [],        // [{id, term, html, slug}] — ORIGINAL, pre-override
     definitionOverrides: {}, // termId -> {html, updatedAt}
     defQuery: '',
@@ -826,13 +825,13 @@
     var anyUpdated = !anyNew && group.some(function (e) { return effective(e).isUpdated; });
     var editedEntries = group.filter(function (e) { return effective(e).edited; });
     var titleHtml = '<span class="reader-entry-title">' + escapeHtml(group[0].title) + '</span>';
-    block.innerHTML = '<div class="reader-entry-head' + (state.readerEditMode ? ' editable' : '') + '">' +
+    block.innerHTML = '<div class="reader-entry-head">' +
       '<span class="' + codeClass(group[0]) + '">' + escapeHtml(dispCodeRange(group)) + '</span>' +
       titleHtml +
       (anyNew ? '<span class="pill-new">New</span>' : anyUpdated ? '<span class="pill-updated">Updated</span>' : '') +
       (editedEntries.length ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
-      (editedEntries.length && state.readerEditMode ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
-      (state.readerEditMode ? makePencilBtn('Edit this section').outerHTML : '') +
+      (editedEntries.length ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
+      makePencilBtn('Edit this section').outerHTML +
       '</div>' +
       '<div class="rfull-body"></div>';
     renderGroupBody(block.querySelector('.rfull-body'), group);
@@ -1303,7 +1302,6 @@
   }
 
   document.addEventListener('mouseup', function () {
-    if (!state.readerEditMode) return;
     var sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) { hideLineFlagPopup(); return; }
     var range = sel.getRangeAt(0);
@@ -1373,17 +1371,6 @@
       alert('Could not publish: ' + err.message);
     });
   }
-
-  function toggleReaderEditMode() {
-    state.readerEditMode = !state.readerEditMode;
-    if ($('readerEditToggle')) {
-      $('readerEditToggle').textContent = state.readerEditMode ? 'Done editing' : 'Edit';
-      $('readerEditToggle').classList.toggle('active', state.readerEditMode);
-    }
-    if ($('readerEditorSlot')) clearReaderEditor();
-    renderReaderBody($('readerSearch') ? $('readerSearch').value : '');
-  }
-  if ($('readerEditToggle')) $('readerEditToggle').addEventListener('click', toggleReaderEditMode);
 
   // Desktop gives the outline / content / editor columns their own scroll
   // instead of the page's (see the min-width:981px block in admin.css), so
@@ -1497,8 +1484,6 @@
     $('readerSearch').value = '';
     state.readerNewOnly = false;
     if ($('readerNewOnly')) $('readerNewOnly').checked = false;
-    state.readerEditMode = false;
-    if ($('readerEditToggle')) { $('readerEditToggle').textContent = 'Edit'; $('readerEditToggle').classList.remove('active'); }
     if ($('readerEditorSlot')) clearReaderEditor();
     renderReaderBody('');
   }
@@ -1516,18 +1501,13 @@
   // Jumping to an entry from the flat search/list view used to open its own
   // whole-entry textarea editor, which flattened numbered sub-clauses to
   // plain paragraphs and lost the structure. All editing now goes through
-  // the reader's per-line editor instead, which preserves each line's real
+  // the reader's section editor instead, which preserves each line's real
   // numbering — so a result row jumps straight into the reader, scrolled to
-  // and with Edit already on, rather than opening its own panel.
+  // that entry's section, rather than opening its own panel.
   function enterReaderAtEntry(e) {
     var book = e.kind === 'bhagi' ? 'bhagi' : isGuideEntry(e) ? 'guides' : 'rules';
     enterReader(book);
     state.selectedKey = e.key;
-    state.readerEditMode = true;
-    if ($('readerEditToggle')) {
-      $('readerEditToggle').textContent = 'Done editing';
-      $('readerEditToggle').classList.add('active');
-    }
     renderReaderBody('');
     var target = document.querySelector('.reader-entry[data-key="' + CSS.escape(e.key) + '"]');
     if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });

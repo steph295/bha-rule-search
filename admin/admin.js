@@ -671,18 +671,10 @@
     var block = document.createElement('div');
     block.className = 'reader-entry' + (e.key === state.selectedKey ? ' selected' : '');
     block.dataset.key = e.key;
-    // Two independent checkboxes (New / Updated) rather than a single
-    // four-option dropdown — matches the BHA's own editor exactly, and
-    // "auto" is simply neither box checked (defers to automatic
-    // new-entries detection), so there's nothing extra to explain. This is
-    // a "flag the whole entry" shortcut, kept alongside the per-line flags
-    // below it — the two are independent, not merged into one control.
-    var flagHtml = state.readerEditMode
-      ? '<div class="reader-entry-flag">' +
-        '<label><input type="checkbox" class="flag-new"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
-        '<label><input type="checkbox" class="flag-updated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
-        '</div>'
-      : '';
+    // The whole-entry New/Updated flag is set from the title's own editor
+    // (opened via its pencil) rather than sitting as a checkbox pair next to
+    // every single title all the time — quieter, and consistent with every
+    // other edit control here only appearing once you click in to edit.
     // The pencil only shows on hovering the title (see .reader-entry-title
     // .title-pencil in admin.css) and is itself the click target — clicking
     // the title text otherwise does nothing, so a stray click can't drop an
@@ -694,15 +686,12 @@
     block.innerHTML = '<div class="reader-entry-head">' +
       '<span class="' + codeClass(e) + '">' + escapeHtml(dispCode(e)) + '</span>' +
       titleHtml +
+      (eff.isNew ? '<span class="pill-new">New</span>' : eff.isUpdated ? '<span class="pill-updated">Updated</span>' : '') +
       (eff.edited ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
       (eff.edited && state.readerEditMode ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
-      flagHtml +
       '</div>' +
       '<div class="rfull-body"></div>';
     renderEntryBody(block.querySelector('.rfull-body'), e, eff.html, block);
-    var newCb = block.querySelector('.flag-new'), updCb = block.querySelector('.flag-updated');
-    if (newCb) newCb.addEventListener('change', function () { applyFlag(e, block, newCb.checked ? 'new' : ''); });
-    if (updCb) updCb.addEventListener('change', function () { applyFlag(e, block, updCb.checked ? 'updated' : ''); });
     var titlePencil = block.querySelector('.reader-entry-title.editable .title-pencil');
     if (titlePencil) titlePencil.addEventListener('click', function () { openTitleEditor(e, block); });
     var discardBtn = block.querySelector('.discard-edit-btn');
@@ -728,35 +717,14 @@
     }
   }
 
-  function applyFlag(e, block, newFlag) {
-    var eff = effective(e);
-    var newCb = block.querySelector('.flag-new'), updCb = block.querySelector('.flag-updated');
-    newCb.disabled = updCb.disabled = true;
-    fetch('/api/save-rule', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: e.key, html: eff.html, flag: newFlag })
-    }).then(function (r) {
-      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
-      return r.json();
-    }).then(function () {
-      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { html: eff.html, flag: newFlag, updatedAt: new Date().toISOString() });
-      newCb.disabled = updCb.disabled = false;
-      newCb.checked = newFlag === 'new';
-      updCb.checked = newFlag === 'updated';
-      markEdited(block, e);
-    }).catch(function (err) {
-      newCb.disabled = updCb.disabled = false;
-      alert('Could not publish: ' + err.message);
-      newCb.checked = eff.isNew; updCb.checked = eff.isUpdated; // revert to last-known state
-    });
-  }
-
   // The reader's shared right-hand editor — one at a time, so clicking a
   // different pencil (or the title's) simply replaces whatever was open
   // rather than letting several edits pile up inline through the document.
   function readerEditorPane() { return $('readerEditorSlot'); }
   function clearReaderEditor() { readerEditorPane().innerHTML = ''; }
 
+  // The whole-entry New/Updated flag lives here, in the title's own editor,
+  // rather than as a checkbox pair sitting next to every title all the time.
   function openTitleEditor(e, block) {
     var eff = effective(e);
     var pane = readerEditorPane();
@@ -765,6 +733,12 @@
       '<span class="code-badge">' + escapeHtml(dispCode(e)) + ' — title</span>' +
       '<label for="titleEditInput">Title</label>' +
       '<input type="text" id="titleEditInput" value="' + escapeHtml(eff.title) + '">' +
+      '<label>Flag</label>' +
+      '<div class="reader-entry-flag" style="margin-left:0">' +
+      '<label><input type="checkbox" id="titleFlagNew"' + (eff.isNew ? ' checked' : '') + '> New</label>' +
+      '<label><input type="checkbox" id="titleFlagUpdated"' + (eff.isUpdated ? ' checked' : '') + '> Updated</label>' +
+      '</div>' +
+      '<div class="hint">Flags this whole entry — leave both unchecked for Auto, deferring to the automatic new-entries detection.</div>' +
       '<div class="editor-actions">' +
       '<button class="save" id="titleSaveBtn">Publish change</button>' +
       '<button class="revert" id="titleCancelBtn" type="button">Cancel</button>' +
@@ -774,27 +748,32 @@
     var input = $('titleEditInput');
     input.focus();
     input.select();
+    $('titleFlagNew').addEventListener('change', function () { if (this.checked) $('titleFlagUpdated').checked = false; });
+    $('titleFlagUpdated').addEventListener('change', function () { if (this.checked) $('titleFlagNew').checked = false; });
     $('titleCancelBtn').addEventListener('click', clearReaderEditor);
     $('titleSaveBtn').addEventListener('click', function () {
       var newTitle = input.value.trim();
       if (!newTitle) { alert('Give it a title first.'); return; }
-      confirmPublish('Publish this title?', function () { saveTitleChange(e, block, newTitle); });
+      var flag = $('titleFlagNew').checked ? 'new' : $('titleFlagUpdated').checked ? 'updated' : '';
+      confirmPublish('Publish this title?', function () { saveTitleChange(e, block, newTitle, flag); });
     });
   }
 
-  function saveTitleChange(e, block, newTitle) {
+  function saveTitleChange(e, block, newTitle, flag) {
     var btn = $('titleSaveBtn');
     if (btn) btn.disabled = true;
     fetch('/api/save-rule', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: e.key, title: newTitle, flag: currentFlagOverride(e) })
+      body: JSON.stringify({ key: e.key, title: newTitle, flag: flag })
     }).then(function (r) {
       if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
       return r.json();
     }).then(function () {
-      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { title: newTitle, updatedAt: new Date().toISOString() });
-      block.querySelector('.reader-entry-title').firstChild.textContent = newTitle;
-      markEdited(block, e);
+      state.overrides[e.key] = Object.assign({}, state.overrides[e.key], { title: newTitle, flag: flag, updatedAt: new Date().toISOString() });
+      // Full re-render of just this entry — simplest way to keep the title
+      // text, the New/Updated pill and the edited-dot all in sync with
+      // whatever changed, rather than patching each by hand.
+      block.replaceWith(renderReaderEntry(e));
       clearReaderEditor();
     }).catch(function (err) {
       alert('Could not publish: ' + err.message);

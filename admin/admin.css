@@ -629,6 +629,35 @@ body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); 
 .confirm-box .cancel { background: var(--blue-pale); color: var(--blue-dark); }
 .confirm-box .confirm { background: var(--blue); color: #fff; }
 
+/* The "+" gap's own picker — see showAddObjectModal. Deliberately just
+   the object types this content actually has, styled like the reference
+   CMS's own icon-grid "Add an object" dialog. */
+.add-object-box {
+  position: relative; background: #fff; border-radius: 14px; padding: 26px 30px;
+  min-width: 280px; box-shadow: 0 20px 50px rgba(0,0,0,.3); text-align: center;
+}
+.add-object-box h3 {
+  margin: 0 0 18px; font-size: 13px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.add-object-close {
+  position: absolute; top: 12px; right: 12px; border: 0; background: none;
+  color: var(--ink-soft); cursor: pointer; padding: 4px;
+}
+.add-object-close:hover { color: var(--ink); }
+.add-object-grid { display: flex; gap: 12px; justify-content: center; }
+.add-object-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  width: 88px; padding: 14px 8px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.add-object-opt:hover { border-color: var(--blue-mid); background: var(--blue-pale); color: var(--blue-dark); }
+.add-object-icon {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--blue-pale); color: var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+}
+.add-object-opt:hover .add-object-icon { background: var(--blue); color: #fff; }
+
 /* ---- header icon button + shared dialog/btn (pdf export) ---- */
 .icon-btn {
   display: flex; align-items: center; justify-content: center;

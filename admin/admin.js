@@ -1482,15 +1482,14 @@
         if (activeInlineEdit && activeInlineEdit.el === el) return;
         openInlineLineEditor(el);
       });
-      // A hover-reveal "+" in the gap after every line — click it to add a
-      // new line right there, lettered off this one (see
-      // nextInsertedLabel) rather than renumbering anything below.
+      // A hover-reveal "+" in the gap after every line — click it to choose
+      // what to add right there (see showAddObjectModal).
       var gap = document.createElement('div');
       gap.className = 'inline-add-gap';
       gap.innerHTML = '<button type="button" class="inline-add-btn" title="Add a line here">' + SECTION_ICONS.plus + '</button>';
       gap.querySelector('.inline-add-btn').addEventListener('click', function (ev) {
         ev.stopPropagation();
-        openInlineInsertEditor(el);
+        showAddObjectModal(el);
       });
       el.parentNode.insertBefore(gap, el.nextSibling);
     });
@@ -1508,15 +1507,92 @@
     cancel();
   }
 
-  // Numbers a newly-inserted line off the line it follows, with a letter
+  // Numbers a newly-inserted line off whatever it follows, with a letter
   // suffix (6.2 -> 6.2A) rather than renumbering — nothing below the
   // insertion point should ever shift and invalidate a citation.
-  function nextInsertedLabel(afterEl) {
-    var rn = afterEl.querySelector(':scope > .rn');
-    var base = rn ? stripHtml(rn.innerHTML).trim() : '';
+  function letterSuffix(base) {
     if (!base) return '';
     var m = /^(.*?)([A-Z]?)$/.exec(base);
     return m[1] + (m[2] ? String.fromCharCode(m[2].charCodeAt(0) + 1) : 'A');
+  }
+  function nextInsertedLabel(afterEl) {
+    var rn = afterEl.querySelector(':scope > .rn');
+    return letterSuffix(rn ? stripHtml(rn.innerHTML).trim() : '');
+  }
+
+  // BHA's own rule text only ever nests three deep (l1/l2/l3 — see the
+  // reader's own CSS) — "Sub-clause" in the add-object modal is only
+  // offered one level shy of that ceiling.
+  var LEVEL_ORDER = ['l1', 'l2', 'l3'];
+  function deeperLevelClass(className) {
+    var idx = LEVEL_ORDER.indexOf(className);
+    return idx >= 0 && idx < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[idx + 1] : null;
+  }
+
+  // A "sub-clause" added under a line appends after whichever of that
+  // line's own children (if any) already immediately follow it — matching
+  // "add a sub-clause to this rule", not "insert before its existing
+  // ones" — re-parsed fresh from the entry's own published html (never the
+  // live decorated DOM), same reasoning as saveInlineLine/saveInlineInsert.
+  function computeSubClauseInsertion(entry, afterIndex, afterClassName) {
+    var deeper = deeperLevelClass(afterClassName);
+    if (!deeper) return null;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = effective(entry).html;
+    var children = Array.prototype.slice.call(tmp.children);
+    var lastChildIdx = afterIndex;
+    for (var k = afterIndex + 1; k < children.length; k++) {
+      if (children[k].tagName === 'P' && children[k].classList.contains(deeper)) lastChildIdx = k;
+      else break;
+    }
+    var lastEl = children[lastChildIdx];
+    var lastRn = lastEl.querySelector(':scope > .rn');
+    var lastLabel = lastRn ? stripHtml(lastRn.innerHTML).trim() : '';
+    var numLabel = lastChildIdx === afterIndex ? (lastLabel + '.1') : letterSuffix(lastLabel);
+    return { insertAfterIndex: lastChildIdx, className: deeper, numLabel: numLabel };
+  }
+
+  // The "+" gap's own picker — a scaled-down version of the reference
+  // CMS's "Add an object" modal, offering only the object types this
+  // content actually has (no Image/Video/Table/Calendar — none of that
+  // applies to rule text). "Sub-clause" only appears when the line you
+  // clicked "+" on isn't already at the deepest nesting level.
+  function showAddObjectModal(afterEl) {
+    var afterIndex = Number(afterEl.dataset.lineIndex);
+    var className = afterEl.className.replace('inline-editable-line', '').replace('editing', '').trim() || 'l1';
+    var canSubClause = !!deeperLevelClass(className);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="add-object-box">' +
+      '<button type="button" class="add-object-close" aria-label="Close">' + SECTION_ICONS.close + '</button>' +
+      '<h3>Add an object</h3>' +
+      '<div class="add-object-grid">' +
+      '<button type="button" class="add-object-opt" data-type="line"><span class="add-object-icon">' + SECTION_ICONS.plus + '</span>Line</button>' +
+      (canSubClause ? '<button type="button" class="add-object-opt" data-type="subclause"><span class="add-object-icon">' + SECTION_ICONS.plus + '</span>Sub-clause</button>' : '') +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    function close() { overlay.remove(); }
+    overlay.querySelector('.add-object-close').addEventListener('click', close);
+    overlay.addEventListener('mousedown', function (ev) { if (ev.target === overlay) close(); });
+
+    overlay.querySelector('[data-type="line"]').addEventListener('click', function () {
+      close();
+      openInlineInsertEditor(afterEl);
+    });
+    if (canSubClause) {
+      overlay.querySelector('[data-type="subclause"]').addEventListener('click', function () {
+        close();
+        var key = afterEl.dataset.entryKey;
+        var entry = null;
+        state.entries.forEach(function (x) { if (x.key === key) entry = x; });
+        if (!entry) return;
+        var info = computeSubClauseInsertion(entry, afterIndex, className);
+        if (info) openInlineInsertEditor(afterEl, info);
+      });
+    }
   }
 
   function buildInlineToolbar(saveLabel) {
@@ -1595,19 +1671,24 @@
     });
   }
 
-  // Opens a brand-new, not-yet-saved line right after `afterEl` — nothing
-  // is written to the entry's html (and so nothing is published) until
-  // Save is actually clicked, so an abandoned "+" click never leaves an
-  // empty line live on the public site.
-  function openInlineInsertEditor(afterEl) {
+  // Opens a brand-new, not-yet-saved line — nothing is written to the
+  // entry's html (and so nothing is published) until Save is actually
+  // clicked, so an abandoned "+" click never leaves an empty line live on
+  // the public site. `override` (from the add-object modal's "Sub-clause"
+  // choice) supplies a different insertion point/level/number than "right
+  // after afterEl, same level" — the draft still renders right after
+  // afterEl either way, since it's a purely visual/temporary position that
+  // a full re-render replaces the moment it's actually saved.
+  function openInlineInsertEditor(afterEl, override) {
     cancelInlineEdit();
     var key = afterEl.dataset.entryKey;
     var entry = null;
     state.entries.forEach(function (x) { if (x.key === key) entry = x; });
     if (!entry) return;
 
-    var numLabel = nextInsertedLabel(afterEl);
-    var className = afterEl.className.replace('inline-editable-line', '').replace('editing', '').trim() || 'l1';
+    var insertAfterIndex = override ? override.insertAfterIndex : Number(afterEl.dataset.lineIndex);
+    var className = override ? override.className : (afterEl.className.replace('inline-editable-line', '').replace('editing', '').trim() || 'l1');
+    var numLabel = override ? override.numLabel : nextInsertedLabel(afterEl);
 
     var newEl = document.createElement('p');
     newEl.className = className;
@@ -1637,7 +1718,7 @@
     toolbar.querySelector('.inline-line-save').addEventListener('click', function () {
       var text = ta.value;
       if (!text.trim()) { alert('Give the new line some text first.'); return; }
-      saveInlineInsert(entry, Number(afterEl.dataset.lineIndex), className, flagCtl.get(), numLabel, text, toolbar);
+      saveInlineInsert(entry, insertAfterIndex, className, flagCtl.get(), numLabel, text, toolbar);
     });
   }
 

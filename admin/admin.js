@@ -817,6 +817,13 @@
     if (!any) container.innerHTML = entries.map(function (e) { return effective(e).html; }).join('');
   }
 
+  // The section-editor pencil (reorder/add/remove whole rules, renumber,
+  // rename the section) is parked for now in favour of clicking a line's
+  // own text to edit it in place (see makeLinesInlineEditable below) — the
+  // right-panel form was the exact thing under reconsideration. Its
+  // functions (openSectionEditor onward) are left in the file, unreachable,
+  // rather than deleted outright: that structural editing still needs a
+  // home once the direct-editing pattern covers it too.
   function renderReaderSectionGroup(group) {
     var block = document.createElement('div');
     block.className = 'reader-entry' + (group.some(function (e) { return e.key === state.selectedKey; }) ? ' selected' : '');
@@ -831,14 +838,11 @@
       (anyNew ? '<span class="pill-new">New</span>' : anyUpdated ? '<span class="pill-updated">Updated</span>' : '') +
       (editedEntries.length ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
       (editedEntries.length ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
-      makePencilBtn('Edit this section').outerHTML +
       '</div>' +
       '<div class="rfull-body"></div>';
     var body = block.querySelector('.rfull-body');
     renderGroupBody(body, group);
     makeLinesInlineEditable(body);
-    var pencil = block.querySelector('.reader-entry-head > .edit-line-pencil');
-    if (pencil) pencil.addEventListener('click', function () { openSectionEditor(group, block); });
     var discardBtn = block.querySelector('.discard-edit-btn');
     if (discardBtn) discardBtn.addEventListener('click', function () { confirmDiscardEdit(editedEntries); });
     return block;
@@ -1720,16 +1724,20 @@
     growsRight: false
   });
 
-  // The editor's collapse button only makes sense once there's actually
-  // something open to collapse — hidden the rest of the time, matching
-  // #readerEditorSlot's own :empty { display: none }. A freshly-opened
-  // section always starts expanded, even if a previous one was left
-  // collapsed, since collapsing an editor you haven't seen yet isn't useful.
+  // The editor's collapse button (and its resize handle) only make sense
+  // once there's actually something open to collapse — hidden the rest of
+  // the time, matching #readerEditorSlot's own :empty { display: none }
+  // (currently always, with the section-editor pencil parked — see
+  // renderReaderSectionGroup). A freshly-opened section always starts
+  // expanded, even if a previous one was left collapsed, since collapsing
+  // an editor you haven't seen yet isn't useful.
   new MutationObserver(function () {
     var hasContent = $('readerEditorSlot').children.length > 0;
     $('editorToggleBtn').hidden = !hasContent;
+    $('editorResizeHandle').style.display = hasContent ? '' : 'none';
     if (hasContent) editorPanel.expand();
   }).observe($('readerEditorSlot'), { childList: true });
+  $('editorResizeHandle').style.display = 'none';
 
   function renderReaderBody(rawQuery) {
     var tokens = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);

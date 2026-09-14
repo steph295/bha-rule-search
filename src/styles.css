@@ -861,6 +861,46 @@ body.reader-mode #flatDefPanel { display: none; }
 .rfull th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull ul { margin: 8px 0; padding-left: 26px; }
 
+/* ---- admin "Add an object" block types (see admin.js's OBJECT_TYPES) —
+   these become part of an entry's own published html, so the public
+   reader needs to render them too. Mirrored from admin/admin.css. ---- */
+.rfull .rule-heading { font-size: 18px; font-weight: 700; color: var(--blue-dark); margin: 24px 0 10px; }
+.rfull .rule-subheading { font-size: 15px; font-weight: 700; color: var(--ink); margin: 18px 0 8px; }
+.rfull .rule-well { background: var(--blue-pale); border-left: 3px solid var(--blue-mid); border-radius: 6px; padding: 10px 14px; margin: 14px 0; }
+.rfull .rule-bullets { margin: 8px 0; padding-left: 26px; }
+.rfull .rule-image { max-width: 100%; border-radius: 8px; display: block; margin: 12px 0; }
+.rfull .rule-image-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.rfull .rule-image-group img { max-width: 220px; border-radius: 8px; }
+.rfull .rule-video { margin: 12px 0; }
+.rfull .rule-video video, .rfull .rule-video iframe { width: 100%; max-width: 560px; aspect-ratio: 16/9; border-radius: 8px; border: 0; }
+.rfull .rule-collapsible { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull .rule-collapsible summary { cursor: pointer; font-weight: 600; }
+.rfull .rule-collapsible > div { margin-top: 8px; }
+.rfull .rule-accordion { margin: 12px 0; display: flex; flex-direction: column; gap: 6px; }
+.rfull .rule-accordion details { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull .rule-accordion summary { cursor: pointer; font-weight: 600; }
+.rfull .rule-accordion details > div { margin-top: 8px; }
+
+/* CSS-only tabs — up to 6, switched purely by :checked via nth-of-type
+   pairing, no JS needed. */
+.rfull .rule-tabs { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.rfull .rule-tab-input { display: none; }
+.rfull .rule-tab-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rfull .rule-tab-label { padding: 5px 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; font-weight: 600; cursor: pointer; }
+.rfull .rule-tab-panel { display: none; }
+.rfull .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(1),
+.rfull .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(2),
+.rfull .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(3),
+.rfull .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(4),
+.rfull .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(5),
+.rfull .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(6) { display: block; }
+.rfull .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(1),
+.rfull .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(2),
+.rfull .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(3),
+.rfull .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(4),
+.rfull .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(5),
+.rfull .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(6) { background: var(--blue); border-color: var(--blue); color: #fff; }
+
 mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
 .more {

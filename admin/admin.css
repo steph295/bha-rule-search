@@ -437,6 +437,59 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rfull-body th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull-body ul { margin: 6px 0; padding-left: 22px; }
 
+/* ---- "Add an object" block types (see OBJECT_TYPES) — mirrored in
+   src/styles.css under .rfull for the public site, since these become
+   part of an entry's own published html. ---- */
+.rfull-body .rule-heading { font-size: 17px; font-weight: 700; color: var(--blue-dark); margin: 22px 0 10px; }
+.rfull-body .rule-subheading { font-size: 14.5px; font-weight: 700; color: var(--ink); margin: 16px 0 8px; }
+.rfull-body .rule-well { background: var(--blue-pale); border-left: 3px solid var(--blue-mid); border-radius: 6px; padding: 10px 14px; margin: 12px 0; }
+.rfull-body .rule-bullets { margin: 8px 0; padding-left: 22px; }
+.rfull-body .rule-image { max-width: 100%; border-radius: 8px; display: block; margin: 10px 0; }
+.rfull-body .rule-image-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.rfull-body .rule-image-group img { max-width: 220px; border-radius: 8px; }
+.rfull-body .rule-video { margin: 10px 0; }
+.rfull-body .rule-video video, .rfull-body .rule-video iframe { width: 100%; max-width: 560px; aspect-ratio: 16/9; border-radius: 8px; border: 0; }
+.rfull-body .rule-collapsible { margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull-body .rule-collapsible summary { cursor: pointer; font-weight: 600; }
+.rfull-body .rule-collapsible > div { margin-top: 8px; }
+.rfull-body .rule-accordion { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.rfull-body .rule-accordion details { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull-body .rule-accordion summary { cursor: pointer; font-weight: 600; }
+.rfull-body .rule-accordion details > div { margin-top: 8px; }
+
+/* CSS-only tabs — up to 6 (generous for rule content), switched purely by
+   :checked via nth-of-type pairing, no JS needed on either this preview
+   or the public site. */
+.rfull-body .rule-tabs { margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.rfull-body .rule-tab-input { display: none; }
+.rfull-body .rule-tab-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rfull-body .rule-tab-label { padding: 5px 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; font-weight: 600; cursor: pointer; }
+.rfull-body .rule-tab-panel { display: none; }
+.rfull-body .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(1),
+.rfull-body .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(2),
+.rfull-body .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(3),
+.rfull-body .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(4),
+.rfull-body .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(5),
+.rfull-body .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(6) { display: block; }
+.rfull-body .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(1),
+.rfull-body .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(2),
+.rfull-body .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(3),
+.rfull-body .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(4),
+.rfull-body .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(5),
+.rfull-body .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(6) { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* Admin-only: a hover-reveal delete on an already-placed object — editing
+   one's content in place isn't supported yet, only adding/removing. */
+.rule-object-editable { position: relative; }
+.rule-object-delete {
+  position: absolute; top: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--line); background: #fff; color: #b42318; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .1s;
+}
+.rule-object-editable:hover .rule-object-delete { opacity: 1; }
+.rule-object-delete:hover { background: #fdecea; border-color: #b42318; }
+.inline-object-placeholder { margin: 8px 0; }
+
 /* Click a line's own text to edit it right there — see openInlineLineEditor.
    The hover cue is deliberately quieter than the whole-card hover (see
    .reader-entry:hover) so it reads as "this exact line", not "this card". */
@@ -634,7 +687,7 @@ body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); 
    CMS's own icon-grid "Add an object" dialog. */
 .add-object-box {
   position: relative; background: #fff; border-radius: 14px; padding: 26px 30px;
-  min-width: 280px; box-shadow: 0 20px 50px rgba(0,0,0,.3); text-align: center;
+  max-width: 460px; box-shadow: 0 20px 50px rgba(0,0,0,.3); text-align: center;
 }
 .add-object-box h3 {
   margin: 0 0 18px; font-size: 13px; font-weight: 700; letter-spacing: .04em;
@@ -645,7 +698,7 @@ body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); 
   color: var(--ink-soft); cursor: pointer; padding: 4px;
 }
 .add-object-close:hover { color: var(--ink); }
-.add-object-grid { display: flex; gap: 12px; justify-content: center; }
+.add-object-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-height: 60vh; overflow-y: auto; }
 .add-object-opt {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   width: 88px; padding: 14px 8px; border: 1px solid var(--line); border-radius: 10px;

@@ -798,7 +798,12 @@
       var lineIdx = 0;
       Array.prototype.forEach.call(Array.prototype.slice.call(tmp.children), function (el) {
         any = true;
-        if (el.tagName !== 'P') { flagGroup = null; groupFlag = null; container.appendChild(el); return; }
+        if (el.tagName !== 'P') {
+          flagGroup = null; groupFlag = null;
+          if (el.dataset.objId) el.dataset.entryKey = e.key;
+          container.appendChild(el);
+          return;
+        }
         el.dataset.entryKey = e.key;
         el.dataset.lineIndex = lineIdx++;
         var flag = el.getAttribute('data-flag') || '';
@@ -932,7 +937,128 @@
     down: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>',
     trash: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M4.5 4.5l.6 8.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.4"></path></svg>',
     close: '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"></path></svg>',
-    plus: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>'
+    plus: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>',
+    bullets: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="2.5" cy="4" r=".9" fill="currentColor" stroke="none"></circle><circle cx="2.5" cy="8" r=".9" fill="currentColor" stroke="none"></circle><circle cx="2.5" cy="12" r=".9" fill="currentColor" stroke="none"></circle><path d="M6 4h8M6 8h8M6 12h8"></path></svg>',
+    well: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M2 6.5h12"></path></svg>',
+    image: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="1.5"></rect><circle cx="6" cy="6.5" r="1.2"></circle><path d="M2.5 11.5l3.5-3.5 2.5 2.5 2-2 3 3"></path></svg>',
+    imagegroup: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="4" width="9" height="8" rx="1.2"></rect><rect x="5.5" y="1.5" width="9" height="8" rx="1.2"></rect></svg>',
+    video: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M6.5 6l4 2-4 2z" fill="currentColor" stroke="none"></path></svg>',
+    table: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2.5" width="12" height="11" rx="1.2"></rect><path d="M2 6.5h12M2 10.5h12M6.5 2.5v11"></path></svg>',
+    collapsible: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="4.5" rx="1"></rect><rect x="2" y="8.5" width="12" height="4.5" rx="1"></rect><path d="M11.5 5.2l1 1 1-1"></path></svg>',
+    accordion: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="12" height="3.3" rx=".8"></rect><rect x="2" y="6.3" width="12" height="3.3" rx=".8"></rect><rect x="2" y="10.7" width="12" height="3.3" rx=".8"></rect></svg>'
+  };
+
+  // The "+" gap's object types beyond a plain numbered line/sub-clause —
+  // each builds a real HTML fragment (no numbering, sits between numbered
+  // lines) from whatever the picker's textarea holds when Add is clicked.
+  // A stable data-obj-id lets it be found and removed again later (see
+  // deleteInlineObject) without needing its own position in the P-only
+  // line-index scheme the numbered lines use.
+  function newObjId() { return 'obj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  var OBJECT_TYPES = {
+    heading: {
+      label: 'Heading', icon: '<b>H</b>', placeholder: 'Heading text…',
+      build: function (text, id) { return '<p class="rule-heading" data-obj-id="' + id + '">' + escapeHtmlAllowInline(text) + '</p>'; }
+    },
+    subheading: {
+      label: 'Sub-Heading', icon: '<b>Sh</b>', placeholder: 'Sub-heading text…',
+      build: function (text, id) { return '<p class="rule-subheading" data-obj-id="' + id + '">' + escapeHtmlAllowInline(text) + '</p>'; }
+    },
+    paragraph: {
+      label: 'Paragraph', icon: 'Abc', placeholder: 'Paragraph text…',
+      build: function (text, id) { return '<p class="l0" data-obj-id="' + id + '">' + escapeHtmlAllowInline(text).replace(/\n/g, '<br>') + '</p>'; }
+    },
+    bullets: {
+      label: 'Bullets', icon: SECTION_ICONS.bullets, placeholder: 'One bullet per line…',
+      // Wrapped in a div — a <ul>'s only valid direct children are <li>,
+      // so the later hover-delete button can't be appended straight into
+      // it (same reasoning as Image's wrapper).
+      build: function (text, id) {
+        var items = text.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        return '<div class="rule-bullets-wrap" data-obj-id="' + id + '"><ul class="rule-bullets">' + items.map(function (i) { return '<li>' + escapeHtmlAllowInline(i) + '</li>'; }).join('') + '</ul></div>';
+      }
+    },
+    well: {
+      label: 'Well', icon: SECTION_ICONS.well, placeholder: 'Callout text…',
+      build: function (text, id) { return '<div class="rule-well" data-obj-id="' + id + '">' + escapeHtmlAllowInline(text).replace(/\n/g, '<br>') + '</div>'; }
+    },
+    table: {
+      label: 'Table', icon: SECTION_ICONS.table, placeholder: 'One row per line, cells separated by |\ne.g. Offence | Penalty\nLate declaration | £100',
+      // Wrapped for the same reason as Bullets — a <table>'s direct
+      // children can't include a <button>.
+      build: function (text, id) {
+        var rows = text.split('\n').map(function (r) { return r.trim(); }).filter(Boolean);
+        var trs = rows.map(function (r) {
+          var cells = r.split('|').map(function (c) { return c.trim(); });
+          return '<tr>' + cells.map(function (c) { return '<td>' + escapeHtmlAllowInline(c) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+        return '<div class="rule-table-wrap" data-obj-id="' + id + '"><table class="rule-table">' + trs + '</table></div>';
+      }
+    },
+    image: {
+      label: 'Image', icon: SECTION_ICONS.image, placeholder: 'Image URL…', isUrl: true,
+      // Wrapped in a div (rather than a bare <img>, a void element that
+      // can't itself carry the later hover-delete button as a child) —
+      // matching Image Group's own wrapper for the same reason.
+      build: function (url, id) { return '<div class="rule-image-wrap" data-obj-id="' + id + '"><img class="rule-image" src="' + escapeHtml(url.trim()) + '" alt=""></div>'; }
+    },
+    imagegroup: {
+      label: 'Image Group', icon: SECTION_ICONS.imagegroup, placeholder: 'One image URL per line…',
+      build: function (text, id) {
+        var urls = text.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        return '<div class="rule-image-group" data-obj-id="' + id + '">' + urls.map(function (u) { return '<img src="' + escapeHtml(u) + '" alt="">'; }).join('') + '</div>';
+      }
+    },
+    video: {
+      label: 'Video', icon: SECTION_ICONS.video, placeholder: 'Video URL (YouTube link, or a direct video file URL)…', isUrl: true,
+      build: function (url, id) {
+        url = url.trim();
+        var yt = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/.exec(url);
+        var inner = yt
+          ? '<iframe src="https://www.youtube.com/embed/' + yt[1] + '" allowfullscreen loading="lazy"></iframe>'
+          : '<video controls src="' + escapeHtml(url) + '"></video>';
+        return '<div class="rule-video" data-obj-id="' + id + '">' + inner + '</div>';
+      }
+    },
+    collapsible: {
+      label: 'Collapsible', icon: SECTION_ICONS.collapsible, placeholder: 'Title\n---\nContent…',
+      build: function (text, id) {
+        var parts = text.split(/\n-{3,}\n/);
+        var title = (parts[0] || '').trim();
+        var body = (parts[1] || '').trim();
+        return '<details class="rule-collapsible" data-obj-id="' + id + '"><summary>' + escapeHtmlAllowInline(title) + '</summary><div>' + escapeHtmlAllowInline(body).replace(/\n/g, '<br>') + '</div></details>';
+      }
+    },
+    accordion: {
+      label: 'Side-Accordion', icon: SECTION_ICONS.accordion, placeholder: 'Title 1\n---\nContent 1\n===\nTitle 2\n---\nContent 2',
+      build: function (text, id) {
+        var sections = text.split(/\n={3,}\n/);
+        var items = sections.map(function (sec) {
+          var parts = sec.split(/\n-{3,}\n/);
+          var title = (parts[0] || '').trim();
+          var body = (parts[1] || '').trim();
+          return '<details><summary>' + escapeHtmlAllowInline(title) + '</summary><div>' + escapeHtmlAllowInline(body).replace(/\n/g, '<br>') + '</div></details>';
+        });
+        return '<div class="rule-accordion" data-obj-id="' + id + '">' + items.join('') + '</div>';
+      }
+    },
+    tabs: {
+      label: 'Tabs', icon: SECTION_ICONS.collapsible, placeholder: 'Title 1\n---\nContent 1\n===\nTitle 2\n---\nContent 2', maxItems: 6,
+      build: function (text, id) {
+        var sections = text.split(/\n={3,}\n/).slice(0, 6);
+        var inputs = '', labels = '', panels = '';
+        sections.forEach(function (sec, i) {
+          var parts = sec.split(/\n-{3,}\n/);
+          var title = (parts[0] || '').trim();
+          var body = (parts[1] || '').trim();
+          var inputId = id + '-' + i;
+          inputs += '<input type="radio" class="rule-tab-input" name="' + id + '" id="' + inputId + '"' + (i === 0 ? ' checked' : '') + '>';
+          labels += '<label class="rule-tab-label" for="' + inputId + '">' + escapeHtmlAllowInline(title) + '</label>';
+          panels += '<div class="rule-tab-panel">' + escapeHtmlAllowInline(body).replace(/\n/g, '<br>') + '</div>';
+        });
+        return '<div class="rule-tabs" data-obj-id="' + id + '">' + inputs + '<div class="rule-tab-labels">' + labels + '</div><div class="rule-tab-panels">' + panels + '</div></div>';
+      }
+    }
   };
 
   // Bare buttons (no wrapping toolbar div) — the caller drops them into a
@@ -1493,6 +1619,25 @@
       });
       el.parentNode.insertBefore(gap, el.nextSibling);
     });
+    // Already-placed objects (headings, tables, images, ...) get a
+    // hover-reveal delete — editing one's content in place isn't
+    // supported yet, only adding and removing.
+    Array.prototype.forEach.call(container.querySelectorAll('[data-obj-id]'), function (el) {
+      el.classList.add('rule-object-editable');
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'rule-object-delete';
+      delBtn.title = 'Remove this';
+      delBtn.innerHTML = SECTION_ICONS.trash;
+      delBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var key = el.dataset.entryKey;
+        var entry = null;
+        state.entries.forEach(function (x) { if (x.key === key) entry = x; });
+        if (entry) deleteInlineObject(entry, el.dataset.objId);
+      });
+      el.appendChild(delBtn);
+    });
   }
 
   // The single point of truth for "something is being edited inline right
@@ -1557,6 +1702,13 @@
   // content actually has (no Image/Video/Table/Calendar — none of that
   // applies to rule text). "Sub-clause" only appears when the line you
   // clicked "+" on isn't already at the deepest nesting level.
+  // Every object type the reference CMS offers except Booking-Item and
+  // Calendar — those two are generic scheduling widgets for other kinds of
+  // site the reference also serves, with no sensible reading as a piece of
+  // rule text, so they're left out rather than shipped as buttons that
+  // would do nothing.
+  var OBJECT_TYPE_ORDER = ['heading', 'subheading', 'paragraph', 'bullets', 'well', 'image', 'imagegroup', 'video', 'table', 'tabs', 'collapsible', 'accordion'];
+
   function showAddObjectModal(afterEl) {
     var afterIndex = Number(afterEl.dataset.lineIndex);
     var className = afterEl.className.replace('inline-editable-line', '').replace('editing', '').trim() || 'l1';
@@ -1571,6 +1723,10 @@
       '<div class="add-object-grid">' +
       '<button type="button" class="add-object-opt" data-type="line"><span class="add-object-icon">' + SECTION_ICONS.plus + '</span>Line</button>' +
       (canSubClause ? '<button type="button" class="add-object-opt" data-type="subclause"><span class="add-object-icon">' + SECTION_ICONS.plus + '</span>Sub-clause</button>' : '') +
+      OBJECT_TYPE_ORDER.map(function (key) {
+        var t = OBJECT_TYPES[key];
+        return '<button type="button" class="add-object-opt" data-obj-type="' + key + '"><span class="add-object-icon">' + t.icon + '</span>' + t.label + '</button>';
+      }).join('') +
       '</div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -1593,6 +1749,125 @@
         if (info) openInlineInsertEditor(afterEl, info);
       });
     }
+    Array.prototype.forEach.call(overlay.querySelectorAll('[data-obj-type]'), function (btn) {
+      btn.addEventListener('click', function () {
+        close();
+        openInlineObjectEditor(afterEl, btn.dataset.objType);
+      });
+    });
+  }
+
+  // Opens the picker's textarea (or a plain URL field for Image/Video) for
+  // one of OBJECT_TYPES — same not-published-until-Save contract as
+  // openInlineInsertEditor, just building a different kind of block.
+  function openInlineObjectEditor(afterEl, typeKey) {
+    cancelInlineEdit();
+    var key = afterEl.dataset.entryKey;
+    var entry = null;
+    state.entries.forEach(function (x) { if (x.key === key) entry = x; });
+    if (!entry) return;
+    var type = OBJECT_TYPES[typeKey];
+    var afterIndex = Number(afterEl.dataset.lineIndex);
+
+    var placeholder = document.createElement('div');
+    placeholder.className = 'inline-object-placeholder';
+    afterEl.parentNode.insertBefore(placeholder, afterEl.nextSibling);
+
+    var ta = document.createElement('textarea');
+    ta.className = 'inline-line-textarea';
+    ta.placeholder = type.placeholder;
+    if (type.isUrl) ta.rows = 1;
+    placeholder.appendChild(ta);
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'inline-line-toolbar';
+    toolbar.innerHTML =
+      (type.isUrl ? '' : '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>') +
+      '<button type="button" class="section-tool-btn inline-line-cancel" title="Cancel">' + SECTION_ICONS.close + '</button>' +
+      '<button type="button" class="inline-line-save">Add ' + type.label + '</button>';
+    placeholder.parentNode.insertBefore(toolbar, placeholder);
+    if (!type.isUrl) wireRichToolbar(toolbar, ta);
+
+    ta.focus();
+    autoGrowTextarea(ta);
+
+    function doCancel() {
+      toolbar.remove();
+      placeholder.remove();
+    }
+    activeInlineEdit = { el: placeholder, cancel: doCancel };
+    toolbar.querySelector('.inline-line-cancel').addEventListener('click', cancelInlineEdit);
+    toolbar.querySelector('.inline-line-save').addEventListener('click', function () {
+      var value = ta.value;
+      if (!value.trim()) { alert('Give it some content first.'); return; }
+      saveInlineObject(entry, afterIndex, typeKey, value, toolbar);
+    });
+  }
+
+  function saveInlineObject(entry, afterIndex, typeKey, value, toolbar) {
+    var saveBtn = toolbar.querySelector('.inline-line-save');
+    saveBtn.disabled = true;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = effective(entry).html;
+    var newHtml = OBJECT_TYPES[typeKey].build(value, newObjId());
+    var i = 0;
+    var htmlParts = [];
+    Array.prototype.forEach.call(tmp.children, function (child) {
+      htmlParts.push(child.outerHTML);
+      if (child.tagName === 'P') {
+        if (i === afterIndex) htmlParts.push(newHtml);
+        i++;
+      }
+    });
+    var fullHtml = htmlParts.join('');
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: entry.key, html: fullHtml, flag: currentFlagOverride(entry) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      if (entry._addedId) {
+        state.addedEntries[entry.key] = Object.assign({}, state.addedEntries[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      } else {
+        state.overrides[entry.key] = Object.assign({}, state.overrides[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      }
+      state.entries.forEach(function (x) { if (x.key === entry.key) x.html = fullHtml; });
+      activeInlineEdit = null;
+      refreshReaderAfterSectionSave();
+    }).catch(function (err) {
+      alert('Could not publish: ' + err.message);
+      saveBtn.disabled = false;
+    });
+  }
+
+  // Removing an already-placed object (heading, table, image, etc.) —
+  // found by its stable data-obj-id rather than a position, since objects
+  // don't take a slot in the numbered lines' own index.
+  function deleteInlineObject(entry, objId) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = effective(entry).html;
+    var target = tmp.querySelector('[data-obj-id="' + objId + '"]');
+    if (!target) return;
+    target.remove();
+    var fullHtml = tmp.innerHTML;
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: entry.key, html: fullHtml, flag: currentFlagOverride(entry) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      if (entry._addedId) {
+        state.addedEntries[entry.key] = Object.assign({}, state.addedEntries[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      } else {
+        state.overrides[entry.key] = Object.assign({}, state.overrides[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      }
+      state.entries.forEach(function (x) { if (x.key === entry.key) x.html = fullHtml; });
+      refreshReaderAfterSectionSave();
+    }).catch(function (err) {
+      alert('Could not remove: ' + err.message);
+    });
   }
 
   function buildInlineToolbar(saveLabel) {

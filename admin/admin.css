@@ -428,6 +428,26 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rfull-body th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull-body ul { margin: 6px 0; padding-left: 22px; }
 
+/* Click a line's own text to edit it right there — see openInlineLineEditor.
+   The hover cue is deliberately quieter than the whole-card hover (see
+   .reader-entry:hover) so it reads as "this exact line", not "this card". */
+.inline-editable-line:hover { background: var(--blue-pale); border-radius: 5px; cursor: text; }
+.inline-editable-line.editing { background: none; cursor: auto; }
+.inline-line-textarea {
+  display: block; width: 100%; box-sizing: border-box; font: inherit; color: inherit;
+  border: 1px solid var(--blue-mid); border-radius: 6px; padding: 3px 7px; margin: -3px 0 -3px -7px;
+  resize: none; overflow: hidden; background: var(--card);
+}
+.inline-line-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
+}
+.inline-line-save {
+  border: 0; background: var(--blue); color: #fff; border-radius: 6px;
+  padding: 0 12px; height: 26px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.inline-line-save:disabled { opacity: .5; cursor: default; }
+.inline-line-cancel { margin-left: auto; }
+
 /* Consecutive lines sharing a New/Updated flag are grouped under one tag
    (see renderEntryBody) instead of repeating a pill per line — matches the
    public site's same treatment. */

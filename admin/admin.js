@@ -834,7 +834,9 @@
       makePencilBtn('Edit this section').outerHTML +
       '</div>' +
       '<div class="rfull-body"></div>';
-    renderGroupBody(block.querySelector('.rfull-body'), group);
+    var body = block.querySelector('.rfull-body');
+    renderGroupBody(body, group);
+    makeLinesInlineEditable(body);
     var pencil = block.querySelector('.reader-entry-head > .edit-line-pencil');
     if (pencil) pencil.addEventListener('click', function () { openSectionEditor(group, block); });
     var discardBtn = block.querySelector('.discard-edit-btn');
@@ -910,7 +912,8 @@
   var SECTION_ICONS = {
     up: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"></path></svg>',
     down: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>',
-    trash: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M4.5 4.5l.6 8.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.4"></path></svg>'
+    trash: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M4.5 4.5l.6 8.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.4"></path></svg>',
+    close: '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"></path></svg>'
   };
 
   // Bare buttons (no wrapping toolbar div) — the caller drops them into a
@@ -1426,6 +1429,144 @@
       runLineFlagActions(actions);
     }).catch(function (err) {
       alert('Could not publish: ' + err.message);
+    });
+  }
+
+  // ---- inline line editing ----------------------------------------------
+  //
+  // Clicking a line's own text — rather than the section's pencil — edits
+  // just that one line right where it's rendered: a small floating B/I/U +
+  // New/Updated toolbar appears above it, no separate panel involved. The
+  // section editor (via the pencil) is still there for anything the words
+  // themselves don't cover — reordering, adding/removing whole rules,
+  // renumbering, the title — this is only the fast path for "change what
+  // this line says". Reuses the same data-entry-key/data-line-index every
+  // rendered <p> already carries for the highlight-to-tag popup above, and
+  // the same "re-parse the entry's own published html fresh, patch by
+  // index" approach as applyLineFlag — so this never has to care how the
+  // DOM is currently grouped/flagged for display. No confirm dialog, same
+  // reasoning as the flag popup: a deliberate click-type-Save is already
+  // the deliberate act, and it's exactly as fast to undo by clicking back
+  // in and fixing it again.
+  var activeInlineEdit = null;
+  var INLINE_INDENT = { l1: 40, l2: 72, l3: 104 };
+
+  function makeLinesInlineEditable(container) {
+    activeInlineEdit = null;
+    Array.prototype.forEach.call(container.querySelectorAll('p[data-entry-key]'), function (el) {
+      el.classList.add('inline-editable-line');
+      el.addEventListener('click', function () {
+        // A text-drag to flag a run of lines also ends in a click in most
+        // browsers — don't hijack that into opening the line for editing.
+        var sel = window.getSelection();
+        if (sel && !sel.isCollapsed && sel.toString()) return;
+        if (activeInlineEdit && activeInlineEdit.el === el) return;
+        openInlineLineEditor(el);
+      });
+    });
+  }
+
+  function cancelInlineEdit() {
+    if (!activeInlineEdit) return;
+    var a = activeInlineEdit;
+    a.el.classList.remove('editing');
+    a.el.innerHTML = a.originalHtml;
+    a.toolbar.remove();
+    activeInlineEdit = null;
+  }
+
+  function openInlineLineEditor(el) {
+    cancelInlineEdit();
+    var key = el.dataset.entryKey;
+    var entry = null;
+    state.entries.forEach(function (x) { if (x.key === key) entry = x; });
+    if (!entry) return;
+
+    var originalHtml = el.innerHTML;
+    var parts = extractLineText(el);
+    var rn = el.querySelector(':scope > .rn');
+    var numLabel = rn ? stripHtml(rn.innerHTML).trim() : '';
+
+    el.classList.add('editing');
+    el.innerHTML = rn ? rn.outerHTML : '';
+    var ta = document.createElement('textarea');
+    ta.className = 'inline-line-textarea';
+    ta.value = parts.text;
+    el.appendChild(ta);
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'inline-line-toolbar';
+    toolbar.style.marginLeft = (INLINE_INDENT[parts.className] || 0) + 'px';
+    toolbar.innerHTML =
+      '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
+      '<div class="toolbar-group">' +
+      '<button type="button" class="section-tool-btn flag-toggle inline-flag-new" title="Mark this line New">New</button>' +
+      '<button type="button" class="section-tool-btn flag-toggle inline-flag-updated" title="Mark this line Updated">Updated</button>' +
+      '</div>' +
+      '<button type="button" class="section-tool-btn inline-line-cancel" title="Cancel">' + SECTION_ICONS.close + '</button>' +
+      '<button type="button" class="inline-line-save">Save</button>';
+    el.parentNode.insertBefore(toolbar, el);
+    wireRichToolbar(toolbar, ta);
+
+    var flag = parts.flag;
+    var flagNewBtn = toolbar.querySelector('.inline-flag-new'), flagUpdatedBtn = toolbar.querySelector('.inline-flag-updated');
+    function syncFlagUI() {
+      flagNewBtn.classList.toggle('active', flag === 'new');
+      flagUpdatedBtn.classList.toggle('active', flag === 'updated');
+    }
+    syncFlagUI();
+    flagNewBtn.addEventListener('click', function () { flag = flag === 'new' ? '' : 'new'; syncFlagUI(); });
+    flagUpdatedBtn.addEventListener('click', function () { flag = flag === 'updated' ? '' : 'updated'; syncFlagUI(); });
+
+    function autoGrow() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+    ta.addEventListener('input', autoGrow);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    autoGrow();
+
+    activeInlineEdit = { el: el, toolbar: toolbar, originalHtml: originalHtml };
+    toolbar.querySelector('.inline-line-cancel').addEventListener('click', cancelInlineEdit);
+    toolbar.querySelector('.inline-line-save').addEventListener('click', function () {
+      var newText = ta.value;
+      if (!newText.trim()) { alert('This line needs some text.'); return; }
+      saveInlineLine(entry, Number(el.dataset.lineIndex), parts.className, flag, numLabel, newText, toolbar);
+    });
+  }
+
+  function saveInlineLine(entry, lineIndex, className, flag, numLabel, newText, toolbar) {
+    var saveBtn = toolbar.querySelector('.inline-line-save');
+    saveBtn.disabled = true;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = effective(entry).html;
+    var i = 0, replaced = false;
+    var htmlParts = Array.prototype.map.call(tmp.children, function (child) {
+      if (child.tagName !== 'P') return child.outerHTML;
+      var isTarget = i === lineIndex;
+      i++;
+      if (!isTarget) return child.outerHTML;
+      replaced = true;
+      return buildLineHtml('p', className, flag, newText, numLabel);
+    });
+    if (!replaced) { alert('Could not find that line to save — try reopening the book.'); saveBtn.disabled = false; return; }
+    var fullHtml = htmlParts.join('');
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: entry.key, html: fullHtml, flag: currentFlagOverride(entry) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      if (entry._addedId) {
+        state.addedEntries[entry.key] = Object.assign({}, state.addedEntries[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      } else {
+        state.overrides[entry.key] = Object.assign({}, state.overrides[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      }
+      state.entries.forEach(function (x) { if (x.key === entry.key) x.html = fullHtml; });
+      activeInlineEdit = null;
+      refreshReaderAfterSectionSave();
+    }).catch(function (err) {
+      alert('Could not publish: ' + err.message);
+      saveBtn.disabled = false;
     });
   }
 

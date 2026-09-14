@@ -817,17 +817,23 @@
     if (!any) container.innerHTML = entries.map(function (e) { return effective(e).html; }).join('');
   }
 
-  // The section-editor pencil (reorder/add/remove whole rules, renumber,
-  // rename the section) is parked for now in favour of clicking a line's
-  // own text to edit it in place (see makeLinesInlineEditable below) — the
-  // right-panel form was the exact thing under reconsideration. Its
-  // functions (openSectionEditor onward) are left in the file, unreachable,
-  // rather than deleted outright: that structural editing still needs a
-  // home once the direct-editing pattern covers it too.
+  // The section-editor pencil now toggles a lighter "edit mode" for just
+  // this section, rather than opening the old right-panel form (reorder/
+  // add/remove whole rules, renumber, rename the section — that structural
+  // editing is parked; its functions from openSectionEditor onward are
+  // left in the file, unreachable, rather than deleted, since it still
+  // needs a home once the direct-editing pattern covers it too). While a
+  // section is in edit mode its lines become directly clickable (see
+  // makeLinesInlineEditable) — outside edit mode the reading pane stays
+  // inert, so a stray click never drops you into editing by accident.
+  var editingSectionKeys = {};
+
   function renderReaderSectionGroup(group) {
     var block = document.createElement('div');
+    var sectionKey = group[0].key;
+    var isEditing = !!editingSectionKeys[sectionKey];
     block.className = 'reader-entry' + (group.some(function (e) { return e.key === state.selectedKey; }) ? ' selected' : '');
-    block.dataset.key = group[0].key;
+    block.dataset.key = sectionKey;
     var anyNew = group.some(function (e) { return effective(e).isNew; });
     var anyUpdated = !anyNew && group.some(function (e) { return effective(e).isUpdated; });
     var editedEntries = group.filter(function (e) { return effective(e).edited; });
@@ -838,11 +844,19 @@
       (anyNew ? '<span class="pill-new">New</span>' : anyUpdated ? '<span class="pill-updated">Updated</span>' : '') +
       (editedEntries.length ? '<span class="edited-dot" title="Has a published edit"></span>' : '') +
       (editedEntries.length ? '<button type="button" class="discard-edit-btn">Discard edit</button>' : '') +
+      makePencilBtn(isEditing ? 'Done editing' : 'Edit this section').outerHTML +
       '</div>' +
-      '<div class="rfull-body"></div>';
+      '<div class="rfull-body' + (isEditing ? ' editing-section' : '') + '"></div>';
     var body = block.querySelector('.rfull-body');
     renderGroupBody(body, group);
-    makeLinesInlineEditable(body);
+    if (isEditing) makeLinesInlineEditable(body);
+    var pencil = block.querySelector('.reader-entry-head > .edit-line-pencil');
+    pencil.classList.toggle('active', isEditing);
+    pencil.addEventListener('click', function () {
+      cancelInlineEdit();
+      if (isEditing) delete editingSectionKeys[sectionKey]; else editingSectionKeys[sectionKey] = true;
+      renderReaderBody($('readerSearch') ? $('readerSearch').value : '');
+    });
     var discardBtn = block.querySelector('.discard-edit-btn');
     if (discardBtn) discardBtn.addEventListener('click', function () { confirmDiscardEdit(editedEntries); });
     return block;

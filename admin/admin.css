@@ -448,6 +448,26 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .inline-line-save:disabled { opacity: .5; cursor: default; }
 .inline-line-cancel { margin-left: auto; }
 
+/* Hover-to-reveal strip after every line — "+" inserts a new line right
+   there, lettered off its predecessor (see nextInsertedLabel) so nothing
+   below ever renumbers. Tall enough to hover onto deliberately — a thin
+   strip made the "+" flicker in and out on the slightest mouse movement
+   instead of staying put while aiming for it. */
+.inline-add-gap { position: relative; height: 22px; }
+.inline-add-btn {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.9);
+  width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--blue); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  opacity: 0; transition: opacity .1s, transform .1s;
+}
+.inline-add-gap::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+  background: var(--line); opacity: 0; transition: opacity .1s;
+}
+.inline-add-gap:hover::before { opacity: 1; }
+.inline-add-gap:hover .inline-add-btn { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.inline-add-btn:hover { background: var(--blue-dark); }
+
 /* Consecutive lines sharing a New/Updated flag are grouped under one tag
    (see renderEntryBody) instead of repeating a pill per line — matches the
    public site's same treatment. */

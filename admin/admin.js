@@ -917,7 +917,8 @@
     up: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"></path></svg>',
     down: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>',
     trash: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M4.5 4.5l.6 8.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.4"></path></svg>',
-    close: '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"></path></svg>'
+    close: '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"></path></svg>',
+    plus: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>'
   };
 
   // Bare buttons (no wrapping toolbar div) — the caller drops them into a
@@ -1467,16 +1468,74 @@
         if (activeInlineEdit && activeInlineEdit.el === el) return;
         openInlineLineEditor(el);
       });
+      // A hover-reveal "+" in the gap after every line — click it to add a
+      // new line right there, lettered off this one (see
+      // nextInsertedLabel) rather than renumbering anything below.
+      var gap = document.createElement('div');
+      gap.className = 'inline-add-gap';
+      gap.innerHTML = '<button type="button" class="inline-add-btn" title="Add a line here">' + SECTION_ICONS.plus + '</button>';
+      gap.querySelector('.inline-add-btn').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        openInlineInsertEditor(el);
+      });
+      el.parentNode.insertBefore(gap, el.nextSibling);
     });
   }
 
+  // The single point of truth for "something is being edited inline right
+  // now" — clicking a different line, or a different add-gap, cancels
+  // whatever was open first via this, rather than letting two edits pile
+  // up. `cancel` is whichever cleanup an open/insert editor registered
+  // (restore the original line, or remove the not-yet-saved new one).
   function cancelInlineEdit() {
     if (!activeInlineEdit) return;
-    var a = activeInlineEdit;
-    a.el.classList.remove('editing');
-    a.el.innerHTML = a.originalHtml;
-    a.toolbar.remove();
+    var cancel = activeInlineEdit.cancel;
     activeInlineEdit = null;
+    cancel();
+  }
+
+  // Numbers a newly-inserted line off the line it follows, with a letter
+  // suffix (6.2 -> 6.2A) rather than renumbering — nothing below the
+  // insertion point should ever shift and invalidate a citation.
+  function nextInsertedLabel(afterEl) {
+    var rn = afterEl.querySelector(':scope > .rn');
+    var base = rn ? stripHtml(rn.innerHTML).trim() : '';
+    if (!base) return '';
+    var m = /^(.*?)([A-Z]?)$/.exec(base);
+    return m[1] + (m[2] ? String.fromCharCode(m[2].charCodeAt(0) + 1) : 'A');
+  }
+
+  function buildInlineToolbar(saveLabel) {
+    var toolbar = document.createElement('div');
+    toolbar.className = 'inline-line-toolbar';
+    toolbar.innerHTML =
+      '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
+      '<div class="toolbar-group">' +
+      '<button type="button" class="section-tool-btn flag-toggle inline-flag-new" title="Mark this line New">New</button>' +
+      '<button type="button" class="section-tool-btn flag-toggle inline-flag-updated" title="Mark this line Updated">Updated</button>' +
+      '</div>' +
+      '<button type="button" class="section-tool-btn inline-line-cancel" title="Cancel">' + SECTION_ICONS.close + '</button>' +
+      '<button type="button" class="inline-line-save">' + saveLabel + '</button>';
+    return toolbar;
+  }
+
+  function wireInlineFlagToggle(toolbar, initialFlag) {
+    var flag = initialFlag;
+    var flagNewBtn = toolbar.querySelector('.inline-flag-new'), flagUpdatedBtn = toolbar.querySelector('.inline-flag-updated');
+    function syncFlagUI() {
+      flagNewBtn.classList.toggle('active', flag === 'new');
+      flagUpdatedBtn.classList.toggle('active', flag === 'updated');
+    }
+    syncFlagUI();
+    flagNewBtn.addEventListener('click', function () { flag = flag === 'new' ? '' : 'new'; syncFlagUI(); });
+    flagUpdatedBtn.addEventListener('click', function () { flag = flag === 'updated' ? '' : 'updated'; syncFlagUI(); });
+    return { get: function () { return flag; } };
+  }
+
+  function autoGrowTextarea(ta) {
+    function grow() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+    ta.addEventListener('input', grow);
+    grow();
   }
 
   function openInlineLineEditor(el) {
@@ -1498,42 +1557,110 @@
     ta.value = parts.text;
     el.appendChild(ta);
 
-    var toolbar = document.createElement('div');
-    toolbar.className = 'inline-line-toolbar';
+    var toolbar = buildInlineToolbar('Save');
     toolbar.style.marginLeft = (INLINE_INDENT[parts.className] || 0) + 'px';
-    toolbar.innerHTML =
-      '<div class="toolbar-group">' + renderRichToolbarHtml() + '</div>' +
-      '<div class="toolbar-group">' +
-      '<button type="button" class="section-tool-btn flag-toggle inline-flag-new" title="Mark this line New">New</button>' +
-      '<button type="button" class="section-tool-btn flag-toggle inline-flag-updated" title="Mark this line Updated">Updated</button>' +
-      '</div>' +
-      '<button type="button" class="section-tool-btn inline-line-cancel" title="Cancel">' + SECTION_ICONS.close + '</button>' +
-      '<button type="button" class="inline-line-save">Save</button>';
     el.parentNode.insertBefore(toolbar, el);
     wireRichToolbar(toolbar, ta);
+    var flagCtl = wireInlineFlagToggle(toolbar, parts.flag);
 
-    var flag = parts.flag;
-    var flagNewBtn = toolbar.querySelector('.inline-flag-new'), flagUpdatedBtn = toolbar.querySelector('.inline-flag-updated');
-    function syncFlagUI() {
-      flagNewBtn.classList.toggle('active', flag === 'new');
-      flagUpdatedBtn.classList.toggle('active', flag === 'updated');
-    }
-    syncFlagUI();
-    flagNewBtn.addEventListener('click', function () { flag = flag === 'new' ? '' : 'new'; syncFlagUI(); });
-    flagUpdatedBtn.addEventListener('click', function () { flag = flag === 'updated' ? '' : 'updated'; syncFlagUI(); });
-
-    function autoGrow() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
-    ta.addEventListener('input', autoGrow);
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
-    autoGrow();
+    autoGrowTextarea(ta);
 
-    activeInlineEdit = { el: el, toolbar: toolbar, originalHtml: originalHtml };
+    function doCancel() {
+      el.classList.remove('editing');
+      el.innerHTML = originalHtml;
+      toolbar.remove();
+    }
+    activeInlineEdit = { el: el, cancel: doCancel };
     toolbar.querySelector('.inline-line-cancel').addEventListener('click', cancelInlineEdit);
     toolbar.querySelector('.inline-line-save').addEventListener('click', function () {
       var newText = ta.value;
       if (!newText.trim()) { alert('This line needs some text.'); return; }
-      saveInlineLine(entry, Number(el.dataset.lineIndex), parts.className, flag, numLabel, newText, toolbar);
+      saveInlineLine(entry, Number(el.dataset.lineIndex), parts.className, flagCtl.get(), numLabel, newText, toolbar);
+    });
+  }
+
+  // Opens a brand-new, not-yet-saved line right after `afterEl` — nothing
+  // is written to the entry's html (and so nothing is published) until
+  // Save is actually clicked, so an abandoned "+" click never leaves an
+  // empty line live on the public site.
+  function openInlineInsertEditor(afterEl) {
+    cancelInlineEdit();
+    var key = afterEl.dataset.entryKey;
+    var entry = null;
+    state.entries.forEach(function (x) { if (x.key === key) entry = x; });
+    if (!entry) return;
+
+    var numLabel = nextInsertedLabel(afterEl);
+    var className = afterEl.className.replace('inline-editable-line', '').replace('editing', '').trim() || 'l1';
+
+    var newEl = document.createElement('p');
+    newEl.className = className;
+    newEl.innerHTML = numLabel ? '<span class="rn">' + escapeHtml(numLabel) + '</span>' : '';
+    afterEl.parentNode.insertBefore(newEl, afterEl.nextSibling);
+
+    var ta = document.createElement('textarea');
+    ta.className = 'inline-line-textarea';
+    ta.placeholder = 'New line…';
+    newEl.appendChild(ta);
+
+    var toolbar = buildInlineToolbar('Add line');
+    toolbar.style.marginLeft = (INLINE_INDENT[className] || 0) + 'px';
+    newEl.parentNode.insertBefore(toolbar, newEl);
+    wireRichToolbar(toolbar, ta);
+    var flagCtl = wireInlineFlagToggle(toolbar, '');
+
+    ta.focus();
+    autoGrowTextarea(ta);
+
+    function doCancel() {
+      toolbar.remove();
+      newEl.remove();
+    }
+    activeInlineEdit = { el: newEl, cancel: doCancel };
+    toolbar.querySelector('.inline-line-cancel').addEventListener('click', cancelInlineEdit);
+    toolbar.querySelector('.inline-line-save').addEventListener('click', function () {
+      var text = ta.value;
+      if (!text.trim()) { alert('Give the new line some text first.'); return; }
+      saveInlineInsert(entry, Number(afterEl.dataset.lineIndex), className, flagCtl.get(), numLabel, text, toolbar);
+    });
+  }
+
+  function saveInlineInsert(entry, afterIndex, className, flag, numLabel, text, toolbar) {
+    var saveBtn = toolbar.querySelector('.inline-line-save');
+    saveBtn.disabled = true;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = effective(entry).html;
+    var newLineHtml = buildLineHtml('p', className, flag, text, numLabel);
+    var i = 0;
+    var htmlParts = [];
+    Array.prototype.forEach.call(tmp.children, function (child) {
+      htmlParts.push(child.outerHTML);
+      if (child.tagName === 'P') {
+        if (i === afterIndex) htmlParts.push(newLineHtml);
+        i++;
+      }
+    });
+    var fullHtml = htmlParts.join('');
+    fetch('/api/save-rule', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: entry.key, html: fullHtml, flag: currentFlagOverride(entry) })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'save failed'); });
+      return r.json();
+    }).then(function () {
+      if (entry._addedId) {
+        state.addedEntries[entry.key] = Object.assign({}, state.addedEntries[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      } else {
+        state.overrides[entry.key] = Object.assign({}, state.overrides[entry.key], { html: fullHtml, updatedAt: new Date().toISOString() });
+      }
+      state.entries.forEach(function (x) { if (x.key === entry.key) x.html = fullHtml; });
+      activeInlineEdit = null;
+      refreshReaderAfterSectionSave();
+    }).catch(function (err) {
+      alert('Could not publish: ' + err.message);
+      saveBtn.disabled = false;
     });
   }
 

@@ -1,20 +1,7 @@
-/* BHA Brand Guidelines v1.0, section 3.1 — same palette as the main site. */
-:root {
-  --blue: #002f71;
-  --blue-dark: #001f4d;
-  --blue-mid: #1b8ec9;
-  --blue-pale: #e9f4fa;
-  --ink: #1b1f1d;
-  --ink-soft: #5a6660;
-  --line: #dde4e0;
-  --bg: #f6f8f7;
-  --card: #ffffff;
-  --err: #b42318;
-}
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   color: var(--ink); background: var(--bg); line-height: 1.5;
   display: flex; flex-direction: column; min-height: 100vh;
 }
@@ -51,7 +38,7 @@ main { flex: 1; }
   display: block; width: 100%; border: 0; outline: 0; resize: none; background: transparent; padding: 0;
   font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); min-height: 48px; max-height: 160px;
 }
-#askForm textarea::placeholder { color: #8a948f; }
+#askForm textarea::placeholder { color: var(--ring); }
 .ask-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .ask-hint { font-size: 12.5px; color: var(--ink-soft); }
 #askForm button {
@@ -89,12 +76,12 @@ body.chatting { background: #fff; }
 .msg.bot.error .msg-body { color: var(--err); }
 .msg-actions { display: flex; gap: 10px; margin-top: 18px; }
 .icon-act {
-  width: 40px; height: 40px; border: 1px solid #cfd6dc; background: #fff; border-radius: 8px; color: #4b5560;
+  width: 40px; height: 40px; border: 1px solid var(--border); background: #fff; border-radius: 8px; color: var(--muted-foreground);
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
 }
 .icon-act svg { width: 20px; height: 20px; }
 .icon-act:hover { border-color: var(--blue-mid); color: var(--blue-dark); }
-.icon-act.done { border-color: #2f9e63; color: #2f9e63; }
+.icon-act.done { border-color: var(--chart-5); color: var(--chart-5); }
 
 .answer p { margin: 0 0 10px; }
 .answer p:last-child { margin-bottom: 0; }
@@ -127,10 +114,10 @@ body.chatting { background: #fff; }
 .src-card[hidden] { display: none; }
 .src-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .badge { background: var(--blue); color: #fff; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 7px; }
-.badge.guide { background: #6f2075; } .badge.def { background: var(--blue-mid); } .badge.code { background: #33415c; }
+.badge.guide { background: var(--chart-4); } .badge.def { background: var(--blue-mid); } .badge.code { background: #3f3f46; }
 .src-title { font-weight: 650; font-size: 14px; }
 .src-doc { color: var(--ink-soft); font-size: 12.5px; }
-.src-text { white-space: pre-wrap; font-size: 13.5px; color: #3c4540; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 6px 0 8px; max-height: 260px; overflow-y: auto; }
+.src-text { white-space: pre-wrap; font-size: 13.5px; color: #3f3f46; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 6px 0 8px; max-height: 260px; overflow-y: auto; }
 .src-link { font-size: 13px; font-weight: 600; color: var(--blue-mid); text-decoration: none; }
 .src-link:hover { text-decoration: underline; }
 
@@ -141,7 +128,7 @@ body.chatting { background: #fff; }
 }
 #composer #askForm {
   max-width: 860px; margin: 0 auto; padding: 16px 16px 12px 22px; background: #fff;
-  border: 1px solid #cfd6dc; border-radius: 26px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  border: 1px solid var(--border); border-radius: 26px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
 }
 #composer #askForm:focus-within { border-color: var(--blue-mid); }
 #composer #askForm textarea { min-height: 28px; }
@@ -171,12 +158,12 @@ body.chatting { background: #fff; }
 .msg.bot.error .msg-body { color: var(--err); }
 .msg-actions { display: flex; gap: 10px; margin-top: 18px; }
 .icon-act {
-  width: 40px; height: 40px; border: 1px solid #cfd6dc; background: #fff; border-radius: 8px; color: #4b5560;
+  width: 40px; height: 40px; border: 1px solid var(--border); background: #fff; border-radius: 8px; color: var(--muted-foreground);
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
 }
 .icon-act svg { width: 20px; height: 20px; }
 .icon-act:hover { border-color: var(--blue-mid); color: var(--blue-dark); }
-.icon-act.done { border-color: #2f9e63; color: #2f9e63; }
+.icon-act.done { border-color: var(--chart-5); color: var(--chart-5); }
 
 .answer p { margin: 0 0 10px; }
 .answer p:last-child { margin-bottom: 0; }
@@ -209,10 +196,10 @@ body.chatting { background: #fff; }
 .src-card[hidden] { display: none; }
 .src-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .badge { background: var(--blue); color: #fff; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 7px; }
-.badge.guide { background: #6f2075; } .badge.def { background: var(--blue-mid); } .badge.code { background: #33415c; }
+.badge.guide { background: var(--chart-4); } .badge.def { background: var(--blue-mid); } .badge.code { background: #3f3f46; }
 .src-title { font-weight: 650; font-size: 14px; }
 .src-doc { color: var(--ink-soft); font-size: 12.5px; }
-.src-text { white-space: pre-wrap; font-size: 13.5px; color: #3c4540; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 6px 0 8px; max-height: 260px; overflow-y: auto; }
+.src-text { white-space: pre-wrap; font-size: 13.5px; color: #3f3f46; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 6px 0 8px; max-height: 260px; overflow-y: auto; }
 .src-link { font-size: 13px; font-weight: 600; color: var(--blue-mid); text-decoration: none; }
 .src-link:hover { text-decoration: underline; }
 

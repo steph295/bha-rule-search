@@ -108,7 +108,7 @@ async function main() {
   const snapJson = JSON.stringify(snapshot).replace(/</g, '\\u003c');
 
   const html = read('template.html')
-    .replace('{{STYLES}}', () => read('styles.css'))
+    .replace('{{STYLES}}', () => fs.readFileSync(path.join(ROOT, 'tokens.css'), 'utf8') + '\n' + read('styles.css'))
     .replace('{{PARSER}}', () => read('parser.js'))
     .replace('{{PDFEXPORT}}', () => read('pdf-export.js'))
     .replace('{{APP}}', () => read('app.js'))

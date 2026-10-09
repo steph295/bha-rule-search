@@ -6,6 +6,9 @@
 <title>BHA Rules Search</title>
 <meta name="description" content="Fast search for the British Horseracing Authority Rules of Racing — by rule code, keyword or fuzzy match.">
 <meta name="theme-color" content="#002f71">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,24 +17,59 @@
 <meta name="apple-mobile-web-app-title" content="BHA Rules">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23002f71'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
 <style>
-/* BHA Brand Guidelines v1.0, section 3.1 (Primary Colour Palette):
-   Dark Blue #002f71, Light Blue #1b8ec9, Light Blue 10% #e9f4fa.
-   --blue-dark is a manually darkened Dark Blue — the guide doesn't define
-   a fourth shade, but the UI needs one for text/emphasis on pale fills. */
+/* BHA design tokens — single source for the rules search, /ask and /admin.
+   Taken from the Figma file "BHA - Raceday App - Design System", Variables →
+   Style collection, "Nova" column, light mode (the BHA navy/blue style).
+   Change a value here and all three sites follow. The old --blue/--ink/--line
+   names are kept as aliases so existing rules keep working. */
 :root {
-  --blue: #002f71;
-  --blue-dark: #001f4d;
-  --blue-mid: #1b8ec9;
-  --blue-pale: #e9f4fa;
-  --ink: #1b1f1d;
-  --ink-soft: #5a6660;
-  --line: #dde4e0;
-  --bg: #f6f8f7;
+  /* semantic colours (Figma: color/light/*) */
+  --background: #ffffff;
+  --foreground: #09090b;
   --card: #ffffff;
-  --mark: #ffe89b;
+  --card-foreground: #09090b;
+  --primary: #002f71;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #e9f4fa;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #e9f4fa;
+  --accent-foreground: #18181b;
+  --destructive: #e7000b;
+  --border: #e4e4e7;
+  --input: #e6e6e6;
+  --ring: #a3a3a3;
+  --chart-1: #1b8ec9;
+  --chart-2: #002f71;
+  --chart-3: #d4002d;
+  --chart-4: #6f2075;
+  --chart-5: #00974f;
+
+  /* type (Figma: font/family). Heading face is DIN Condensed in the file; it
+     is not a web font here, so headings use Inter. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Geist Mono", Menlo, monospace;
+
+  /* radius (Figma: radius/*) */
+  --radius-xs: 2px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px;
+  --radius-xl: 14px; --radius-2xl: 18px; --radius-3xl: 22px; --radius-4xl: 26px;
+
+  /* names the existing stylesheets use, mapped onto the tokens above */
+  --blue: var(--primary);
+  --blue-mid: var(--chart-1);
+  --blue-pale: var(--accent);
+  --blue-dark: #001f4d; /* not in Figma: a darker navy for text on pale fills */
+  --ink: var(--foreground);
+  --ink-soft: var(--muted-foreground);
+  --line: var(--border);
+  --bg: var(--muted);
+  --err: var(--destructive);
+  --ok: var(--chart-5);
   --amber: #d97706;
-  --ok: #2f9e63;
+  --mark: #ffe89b;
 }
+
 
 * { box-sizing: border-box; }
 
@@ -39,7 +77,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif; /* BHA Brand Guidelines v1.0 S 2.4: Arial is the specified system typeface for online/electronic use */
+  font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.5;
   color: var(--ink);
@@ -207,14 +245,14 @@ header h1 .thin { font-weight: 400; color: var(--ink-soft); }
   -webkit-appearance: none;
 }
 #q::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
-#q::placeholder { color: #9aa8a1; font-size: 14px; }
+#q::placeholder { color: var(--ring); font-size: 14px; }
 #q[readonly] { cursor: pointer; }
 
 #clear {
   position: absolute;
   right: 5px; top: 50%;
   transform: translateY(-50%);
-  border: 0; background: #eef2f0; color: var(--ink-soft);
+  border: 0; background: var(--muted); color: var(--ink-soft);
   width: 26px; height: 26px; border-radius: 50%;
   font-size: 14px; line-height: 1;
   cursor: pointer;
@@ -407,7 +445,7 @@ main {
   margin-right: 7px;
   vertical-align: middle;
 }
-.pill-new { background: #5b6472; }
+.pill-new { background: var(--muted-foreground); }
 .pill-updated { background: var(--blue-mid); }
 
 /* Admin-set line-level flags (see groupFlaggedLines) — consecutive lines
@@ -446,7 +484,7 @@ main {
 .pdf-check-row { font-size: 14px; margin-bottom: 6px; }
 .pdf-actions { margin-top: 18px; }
 #pdfMsg { color: var(--ink-soft); font-size: 13.5px; min-height: 1.2em; margin-top: 10px; }
-#pdfMsg.err { color: #b42318; }
+#pdfMsg.err { color: var(--destructive); }
 
 /* Mobile-only search icon in the breadcrumb — hidden by default; shown by
    the max-width:820px block below. Specificity has to beat the generic
@@ -601,7 +639,7 @@ main {
 }
 .def-panel-term { font-size: 17px; font-weight: 750; color: var(--blue-dark); }
 .def-panel-close {
-  flex: none; border: 0; background: #eef2f0; color: var(--ink-soft);
+  flex: none; border: 0; background: var(--muted); color: var(--ink-soft);
   width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -638,7 +676,7 @@ body.reader-mode #flatDefPanel { display: none; }
   margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
 }
 .def-popover-close {
-  flex: none; border: 0; background: #eef2f0; color: var(--ink-soft);
+  flex: none; border: 0; background: var(--muted); color: var(--ink-soft);
   width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer;
 }
 
@@ -728,7 +766,7 @@ body.reader-mode #flatDefPanel { display: none; }
 
 .changelog-body { flex: 1; min-width: 0; }
 .changelog-body h3 { margin: 0 0 6px; font-size: 16px; color: var(--blue-dark); }
-.changelog-body p { margin: 0 0 10px; font-size: 14.5px; color: #3c4540; }
+.changelog-body p { margin: 0 0 10px; font-size: 14.5px; color: #3f3f46; }
 
 .changelog-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .changelog-tag {
@@ -792,7 +830,7 @@ body.reader-mode #flatDefPanel { display: none; }
   font-size: 12.5px;
   line-height: 1.4;
 }
-.crumb-sep { color: #b7c4bd; }
+.crumb-sep { color: var(--border); }
 .crumb-part { white-space: normal; }
 .crumb-part:last-child { color: var(--blue-dark); font-weight: 600; }
 .crumb-dated { margin-left: auto; color: var(--ink-soft); font-style: italic; }
@@ -815,10 +853,10 @@ body.reader-mode #flatDefPanel { display: none; }
   font-weight: 600;
   font-size: 13px;
 }
-.code.bhagi { background: #6f2075; }
+.code.bhagi { background: var(--chart-4); }
 .code.guidedoc {
-  background: #eef2f7;
-  color: #33415c;
+  background: var(--muted);
+  color: #3f3f46;
   font-weight: 600;
   font-size: 13px;
 }
@@ -841,7 +879,7 @@ body.reader-mode #flatDefPanel { display: none; }
 
 .rex {
   padding: 2px 16px 13px;
-  color: #3c4540;
+  color: #3f3f46;
   font-size: 15.5px;
   cursor: pointer;
 }
@@ -852,7 +890,7 @@ body.reader-mode #flatDefPanel { display: none; }
 .rfull .l1 { padding-left: 52px; font-weight: 500; }
 .rfull .l2 { padding-left: 92px; }
 .rfull .l3 { padding-left: 142px; }
-.rfull .l0 { color: #3c4540; }
+.rfull .l0 { color: #3f3f46; }
 .rfull .rn {
   position: absolute;
   left: 0;
@@ -876,6 +914,46 @@ body.reader-mode #flatDefPanel { display: none; }
 }
 .rfull th { background: var(--blue-pale); color: var(--blue-dark); }
 .rfull ul { margin: 8px 0; padding-left: 26px; }
+
+/* ---- admin "Add an object" block types (see admin.js's OBJECT_TYPES) —
+   these become part of an entry's own published html, so the public
+   reader needs to render them too. Mirrored from admin/admin.css. ---- */
+.rfull .rule-heading { font-size: 18px; font-weight: 700; color: var(--blue-dark); margin: 24px 0 10px; }
+.rfull .rule-subheading { font-size: 15px; font-weight: 700; color: var(--ink); margin: 18px 0 8px; }
+.rfull .rule-well { background: var(--blue-pale); border-left: 3px solid var(--blue-mid); border-radius: 6px; padding: 10px 14px; margin: 14px 0; }
+.rfull .rule-bullets { margin: 8px 0; padding-left: 26px; }
+.rfull .rule-image { max-width: 100%; border-radius: 8px; display: block; margin: 12px 0; }
+.rfull .rule-image-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.rfull .rule-image-group img { max-width: 220px; border-radius: 8px; }
+.rfull .rule-video { margin: 12px 0; }
+.rfull .rule-video video, .rfull .rule-video iframe { width: 100%; max-width: 560px; aspect-ratio: 16/9; border-radius: 8px; border: 0; }
+.rfull .rule-collapsible { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull .rule-collapsible summary { cursor: pointer; font-weight: 600; }
+.rfull .rule-collapsible > div { margin-top: 8px; }
+.rfull .rule-accordion { margin: 12px 0; display: flex; flex-direction: column; gap: 6px; }
+.rfull .rule-accordion details { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.rfull .rule-accordion summary { cursor: pointer; font-weight: 600; }
+.rfull .rule-accordion details > div { margin-top: 8px; }
+
+/* CSS-only tabs — up to 6, switched purely by :checked via nth-of-type
+   pairing, no JS needed. */
+.rfull .rule-tabs { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.rfull .rule-tab-input { display: none; }
+.rfull .rule-tab-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rfull .rule-tab-label { padding: 5px 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; font-weight: 600; cursor: pointer; }
+.rfull .rule-tab-panel { display: none; }
+.rfull .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(1),
+.rfull .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(2),
+.rfull .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(3),
+.rfull .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(4),
+.rfull .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(5),
+.rfull .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-panels .rule-tab-panel:nth-of-type(6) { display: block; }
+.rfull .rule-tab-input:nth-of-type(1):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(1),
+.rfull .rule-tab-input:nth-of-type(2):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(2),
+.rfull .rule-tab-input:nth-of-type(3):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(3),
+.rfull .rule-tab-input:nth-of-type(4):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(4),
+.rfull .rule-tab-input:nth-of-type(5):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(5),
+.rfull .rule-tab-input:nth-of-type(6):checked ~ .rule-tab-labels .rule-tab-label:nth-of-type(6) { background: var(--blue); border-color: var(--blue); color: #fff; }
 
 mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 
@@ -965,11 +1043,11 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   -webkit-appearance: none;
 }
 #smInput::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
-#smInput::placeholder { color: #9aa8a1; }
+#smInput::placeholder { color: var(--ring); }
 #smClose {
   flex: none;
   border: 0;
-  background: #eef2f0;
+  background: var(--muted);
   color: var(--ink-soft);
   width: 26px; height: 26px;
   border-radius: 50%;
@@ -1032,7 +1110,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
   border-radius: 4px;
   padding: 0 5px;
   margin-right: 5px;
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
 }
 
@@ -1063,7 +1141,7 @@ mark { background: var(--mark); border-radius: 3px; padding: 0 1px; }
 #historyPanel::backdrop, #penaltyPanel::backdrop { background: rgba(7,43,31,0.55); }
 .panel-inner { padding: 22px; }
 #historyPanel h2, #penaltyPanel h2 { margin: 0 0 6px; font-size: 19px; color: var(--blue-dark); }
-#historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3c4540; }
+#historyPanel p, #penaltyPanel p { margin: 8px 0; font-size: 15px; color: #3f3f46; }
 #historyPanel, #penaltyPanel { max-height: calc(100vh - 60px); overflow-y: auto; }
 .pdf-check-row label {
   display: flex;

@@ -1,23 +1,7 @@
-/* BHA Brand Guidelines v1.0, section 3.1 (Primary Colour Palette):
-   Dark Blue #002f71, Light Blue #1b8ec9, Light Blue 10% #e9f4fa.
-   --blue-dark is a manually darkened Dark Blue — the guide doesn't define
-   a fourth shade, but the UI needs one for text/emphasis on pale fills. */
-:root {
-  --blue: #002f71;
-  --blue-dark: #001f4d;
-  --blue-mid: #1b8ec9;
-  --blue-pale: #e9f4fa;
-  --ink: #1b1f1d;
-  --ink-soft: #5a6660;
-  --line: #dde4e0;
-  --bg: #f6f8f7;
-  --card: #ffffff;
-  --amber: #d97706;
-}
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif; /* BHA Brand Guidelines v1.0 S 2.4: Arial is the specified system typeface for online/electronic use */
+  font-family: var(--font-sans);
   color: var(--ink);
   background: var(--bg);
 }
@@ -102,7 +86,7 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
   width: 100%; background: var(--blue); color: #fff; border: 0; border-radius: 9px;
   padding: 11px 0; font-size: 15px; font-weight: 600; cursor: pointer;
 }
-.login-error { color: #b42318; font-size: 13.5px; margin-top: 10px; min-height: 1.2em; }
+.login-error { color: var(--destructive); font-size: 13.5px; margin-top: 10px; min-height: 1.2em; }
 
 /* ---- manuals toolbar + home cards ---- */
 .manuals-toolbar {
@@ -209,7 +193,7 @@ body.sidebar-collapsed #sidebarCollapseToggle { color: var(--blue-mid); border-c
 }
 .uploaded-guide-row .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .uploaded-guide-row button {
-  border: 0; background: none; color: #b42318; cursor: pointer; font-size: 13px; padding: 2px 4px;
+  border: 0; background: none; color: var(--destructive); cursor: pointer; font-size: 13px; padding: 2px 4px;
 }
 
 /* ---- editor ---- */
@@ -222,14 +206,14 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .list-pane { width: 360px; flex: none; }
 .result-list { max-height: 70vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
 .result-row {
-  padding: 10px 14px; border-bottom: 1px solid #eef2ef; cursor: pointer; font-size: 14px;
+  padding: 10px 14px; border-bottom: 1px solid var(--muted); cursor: pointer; font-size: 14px;
 }
 .result-row:last-child { border-bottom: none; }
 .result-row:hover { background: var(--blue-pale); }
 .result-row.active { background: var(--blue-pale); border-left: 3px solid var(--blue-mid); }
 .code { display: inline-block; background: var(--blue); color: #fff; font-weight: 700; font-size: 12px; border-radius: 5px; padding: 1px 7px; margin-right: 8px; }
-.code.bhagi { background: #6f2075; }
-.code.guidedoc { background: #eef2f7; color: #33415c; }
+.code.bhagi { background: var(--chart-4); }
+.code.guidedoc { background: var(--muted); color: #3f3f46; }
 .result-row .edited-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); margin-left: 6px; vertical-align: middle; }
 .custom-pill {
   display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
@@ -246,7 +230,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .users-row {
   display: grid; grid-template-columns: 1.3fr 1.7fr 1fr 44px;
   align-items: center; gap: 14px; padding: 12px 14px;
-  border-bottom: 1px solid #eef2ef; font-size: 14px;
+  border-bottom: 1px solid var(--muted); font-size: 14px;
 }
 .users-row:last-child { border-bottom: none; }
 .users-row.head {
@@ -268,7 +252,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .editor-pane { flex: 1; min-width: 0; }
 .editor-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
 .editor-card .code-badge { display: inline-block; background: var(--blue); color: #fff; font-weight: 700; font-size: 13px; border-radius: 6px; padding: 3px 10px; margin-bottom: 12px; }
-.editor-card label { display: block; font-size: 13px; font-weight: 600; color: #3c4540; margin: 14px 0 5px; }
+.editor-card label { display: block; font-size: 13px; font-weight: 600; color: #3f3f46; margin: 14px 0 5px; }
 .editor-card label:first-of-type { margin-top: 0; }
 .editor-card input[type=text] {
   width: 100%; box-sizing: border-box; font-size: 15px; padding: 9px 11px;
@@ -292,12 +276,12 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 }
 .editor-actions button.save:disabled { opacity: .5; cursor: default; }
 .editor-actions button.revert {
-  background: var(--card); color: #b42318; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--card); color: var(--destructive); border: 1px solid var(--line); border-radius: 9px;
   padding: 10px 16px; font-size: 14px; cursor: pointer;
 }
 .save-msg { font-size: 13.5px; color: var(--ink-soft); }
 .save-msg.ok { color: #067647; }
-.save-msg.err { color: #b42318; }
+.save-msg.err { color: var(--destructive); }
 .empty-state { color: var(--ink-soft); font-size: 14.5px; padding: 40px 20px; text-align: center; }
 
 /* ---- manuals reader (outline + text + editor) ---- */
@@ -411,7 +395,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rfull-body.editing-section { outline: 1px dashed var(--blue-mid); outline-offset: 6px; border-radius: 8px; }
 .reader-entry .edited-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
 .discard-edit-btn {
-  border: 0; background: none; color: #b42318; cursor: pointer;
+  border: 0; background: none; color: var(--destructive); cursor: pointer;
   font-size: 12px; font-weight: 600; padding: 2px 4px; text-decoration: underline;
 }
 .discard-edit-btn:hover { color: #8f1c13; }
@@ -425,11 +409,11 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 }
 .edit-line-pencil:hover { border-color: var(--blue-mid); color: var(--blue-dark); background: var(--blue-pale); }
 
-.rfull-body p { margin: 12px 0; font-size: 14px; line-height: 1.6; color: #3c4540; position: relative; }
+.rfull-body p { margin: 12px 0; font-size: 14px; line-height: 1.6; color: #3f3f46; position: relative; }
 .rfull-body .l1 { padding-left: 40px; font-weight: 500; }
 .rfull-body .l2 { padding-left: 72px; }
 .rfull-body .l3 { padding-left: 104px; }
-.rfull-body .l0 { color: #3c4540; }
+.rfull-body .l0 { color: #3f3f46; }
 .rfull-body .rn { position: absolute; left: 0; color: var(--blue-mid); font-weight: 700; font-size: .92em; }
 .rfull-body .l2 .rn { left: 36px; } .rfull-body .l3 .rn { left: 68px; }
 .rfull-body table { border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
@@ -483,11 +467,11 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
 .rule-object-editable { position: relative; }
 .rule-object-delete {
   position: absolute; top: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%;
-  border: 1px solid var(--line); background: #fff; color: #b42318; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); background: #fff; color: var(--destructive); display: flex; align-items: center; justify-content: center;
   cursor: pointer; opacity: 0; transition: opacity .1s;
 }
 .rule-object-editable:hover .rule-object-delete { opacity: 1; }
-.rule-object-delete:hover { background: #fdecea; border-color: #b42318; }
+.rule-object-delete:hover { background: #fdecea; border-color: var(--destructive); }
 .inline-object-placeholder { margin: 8px 0; }
 
 /* Click a line's own text to edit it right there — see openInlineLineEditor.
@@ -537,7 +521,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 20px 60px; display: flex
   display: inline-block; color: #fff; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .04em; border-radius: 4px; padding: 1.5px 6px;
 }
-.pill-new { background: #5b6472; }
+.pill-new { background: var(--muted-foreground); }
 .pill-updated { background: var(--blue-mid); }
 .flagged-group { border-left: 3px solid var(--blue-mid); padding: 4px 0 4px 12px; margin: 14px 0; }
 .flagged-group.updated { border-left-color: var(--amber); }
@@ -595,8 +579,8 @@ body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); 
 .section-tool-btn:hover { border-color: var(--blue-mid); color: var(--blue-dark); background: var(--blue-pale); }
 .section-tool-btn:disabled { opacity: .35; cursor: default; }
 .section-tool-btn:disabled:hover { border-color: var(--line); color: var(--ink-soft); background: var(--card); }
-.section-tool-btn.danger { color: #b42318; }
-.section-tool-btn.danger:hover { border-color: #b42318; background: #fdecea; color: #b42318; }
+.section-tool-btn.danger { color: var(--destructive); }
+.section-tool-btn.danger:hover { border-color: var(--destructive); background: #fdecea; color: var(--destructive); }
 .section-rule-top .section-tool-btn.danger { margin-left: auto; }
 .flag-toggle {
   width: auto; height: 26px; padding: 0 9px; font-size: 10.5px; font-weight: 700;
@@ -668,7 +652,7 @@ body.panel-resizing .reader-resize-handle::after { background: var(--blue-mid); 
   cursor: pointer; color: #fff; background: rgba(255,255,255,.14);
 }
 .line-flag-popup button:hover { background: rgba(255,255,255,.26); }
-.line-flag-popup button[data-flag="new"]:hover { background: #5b6472; }
+.line-flag-popup button[data-flag="new"]:hover { background: var(--muted-foreground); }
 .line-flag-popup button[data-flag="updated"]:hover { background: var(--blue-mid); }
 
 .confirm-overlay {

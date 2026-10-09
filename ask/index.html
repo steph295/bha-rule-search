@@ -16,6 +16,7 @@
 <header class="top">
   <span class="brand"><img src="../bha-logo.svg" alt="BHA"></span>
   <span class="top-title">Rules Assistant</span>
+  <button type="button" id="askAiBtn" class="top-ask" title="Start a new question"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l1.9 5.1L17 11l-5.1 1.9L10 18l-1.9-5.1L3 11l5.1-1.9L10 4z"></path><path d="M18 3v4M16 5h4M19 15v3M17.5 16.5h3"></path></svg><span>Ask AI</span></button>
 </header>
 
 <main>
@@ -28,7 +29,7 @@
         <textarea id="q" rows="2" maxlength="600" placeholder="Ask about the Rules of Racing" enterkeyhint="send"></textarea>
         <div class="ask-foot">
           <span class="ask-hint">Answers cite the rules they come from. Always check the citation.</span>
-          <button type="submit" id="send">Ask</button>
+          <button type="submit" id="send" aria-label="Ask"><span class="btn-label">Ask</span><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L20 4l-5 16-3.2-6.8L4 12z"></path><path d="M11.8 13.2L20 4"></path></svg></button>
         </div>
       </form>
       <div class="suggest" id="suggest"></div>

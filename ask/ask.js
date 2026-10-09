@@ -12,6 +12,10 @@
     'How long must a trainer keep medication records?',
     'What counts as a Prohibited Substance?'
   ];
+  var ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l1.9 5.1L17 11l-5.1 1.9L10 18l-1.9-5.1L3 11l5.1-1.9L10 4z"></path><path d="M18 3v4M16 5h4M19 15v3M17.5 16.5h3"></path></svg>';
+  var ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>';
+  var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
+
   var messages = []; // [{role, content, cited?}] — what's sent to the API (plain text, no citation markers)
   var busy = false;
 
@@ -115,8 +119,7 @@
     if (document.body.classList.contains('chatting')) return;
     document.body.classList.add('chatting');
     thread.hidden = false;
-    thread.innerHTML = '<div class="thread-head"><button type="button" id="newQ">New question</button></div>';
-    $('newQ').addEventListener('click', reset);
+    thread.innerHTML = '';
     composer.hidden = false;
     composer.appendChild(form);
     input.placeholder = 'Ask a follow-up…';
@@ -137,7 +140,11 @@
   function addMsg(cls, html) {
     var el = document.createElement('div');
     el.className = 'msg ' + cls;
-    el.innerHTML = '<div class="bubble">' + html + '</div>';
+    // who is speaking is spelled out: an avatar and a name above every message
+    var head = cls === 'user'
+      ? '<span class="avatar me" aria-hidden="true">ME</span><span class="who">Me</span>'
+      : '<span class="avatar ai" aria-hidden="true">' + ICON_SPARK + '</span><span class="who">Rules Assistant</span>';
+    el.innerHTML = '<div class="msg-head">' + head + '</div><div class="msg-body">' + html + '</div>';
     thread.appendChild(el);
     el.scrollIntoView({ block: 'end', behavior: 'smooth' });
     return el;
@@ -162,21 +169,36 @@
         return j;
       });
     }).then(function (j) {
-      bot.querySelector('.bubble').innerHTML = '<div class="answer">' + renderAnswer(j.answer || '') + '</div>' + renderSources(j.sources || []);
+      bot.querySelector('.msg-body').innerHTML = '<div class="answer">' + renderAnswer(j.answer || '') + '</div>' + renderSources(j.sources || []);
       // what this answer cited goes back with it, so a follow-up can keep those rules in scope
       messages.push({
         role: 'assistant',
         content: String(j.answer || '').replace(/⟦\d+⟧/g, ''),
         cited: (j.sources || []).map(function (src) { return { kind: src.kind, ref: src.ref, title: src.title, doc: src.doc }; })
       });
+      var plain = String(j.answer || '').replace(/⟦\d+⟧/g, '').trim();
+      var actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      actions.innerHTML = '<button type="button" class="icon-act" data-act="copy" title="Copy answer" aria-label="Copy answer">' + ICON_COPY + '</button>';
+      bot.appendChild(actions);
       bot.addEventListener('click', function (ev) {
+        var copyBtn = ev.target.closest('[data-act="copy"]');
+        if (copyBtn) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(plain).then(function () {
+              copyBtn.innerHTML = ICON_CHECK; copyBtn.classList.add('done'); copyBtn.title = 'Copied';
+              setTimeout(function () { copyBtn.innerHTML = ICON_COPY; copyBtn.classList.remove('done'); copyBtn.title = 'Copy answer'; }, 1500);
+            }, function () {});
+          }
+          return;
+        }
         var t = ev.target.closest('.cite, .src-chip');
         if (t) toggleSource(bot, t.dataset.n);
       });
     }).catch(function (err) {
       messages.pop(); // let them retry the same question
       bot.classList.add('error');
-      bot.querySelector('.bubble').textContent = err.message || 'Something went wrong. Please try again.';
+      bot.querySelector('.msg-body').textContent = err.message || 'Something went wrong. Please try again.';
     }).then(function () {
       busy = false; sendBtn.disabled = false;
       input.focus();
@@ -185,4 +207,11 @@
   }
 
   form.addEventListener('submit', function (ev) { ev.preventDefault(); ask(input.value); });
+
+  // "Ask AI" in the corner starts a fresh question
+  $('askAiBtn').addEventListener('click', function () {
+    if (busy) return;
+    if (document.body.classList.contains('chatting')) reset();
+    input.focus();
+  });
 })();

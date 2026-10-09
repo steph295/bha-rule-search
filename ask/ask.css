@@ -1,0 +1,142 @@
+/* BHA Brand Guidelines v1.0, section 3.1 — same palette as the main site. */
+:root {
+  --blue: #002f71;
+  --blue-dark: #001f4d;
+  --blue-mid: #1b8ec9;
+  --blue-pale: #e9f4fa;
+  --ink: #1b1f1d;
+  --ink-soft: #5a6660;
+  --line: #dde4e0;
+  --bg: #f6f8f7;
+  --card: #ffffff;
+  --err: #b42318;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink); background: var(--bg); line-height: 1.5;
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+#beta { background: #fff4d6; color: #6b4e00; font-size: 12.5px; padding: 6px 16px; text-align: center; }
+#beta a { color: inherit; }
+
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--line); }
+.brand img { height: 30px; display: block; }
+.top-title { font-weight: 600; color: var(--ink-soft); padding-left: 12px; border-left: 1px solid var(--line); }
+.top nav { margin-left: auto; }
+.top nav a { color: var(--blue-mid); font-weight: 600; font-size: 14px; text-decoration: none; }
+.top nav a:hover { text-decoration: underline; }
+
+main { flex: 1; }
+
+/* ---- hero ---- */
+#hero { background: linear-gradient(180deg, var(--blue) 0%, var(--blue-dark) 100%); color: #fff; padding: 56px 24px 64px; }
+.hero-inner { max-width: 720px; margin: 0 auto; text-align: center; }
+#hero h1 { margin: 0 0 10px; font-size: clamp(28px, 5vw, 40px); letter-spacing: -.01em; }
+.lede { margin: 0 auto 26px; max-width: 540px; color: rgba(255,255,255,.82); font-size: 16px; }
+
+#askForm {
+  display: flex; align-items: center; background: #fff; border-radius: 999px; padding: 6px 6px 6px 22px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); text-align: left;
+}
+#askForm input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px;
+  padding: 11px 0; color: var(--ink);
+}
+#askForm button {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--blue-mid); color: #fff; display: flex; align-items: center; justify-content: center;
+}
+#askForm button:hover { background: var(--blue); }
+#askForm button:disabled { opacity: .5; cursor: default; }
+
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+.suggest button {
+  border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: #fff;
+  border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.suggest button:hover { background: rgba(255,255,255,.18); }
+
+/* ---- topics ---- */
+#topics { max-width: 960px; margin: 0 auto; padding: 40px 24px 56px; }
+#topics h2 { font-size: 20px; margin: 0 0 16px; color: var(--blue-dark); }
+.topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.topic {
+  text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px 18px; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+}
+.topic:hover { border-color: var(--blue-mid); box-shadow: 0 4px 14px rgba(0,47,113,.08); }
+.topic b { color: var(--blue-dark); font-size: 15px; }
+.topic span { color: var(--ink-soft); font-size: 13.5px; }
+
+/* ---- chat mode ---- */
+body.chatting #hero, body.chatting #topics { display: none; }
+body.chatting footer { padding-bottom: 96px; }
+#thread { max-width: 760px; width: 100%; margin: 0 auto; padding: 24px 20px 20px; }
+.thread-head { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.thread-head button {
+  border: 1px solid var(--line); background: #fff; color: var(--blue-mid); border-radius: 999px;
+  padding: 5px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.msg { margin: 18px 0; display: flex; }
+.msg.user { justify-content: flex-end; }
+.bubble { max-width: 88%; border-radius: 16px; padding: 11px 16px; }
+.msg.user .bubble { background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
+.msg.bot .bubble { background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; width: 100%; max-width: 100%; }
+.msg.bot.error .bubble { border-color: var(--err); color: var(--err); }
+
+.answer p { margin: 0 0 10px; }
+.answer p:last-child { margin-bottom: 0; }
+.answer ul { margin: 0 0 10px; padding-left: 20px; }
+.answer li { margin: 3px 0; }
+.cite {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: super;
+  min-width: 17px; height: 17px; padding: 0 4px; margin: 0 1px; border: 0; border-radius: 9px;
+  background: var(--blue-pale); color: var(--blue); font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer; line-height: 1;
+}
+.cite:hover, .cite.on { background: var(--blue-mid); color: #fff; }
+
+.typing { display: inline-flex; gap: 5px; align-items: center; color: var(--ink-soft); font-size: 14px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-mid); animation: blink 1.2s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
+
+.sources { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sources-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-bottom: 8px; }
+.src-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.src-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--line); background: var(--bg);
+  border-radius: 8px; padding: 5px 10px; font: inherit; font-size: 12.5px; cursor: pointer; color: var(--ink);
+}
+.src-chip:hover, .src-chip.on { border-color: var(--blue-mid); background: var(--blue-pale); }
+.src-chip .n { background: var(--blue); color: #fff; border-radius: 9px; min-width: 17px; height: 17px; padding: 0 4px; font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.src-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.src-card { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
+.src-card[hidden] { display: none; }
+.src-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.badge { background: var(--blue); color: #fff; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 7px; }
+.badge.guide { background: #6f2075; } .badge.def { background: var(--blue-mid); } .badge.code { background: #33415c; }
+.src-title { font-weight: 650; font-size: 14px; }
+.src-doc { color: var(--ink-soft); font-size: 12.5px; }
+.src-text { white-space: pre-wrap; font-size: 13.5px; color: #3c4540; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 6px 0 8px; max-height: 260px; overflow-y: auto; }
+.src-link { font-size: 13px; font-weight: 600; color: var(--blue-mid); text-decoration: none; }
+.src-link:hover { text-decoration: underline; }
+
+/* ---- composer (chat mode) ---- */
+#composer {
+  position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(246,248,247,0), var(--bg) 30%);
+}
+#composer #askForm { max-width: 760px; margin: 0 auto; box-shadow: 0 6px 22px rgba(0,0,0,.15); border: 1px solid var(--line); }
+
+footer { color: var(--ink-soft); font-size: 12.5px; text-align: center; padding: 18px 24px 26px; max-width: 760px; margin: 0 auto; }
+
+@media (max-width: 560px) {
+  .top { padding: 10px 16px; }
+  #hero { padding: 40px 16px 48px; }
+  .bubble { max-width: 96%; }
+}

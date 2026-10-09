@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/ask.js": {
+      "maxDuration": 60,
+      "includeFiles": "{rules,guides,definitions,overrides}.json"
+    }
+  }
+}

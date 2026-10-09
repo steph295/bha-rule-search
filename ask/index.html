@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BHA Rules Assistant</title>
+<meta name="description" content="Ask a question about the British Horseracing Authority Rules of Racing, Codes and guidance and get a cited answer.">
+<meta name="theme-color" content="#002f71">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23002f71'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E§%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="ask.css">
+</head>
+<body>
+
+<div id="beta">BETA — answers are AI-generated from the published Rules. Verify anything critical against the official <a href="https://rules.britishhorseracing.com" target="_blank" rel="noopener">Rules of Racing</a>.</div>
+
+<header class="top">
+  <a class="brand" href="/" title="BHA Rules search"><img src="../bha-logo.svg" alt="BHA"></a>
+  <span class="top-title">Rules Assistant</span>
+  <nav><a href="/">Search the Rules</a></nav>
+</header>
+
+<main>
+  <section id="hero">
+    <div class="hero-inner">
+      <h1>How can we help?</h1>
+      <p class="lede">Ask about the Rules of Racing, the Codes and BHA guidance — you’ll get a short answer with the rules it came from.</p>
+      <form id="askForm" autocomplete="off">
+        <label class="sr" for="q">Your question</label>
+        <input id="q" type="text" maxlength="600" placeholder="e.g. What is the penalty for excessive use of the whip?" enterkeyhint="send">
+        <button type="submit" id="send" aria-label="Ask">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h13M11 4.5L16.5 10 11 15.5"></path></svg>
+        </button>
+      </form>
+      <div class="suggest" id="suggest"></div>
+    </div>
+  </section>
+
+  <section id="topics" aria-labelledby="topicsHead">
+    <h2 id="topicsHead">Popular topics</h2>
+    <div class="topic-grid" id="topicGrid"></div>
+  </section>
+
+  <section id="thread" aria-live="polite" hidden></section>
+</main>
+
+<div id="composer" hidden></div>
+
+<footer>
+  AI-generated from the BHA Rules of Racing, Codes and guidance as published on this site. It can make mistakes and isn’t legal advice — the Stewards and the BHA decide any specific case.
+</footer>
+
+<script src="ask.js"></script>
+</body>
+</html>

@@ -82,6 +82,25 @@ have real text layers — none needed OCR.
 > withdrawn rules mid-inquiry is a hazard. Remove it from `SKIP_URL_PARTS` in
 > the script to include it.
 
+## Rules Assistant (`/ask`)
+
+A Twilio-help-style Q&A page: ask a question in plain English and get a short
+answer with citations to the rule, code, guidance or definition it came from.
+
+- **Page:** `ask/` (static). **API:** `api/ask.js` (Vercel function).
+- **Same data as everywhere else:** it reads `rules.json`, `guides.json`,
+  `definitions.json` and `overrides.json`, so admin edits, added rules and
+  deleted rules show up in answers after the next deploy. Retrieval (a small
+  BM25 with boosts for rule references like `F37` and glossary terms) is in
+  `api/_ask-lib.js`; only the top matching passages are sent to Claude.
+- **Setup:** set `ANTHROPIC_API_KEY` in the Vercel project's environment
+  variables (without it `/api/ask` returns 503 and the page shows an error).
+  Optional `ASK_MODEL` overrides the model (default `claude-opus-5-5`).
+- **Cost guards:** same-origin only, 600-character questions, 20 questions per
+  IP per 10 minutes (per warm instance), and no model call when nothing in the
+  rules matches. The limiter is in memory, so for hard limits put a shared
+  store (e.g. Upstash/Vercel KV) behind it.
+
 ## Admin — editing rule/guide text
 
 `/admin` is a small password-protected page for editing entry titles/text

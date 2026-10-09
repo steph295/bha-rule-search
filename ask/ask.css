@@ -57,12 +57,12 @@ main { flex: 1; }
 
 /* ---- chat mode ---- */
 body.chatting #hero { display: none; }
-body.chatting footer { padding-bottom: 150px; }
+body.chatting footer { padding-bottom: 170px; }
 body.chatting { background: #fff; }
 #thread { max-width: 908px; width: 100%; margin: 0 auto; padding: 36px 24px 20px; }
 
 /* Every message says who it is from: avatar + name, then the text beneath. */
-.msg { margin: 0 0 36px; display: flex; flex-direction: column; align-items: stretch; }
+.msg { margin: 0 0 36px; }
 .msg-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .avatar {
   flex: none; width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -72,18 +72,10 @@ body.chatting { background: #fff; }
 .avatar.ai { background: var(--blue-pale); color: var(--blue); border: 1px solid #c9e0f0; }
 .avatar svg { width: 22px; height: 22px; }
 .who { font-size: 17px; font-weight: 600; color: var(--ink); }
-/* Bubbles follow the design library's Bubble component (tokens.css):
-   the person's message is a "default" bubble at the end of the row, the
-   assistant's is a "ghost" bubble — no frame, full width. */
+/* Twilio-style: avatar and name on every message, plain text beneath (no bubbles). */
 .msg-body { font-size: 16px; line-height: 1.65; color: var(--ink); }
-.msg.user { align-items: flex-end; }
-.msg.user .msg-head { flex-direction: row-reverse; }
-.msg.user .msg-body {
-  max-width: min(80%, 640px); background: var(--bubble-default-bg); color: var(--bubble-default-text);
-  border-radius: var(--bubble-radius); padding: var(--bubble-py) var(--bubble-px); overflow-wrap: anywhere; white-space: pre-wrap;
-}
-.msg-note { margin-top: 6px; font-size: 12.5px; color: var(--muted-foreground); max-width: min(80%, 640px); text-align: right; }
-.msg.bot .msg-body { padding: var(--bubble-ghost-py) var(--bubble-ghost-px); }
+.msg.user .msg-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-note { margin-top: 8px; font-size: 12.5px; color: var(--muted-foreground); }
 .msg.bot.error .msg-body { color: var(--err); }
 .msg-actions { display: flex; gap: 10px; margin-top: 18px; }
 .icon-act {
@@ -134,13 +126,15 @@ body.chatting { background: #fff; }
 
 /* ---- composer (chat mode) ---- */
 #composer {
-  position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(255,255,255,0), #fff 28%);
+  position: fixed; left: 0; right: 0; bottom: 0; padding: 36px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255,255,255,0), #fff 55%);
+  pointer-events: none;
 }
 #composer #askForm {
   max-width: 860px; margin: 0 auto; padding: 16px 16px 12px 22px; background: #fff;
   border: 1px solid var(--border); border-radius: 26px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
 }
+#composer #askForm { pointer-events: auto; }
 #composer #askForm:focus-within { border-color: var(--blue-mid); }
 #composer #askForm textarea { min-height: 28px; }
 #composer .ask-hint { display: none; }

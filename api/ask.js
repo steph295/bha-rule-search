@@ -9,9 +9,15 @@
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
-const { buildIndex, search, buildMessages, parseResponse, SYSTEM_PROMPT } = require('./_ask-lib');
+const {
+  buildIndex, search, expand, resolveCited, buildMessages, parseResponse,
+  rewriteInput, fallbackQuery, SYSTEM_PROMPT, REWRITE_SYSTEM
+} = require('./_ask-lib');
 
 const MODEL = process.env.ASK_MODEL || 'claude-opus-5-5';
+// The follow-up rewrite is a tiny task; ASK_REWRITE_MODEL can point it at a
+// faster, cheaper model than the one that writes the answer.
+const REWRITE_MODEL = process.env.ASK_REWRITE_MODEL || MODEL;
 const MAX_QUESTION = 600;
 const MAX_HISTORY = 8;
 const TOP_K = 10;
@@ -67,13 +73,23 @@ function rateLimited(ip) {
   return recent.length > RATE_LIMIT.max;
 }
 
+// Only identifying keys — the server looks the passages up itself, so nothing
+// the client sends is ever treated as rule text.
+function cleanCited(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 8).filter((c) => c && typeof c === 'object').map((c) => ({
+    kind: String(c.kind || '').slice(0, 20), ref: String(c.ref || '').slice(0, 40),
+    title: String(c.title || '').slice(0, 300), doc: String(c.doc || '').slice(0, 300)
+  }));
+}
+
 function cleanHistory(raw) {
   if (!Array.isArray(raw) || !raw.length) return null;
   const msgs = [];
   for (const m of raw.slice(-MAX_HISTORY)) {
     if (!m || (m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string') return null;
     const content = m.content.trim().slice(0, m.role === 'user' ? MAX_QUESTION : 2000);
-    if (content) msgs.push({ role: m.role, content });
+    if (content) msgs.push(m.role === 'assistant' ? { role: m.role, content, cited: cleanCited(m.cited) } : { role: m.role, content });
   }
   while (msgs.length && msgs[0].role !== 'user') msgs.shift();
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return null;
@@ -93,6 +109,29 @@ async function callClaude(client, params) {
     if (!(err instanceof Anthropic.BadRequestError)) throw err;
     return client.messages.create(params);
   }
+}
+
+// A follow-up like "and what's the penalty?" names nothing to search for, so
+// it is rewritten into a standalone question using the conversation so far.
+// If that call fails the search falls back to a mechanical version (last
+// questions + labels of what was cited) rather than failing the question.
+async function standaloneQuery(history, cited) {
+  if (history.length < 2) return history[0].content;
+  try {
+    const r = await deps.getClient().messages.create({
+      model: REWRITE_MODEL,
+      max_tokens: 1000,
+      system: REWRITE_SYSTEM,
+      output_config: { effort: 'low' },
+      messages: [{ role: 'user', content: rewriteInput(history, cited) }]
+    });
+    const text = (r.content || []).filter((b) => b.type === 'text').map((b) => b.text).join(' ')
+      .replace(/\s+/g, ' ').replace(/^["'“”]+|["'“”]+$/g, '').trim().slice(0, 400);
+    if (text) return text;
+  } catch (err) {
+    console.error('rewrite failed:', err && err.status, err && err.message);
+  }
+  return fallbackQuery(history, cited);
 }
 
 module.exports = async function handler(req, res) {
@@ -122,11 +161,15 @@ module.exports = async function handler(req, res) {
 
   try {
     const index = await getIndex(host);
-    // A short follow-up ("and for a jockey?") searches on the question before it too.
     const last = history[history.length - 1].content;
-    const prevUser = history.filter((m) => m.role === 'user').slice(-2, -1)[0];
-    const query = last.length < 40 && prevUser ? prevUser.content + ' ' + last : last;
-    const found = search(index, query, TOP_K);
+    // what the last two answers cited stays in scope for a follow-up
+    const cited = [];
+    history.filter((m) => m.role === 'assistant').slice(-2).reverse().forEach((m) => (m.cited || []).forEach((c) => cited.push(c)));
+    const query = await standaloneQuery(history, cited);
+    const carried = resolveCited(index, cited, 6);
+    // the standalone query plus the user's own words: the rewrite resolves what
+    // "it" means, the original keeps any detail the rewrite dropped
+    const found = expand(index, query + ' ' + last, search(index, query + ' ' + last, TOP_K), carried);
 
     if (!found.length) {
       res.status(200).json({

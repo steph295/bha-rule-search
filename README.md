@@ -93,9 +93,18 @@ answer with citations to the rule, code, guidance or definition it came from.
   deleted rules show up in answers after the next deploy. Retrieval (a small
   BM25 with boosts for rule references like `F37` and glossary terms) is in
   `api/_ask-lib.js`; only the top matching passages are sent to Claude.
+- **Follow-ups:** a follow-up is rewritten into a standalone question using the
+  conversation, and the rules the last two answers cited stay in scope. Every
+  rule arrives with its Table of Penalties entry, the Fixed Penalty Bands and
+  the glossary definition of "Entry Point", plus a note of who the rule's own
+  wording addresses (or that it names no one). Admin glossary additions and
+  edits are indexed too — add RC / DP in the admin glossary and answers can
+  explain them. `npm test` checks all this offline; `node tests/ask-live.js`
+  checks the deployed answers.
 - **Setup:** set `ANTHROPIC_API_KEY` in the Vercel project's environment
   variables (without it `/api/ask` returns 503 and the page shows an error).
-  Optional `ASK_MODEL` overrides the model (default `claude-opus-5-5`).
+  Optional `ASK_MODEL` overrides the model (default `claude-opus-5-5`); `ASK_REWRITE_MODEL`
+  sets a faster/cheaper model for the follow-up rewrite (default: same as `ASK_MODEL`).
 - **Cost guards:** same-origin only, 600-character questions, 20 questions per
   IP per 10 minutes (per warm instance), and no model call when nothing in the
   rules matches. The limiter is in memory, so for hard limits put a shared

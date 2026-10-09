@@ -23,7 +23,7 @@
     { t: 'Penalties & sanctions', d: 'The Table of Penalties and how breaches are dealt with', q: 'Where can I find the penalty for a breach of the Rules?' }
   ];
 
-  var messages = []; // [{role, content}] — what's sent to the API (plain text, no citation markers)
+  var messages = []; // [{role, content, cited?}] — what's sent to the API (plain text, no citation markers)
   var busy = false;
 
   var form = $('askForm'), input = $('q'), sendBtn = $('send');
@@ -89,8 +89,8 @@
     return html;
   }
 
-  var KIND_LABEL = { rule: 'Rule', code: 'Code', guide: 'Guidance', definition: 'Definition' };
-  var KIND_CLASS = { rule: '', code: 'code', guide: 'guide', definition: 'def' };
+  var KIND_LABEL = { rule: 'Rule', code: 'Code', guide: 'Guidance', definition: 'Definition', penalty: 'Penalty table' };
+  var KIND_CLASS = { rule: '', code: 'code', guide: 'guide', definition: 'def', penalty: 'code' };
 
   function sourceCard(s) {
     var link = '';
@@ -181,7 +181,12 @@
       });
     }).then(function (j) {
       bot.querySelector('.bubble').innerHTML = '<div class="answer">' + renderAnswer(j.answer || '') + '</div>' + renderSources(j.sources || []);
-      messages.push({ role: 'assistant', content: String(j.answer || '').replace(/⟦\d+⟧/g, '') });
+      // what this answer cited goes back with it, so a follow-up can keep those rules in scope
+      messages.push({
+        role: 'assistant',
+        content: String(j.answer || '').replace(/⟦\d+⟧/g, ''),
+        cited: (j.sources || []).map(function (src) { return { kind: src.kind, ref: src.ref, title: src.title, doc: src.doc }; })
+      });
       bot.addEventListener('click', function (ev) {
         var t = ev.target.closest('.cite, .src-chip');
         if (t) toggleSource(bot, t.dataset.n);

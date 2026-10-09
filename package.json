@@ -1,12 +1,15 @@
 {
   "name": "bha-rule-search",
   "private": true,
-  "description": "BHA Rules Search — static site + admin editing API (Vercel functions in /api)",
+  "description": "BHA Rules Search \u2014 static site + admin editing API (Vercel functions in /api)",
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
     "pdf-parse": "1.1.1"
+  },
+  "scripts": {
+    "test": "node --test tests/ask.test.js"
   }
 }

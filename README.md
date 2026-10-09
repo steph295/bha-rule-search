@@ -93,6 +93,16 @@ answer with citations to the rule, code, guidance or definition it came from.
   deleted rules show up in answers after the next deploy. Retrieval (a small
   BM25 with boosts for rule references like `F37` and glossary terms) is in
   `api/_ask-lib.js`; only the top matching passages are sent to Claude.
+- **Finding the right rule:** retrieval is keyword-based (there is no
+  embedding/semantic search). To make up for that: typos are corrected against
+  the rulebook's own vocabulary; everyday wording is also searched as rulebook
+  wording ("fallen off" → "unseated", "got back on" → "remount" — the `VOCAB`
+  table in `api/_ask-lib.js`, extend it when a real question misses); a hit in
+  a rule or Code section brings the whole section, several matching sections of
+  one chapter bring the chapter, and a rule that names a Code ("comply with the
+  Starting Procedures Code") brings that Code's best passages. The model is
+  told which sections were read and must not say something is "not covered"
+  unless it has read where it would be.
 - **Follow-ups:** a follow-up is rewritten into a standalone question using the
   conversation, and the rules the last two answers cited stay in scope. Every
   rule arrives with its Table of Penalties entry, the Fixed Penalty Bands and

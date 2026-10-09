@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const {
-  buildIndex, search, correctQuery, expand, resolveCited, buildMessages, parseResponse,
+  buildIndex, searchBoth, expandVocabulary, correctQuery, expand, resolveCited, buildMessages, parseResponse,
   rewriteInput, fallbackQuery, SYSTEM_PROMPT, REWRITE_SYSTEM
 } = require('./_ask-lib');
 
@@ -171,7 +171,9 @@ module.exports = async function handler(req, res) {
     // "it" means, the original keeps any detail the rewrite dropped
     // typos only affect the search; the model still sees the question as typed
     const fixed = correctQuery(index, query + ' ' + last);
-    const found = expand(index, fixed.text, search(index, fixed.text, TOP_K), carried);
+    // everyday wording ("fallen off") also searched as the rulebook's ("unseated")
+    const vocab = expandVocabulary(fixed.text);
+    const found = expand(index, fixed.text + ' ' + vocab.extra, searchBoth(index, fixed.text, vocab.extra, TOP_K), carried);
 
     if (!found.length) {
       res.status(200).json({

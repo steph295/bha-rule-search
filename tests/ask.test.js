@@ -185,3 +185,48 @@ test('6b. spelling correction only touches words the rulebook has never seen', (
   assert.deepEqual(L.correctQuery(idx, 'Rule (E)31 Stewards').changes, []);
   assert.deepEqual(L.correctQuery(idx, 'a trainner and the pentaly').changes.map((c) => c[1]), ['trainer', 'penalty']);
 });
+
+// Regression: "a jockey has fallen off before the start" was answered from the false-start
+// rules, with "the documents don't cover remounting". Rule (F)5 (remounting) sits in the same
+// short section as (F)4, and the chapter also holds "At the start" (F)6-(F)10.
+const Q_FALLEN = 'a jockey has fallen off before the start, what do I do';
+
+test('7. "fallen off before the start" reads the whole of The Start, remounting and the Starting Procedures Code', async () => {
+  const c = fakeClient();
+  const r = await ask(c, [{ role: 'user', content: Q_FALLEN }]);
+  assert.equal(r.statusCode, 200);
+  const docs = documents(c);
+  const has = (re) => assert.ok(byTitle(docs, re), 'sources include ' + re);
+  [1, 2, 3, 4, 5].forEach((n) => has(new RegExp('^F' + n + ' — Getting to the start')));   // the whole section, not just the hit
+  [6, 7, 8].forEach((n) => has(new RegExp('^F' + n + ' — At the start')));
+  has(/^F9 — Withdrawal of horses at the start/);
+  has(/^F10 — Withdrawal of horses at the start/);
+  has(/^F24 — Remounting/);
+  has(/^F25 — Remounting/);
+  assert.ok(docs.some((d) => /Starting Procedures Code/.test(d.title)), 'the Starting Procedures Code is searched too');
+  assert.match(byTitle(docs, /^F5 — /).source.data, /remounts after leaving the parade ring/);
+
+  // the model is told exactly which sections were read, and not to say "not covered" without them
+  const last = c.calls.answerParams.messages[c.calls.answerParams.messages.length - 1].content;
+  const note = last[last.length - 1].text;
+  assert.match(note, /Sections searched/);
+  assert.match(note, /Rules \(F\)5.*Getting to the start/);
+  assert.match(note, /Rules \(F\)6.*At the start/);
+  assert.match(c.calls.answerParams.system, /Do not say the Rules "don't cover" something unless you have read the sections/);
+});
+
+test('7b. everyday wording is also searched as the rulebook words it', () => {
+  const terms = (q) => L.expandVocabulary(q).terms;
+  assert.ok(terms('a jockey has fallen off').includes('unseated'));
+  assert.ok(terms('the horse got loose').includes('loose'));
+  assert.ok(terms('he got back on').includes('remount'));
+  assert.ok(terms('the horse ran off').includes('bolted'));
+  assert.deepEqual(terms('what is the penalty for the whip'), []);
+});
+
+test('7c. the Starting Procedures Code is indexed and searchable', () => {
+  const idx = L.buildIndex({ rules: read('rules.json'), guides: read('guides.json'), definitions: read('definitions.json'), overrides: read('overrides.json') });
+  assert.ok(idx.codeDocs.has('Starting Procedures Code'));
+  const sections = new Set(idx.docs.filter((d) => d.doc === 'Starting Procedures Code').map((d) => d.title));
+  ['Arrival of the horses at the Start', 'Horses that refuse to be loaded', 'Starting procedure', 'Standing Starts'].forEach((t) => assert.ok(sections.has(t), t));
+});

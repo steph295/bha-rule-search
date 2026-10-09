@@ -201,6 +201,7 @@ function buildIndex(data) {
     const s = {
       kind: e.kind === 'manual' ? 'rule' : 'code',
       ref: e.code || '', title: patch.title || e.title, doc: e.doc,
+      group: Array.isArray(e.path) && e.path.length > 1 ? e.path[0] : null,
       html: patch.html || e.html, isTable: e.doc === TABLE_DOC
     };
     if (e.penalties && e.penalties.rows && e.penalties.rows.length && e.code) {
@@ -237,7 +238,7 @@ function buildIndex(data) {
     chunkText(text, CHUNK_CHARS).forEach((chunk, i) => {
       const d = {
         id: docs.length, kind: s.kind, ref: s.ref, title: s.title, doc: s.doc,
-        url: s.url || null, page: s.page || null, term: s.term || null,
+        url: s.url || null, page: s.page || null, term: s.term || null, group: s.group || null,
         isTable: !!s.isTable, part: i, text: chunk,
         // title counted three times: a title match should outrank a stray body mention
         tokens: tokenize(s.title).concat(tokenize(s.title), tokenize(s.title), tokenize(s.doc), tokenize(chunk))
@@ -263,8 +264,22 @@ function buildIndex(data) {
   const ruleDocsByRef = new Map();
   const defByTerm = new Map();
   const bandDocs = [];
+  const bySection = new Map();
+  const byGroup = new Map();
+  const codeDocs = new Set();
   docs.forEach((d) => {
     const k = docKey(d);
+    if ((d.kind === 'rule' || (d.kind === 'code' && !d.isTable)) && d.part === 0) {
+      const sk = d.kind + '|' + d.doc + '|' + d.title;
+      if (!bySection.has(sk)) bySection.set(sk, []);
+      bySection.get(sk).push(d);
+      if (d.kind === 'rule' && d.group) {
+        const gk = d.doc + '|' + d.group;
+        if (!byGroup.has(gk)) byGroup.set(gk, []);
+        byGroup.get(gk).push(d);
+      }
+    }
+    if (d.kind === 'code' && !d.isTable && d.doc) codeDocs.add(d.doc);
     if (!byKey.has(k)) byKey.set(k, []);
     byKey.get(k).push(d);
     if (d.kind === 'rule' && d.ref) {
@@ -277,7 +292,7 @@ function buildIndex(data) {
 
   return {
     docs, df, avgLen: total / Math.max(1, docs.length), n: docs.length,
-    byKey, ruleDocsByRef, penaltyByRef, defByTerm, bandDocs,
+    byKey, ruleDocsByRef, penaltyByRef, defByTerm, bandDocs, bySection, byGroup, codeDocs,
     entryPointDef: defByTerm.get('entry point') || null
   };
 }
@@ -299,7 +314,7 @@ function ruleRefs(query) {
 
 const KIND_WEIGHT = { rule: 1, code: 1, definition: 1, guide: 0.85 };
 
-function search(index, query, k) {
+function search(index, query, k, filter) {
   const q = Array.from(new Set(tokenize(query)));
   const refs = ruleRefs(query);
   const lower = String(query || '').toLowerCase();
@@ -313,6 +328,7 @@ function search(index, query, k) {
   const namedTerms = new Set(named.filter((t) => !named.some((o) => o !== t && o.indexOf(t) !== -1)));
   const scored = [];
   index.docs.forEach((d) => {
+    if (filter && !filter(d)) return;
     let score = 0;
     q.forEach((t) => {
       const f = d.tf.get(t);
@@ -396,6 +412,42 @@ function correctQuery(index, query) {
   return { text, changes };
 }
 
+// ---- everyday wording -> rulebook wording -----------------------------------
+// People say "fallen off"; the rules say "unseat". Each pattern that matches
+// the question contributes the rulebook's own terms, and the search runs on the
+// question as written *and* with those terms added, so neither can crowd out
+// the other. Add a line here when a real question misses on vocabulary.
+const VOCAB = [
+  [/\b(?:fell|fall(?:en|ing)?|came|come|coming|thrown|slipped|dropped|tumbled|toppled)\s+(?:off|from)\b|\bunseat/i, 'unseat unseated fall fell remount remounted'],
+  [/\b(?:got|gets|get|going|went|run|running|ran)\s+loose\b|\bloose\b|\briderless\b|\bwithout (?:a |its |their )?(?:rider|jockey)\b/i, 'loose horse riderless unseat'],
+  [/\b(?:got|get|gets|getting|climb(?:ed|ing)?|put|putting)\s+(?:back\s+)?(?:on|up)\b|\bback on\b|\bre-?mount/i, 'remount remounted remounting'],
+  [/\b(?:ran|run|runs|running)\s+(?:off|away)\b|\bbolt(?:ed|s|ing)?\b|\brunaway\b/i, 'bolt bolted break broken away'],
+  [/\b(?:didn'?t|did not|won'?t|will not|wouldn'?t|refus\w+)\s+(?:go|load|enter|get)\b/i, 'refuse refuses stalls load loaded withdrawn'],
+  [/\b(?:hurt|injur\w+|knocked out|concuss\w*|unconscious)\b/i, 'injured injury medical Racecourse Medical Officer assessed'],
+  [/\b(?:late|missed?|missing)\b.{0,30}\b(?:start|post|off)\b|\bmiss(?:ed|ing)? the start\b/i, 'late start ready start on time withdrawn'],
+  [/\b(?:got|get|gets|getting)\s+(?:off|down)\b|\bdismount\w*/i, 'dismount dismounted permission Starter'],
+  [/\bfalse start\b|\bstart(?:ed)? (?:too )?early\b|\bjumped the (?:gun|tape)\b/i, 'false start broken away recall']
+];
+
+function expandVocabulary(query) {
+  const terms = new Set();
+  VOCAB.forEach(([re, extra]) => { if (re.test(String(query || ''))) extra.split(' ').forEach((t) => terms.add(t)); });
+  return { extra: Array.from(terms).join(' '), terms: Array.from(terms) };
+}
+
+// The question as written and with the rulebook's terms added, merged
+// alternately so a vocabulary guess can't push out a plain keyword match.
+function searchBoth(index, text, extra, k) {
+  const literal = search(index, text, k);
+  if (!extra) return literal;
+  const wide = search(index, text + ' ' + extra, k);
+  const out = [], seen = new Set();
+  for (let i = 0; i < Math.max(literal.length, wide.length) && out.length < k + 4; i++) {
+    [wide[i], literal[i]].forEach((d) => { if (d && !seen.has(d.id)) { seen.add(d.id); out.push(d); } });
+  }
+  return out;
+}
+
 // ---- relational expansion --------------------------------------------------
 
 function isBandLetter(entryPoint) { return /^[A-D]\b/.test(String(entryPoint || '').trim()); }
@@ -453,7 +505,9 @@ function resolveCited(index, cited, maxEntries) {
 const REF_IN_TEXT = /\(([A-M])\)(\d+[A-Z]?)/g;
 // words that say nothing about *which* rule a row is about
 const GENERIC = new Set(tokenize('rule penalty penalties entry point mean meaning liable liability breach breaches offence failure fail summary range'));
-const MAX_DOCS = 18;
+const SECTION_CAP = 8;
+const CHAPTER_CAP = 24;
+const MAX_DOCS = 36;
 
 // Search hits (+ carried-over prior citations) -> the final passage list.
 // Every rule arrives with its penalty entry; every penalty entry arrives with
@@ -515,6 +569,47 @@ function expand(index, query, hits, carried) {
   if (needDef && index.entryPointDef) add(index.entryPointDef);
   codes.forEach((c) => { const def = index.defByTerm.get(String(c).toLowerCase()); if (def) add(def); });
 
+  // Whole sections, not just the matching snippet: a rule is one short numbered
+  // entry, and the provision that answers a question is often its neighbour
+  // ("Getting to the start" F1-F5; the Code's "Arrival of the horses").
+  hits.slice(0, 6).forEach((d) => {
+    if (d.kind !== 'rule' && !(d.kind === 'code' && !d.isTable)) return;
+    const sibs = index.bySection.get(d.kind + '|' + d.doc + '|' + d.title) || [];
+    if (!sibs.length) return;
+    sibs.slice().sort((a, b) => Math.abs(a.id - d.id) - Math.abs(b.id - d.id)).slice(0, SECTION_CAP).sort((a, b) => a.id - b.id).forEach(add);
+  });
+
+  // When two or more sections of the same chapter match ("Getting to the start"
+  // and "False starts" are both in "The Start"), the question is about that
+  // chapter, so the rest of a short chapter is read too.
+  const chapters = new Map();
+  hits.slice(0, 10).forEach((d) => {
+    if (d.kind !== 'rule' || !d.group) return;
+    const gk = d.doc + '|' + d.group;
+    if (!chapters.has(gk)) chapters.set(gk, new Set());
+    chapters.get(gk).add(d.title);
+  });
+  chapters.forEach((titles, gk) => {
+    const all = index.byGroup.get(gk) || [];
+    if (titles.size >= 2 && all.length <= CHAPTER_CAP) all.forEach(add);
+  });
+
+  // A rule that points at a Code ("comply with the Starting Procedures Code")
+  // brings that Code's best-matching passages along.
+  const pulled = new Set();
+  out.slice().forEach((d) => {
+    if (d.kind !== 'rule') return;
+    const lower = d.text.toLowerCase();
+    index.codeDocs.forEach((name) => {
+      if (pulled.size >= 2 || pulled.has(name) || lower.indexOf(name.toLowerCase()) === -1) return;
+      // only a Code the question is actually about ("start" -> Starting Procedures Code)
+      if (!tokenize(name).some((t) => t !== 'code' && qTok.has(t))) return;
+      pulled.add(name);
+      search(index, query, 3, (x) => x.doc === name && x.kind === 'code').forEach(add);
+    });
+  });
+
+  // lower-ranked keyword hits go last, so the cap trims them before the sections above
   hits.slice(6).forEach(add);
   return out.slice(0, MAX_DOCS);
 }
@@ -530,7 +625,8 @@ function sourceTitle(d) {
 const SYSTEM_PROMPT = [
   "You are the BHA Rules Assistant. You answer questions about the British Horseracing Authority's Rules of Racing, its Codes, the General Instructions and BHA guidance, for stewards, officials, trainers, jockeys and owners who want a quick, accurate answer.",
   '',
-  '- Answer only from the provided documents. If they do not contain the answer, say you could not find it in the Rules and suggest checking the official Rules of Racing or contacting the BHA. Never guess or use outside knowledge, and never invent a rule number.',
+  '- Answer only from the provided documents. Never guess or use outside knowledge, and never invent a rule number. Always lead with whatever relevant provisions the documents do contain, even if they only cover part of the situation.',
+  '- Do not say the Rules "don\'t cover" something unless you have read the sections where it would be. The question message starts with a list of the sections whose full text was searched. If a specific point is not addressed in them (for example what happens to a loose horse), say exactly that point is not addressed in the sections you checked, name those sections with their rule numbers, and point the user to the most likely place to read in full — the named rule or Code, the Starter or Stewards, or the BHA. If you are unsure whether the answer sits elsewhere, say so rather than saying it is not covered.',
   '- Be concise: lead with the direct answer in one to three short sentences, then add detail as a few short "- " bullet points only if it helps. Plain English, no headings, no tables, no preamble. Keep rule references (for example "Rule (F)37" or paragraph numbers) where they help.',
   '- Penalties: give the Table of Penalties entry for the rule, and explain what its entry point means. A single-letter entry point A–D is the matching lettered Fixed Penalty Band — give that band\'s amounts by offence. Explain a "-" Range as no range being given, using the definition of Entry Point. If the final column shows an abbreviation (such as RC or DP) that no document defines, say it is not explained in the Rules provided rather than guessing what it means. State penalties, fines, suspensions and time limits exactly as the documents give them, but put table rows into plain words (for example "Band B is £140 for a first offence, £280 for a second, £560 for a third, and a fourth is referred") — never paste rows with | separators or the labels "Entry point:" / "Final column:". Cite the Fixed Penalty Bands table whenever you give band amounts, and the rule\'s own Table of Penalties entry whenever you give its entry point.',
   '- Who is in breach: each document may carry a note of who the rule\'s own wording addresses and which persons the Table of Penalties rows name. Use those to say who the rule applies to and who the penalty row names, and cite the wording or row. If a document says the wording does not name a particular person, say plainly that the Rules do not say who is in breach — do not infer it from the nature of the offence. If a different rule in the documents makes another person responsible for a related situation (for example a trainer for an Apprentice or Conditional Jockey), say so, citing it.',
@@ -568,6 +664,21 @@ function fallbackQuery(history, cited) {
   return users.concat(labels).join(' ');
 }
 
+// What was actually read, by section, so the answer can say where it looked.
+function sectionsSearched(hits) {
+  const groups = new Map();
+  hits.forEach((d) => {
+    if (d.kind === 'penalty' || d.kind === 'definition') return;
+    const k = d.kind + '|' + d.doc + '|' + d.title;
+    if (!groups.has(k)) groups.set(k, { d, refs: [] });
+    if (d.ref && groups.get(k).refs.indexOf(d.ref) === -1) groups.get(k).refs.push(d.ref);
+  });
+  if (!groups.size) return '';
+  const lines = Array.from(groups.values()).slice(0, 24).map(({ d, refs }) =>
+    '- ' + (d.kind === 'rule' && refs.length ? 'Rules ' + refs.map(fmtRef).join(', ') + ' — ' : '') + d.title + ' (' + d.doc + ')');
+  return 'Sections searched for this question (full text of each is in the documents above):\n' + lines.join('\n') + '\n\n';
+}
+
 // Only the latest question gets sources attached; earlier turns go in as plain
 // text so follow-ups ("and for a jockey?") keep their context.
 function buildMessages(history, hits) {
@@ -583,7 +694,7 @@ function buildMessages(history, hits) {
     if (d.ctx) block.context = d.ctx;
     return block;
   });
-  content.push({ type: 'text', text: last.content });
+  content.push({ type: 'text', text: sectionsSearched(hits) + 'Question: ' + last.content });
   msgs.push({ role: 'user', content });
   return msgs;
 }
@@ -616,7 +727,7 @@ function parseResponse(response, hits) {
 }
 
 module.exports = {
-  buildIndex, search, correctQuery, expand, resolveCited, penaltyPassage, extractApplies, appliesNote,
+  buildIndex, search, searchBoth, expandVocabulary, correctQuery, expand, resolveCited, penaltyPassage, extractApplies, appliesNote,
   buildMessages, parseResponse, rewriteInput, fallbackQuery, citedLabel,
   plainText, tokenize, ruleRefs, fmtRef, SYSTEM_PROMPT, REWRITE_SYSTEM, sourceTitle
 };

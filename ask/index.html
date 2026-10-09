@@ -22,14 +22,15 @@
 <main>
   <section id="hero">
     <div class="hero-inner">
-      <h1>How can we help?</h1>
-      <p class="lede">Ask about the Rules of Racing, the Codes and BHA guidance — you’ll get a short answer with the rules it came from.</p>
+      <h1 id="greeting">Hello</h1>
+      <p class="lede">Ask a question about the Rules of Racing, the Codes and BHA guidance.</p>
       <form id="askForm" autocomplete="off">
         <label class="sr" for="q">Your question</label>
-        <input id="q" type="text" maxlength="600" placeholder="e.g. What is the penalty for excessive use of the whip?" enterkeyhint="send">
-        <button type="submit" id="send" aria-label="Ask">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h13M11 4.5L16.5 10 11 15.5"></path></svg>
-        </button>
+        <textarea id="q" rows="2" maxlength="600" placeholder="Ask about the Rules of Racing" enterkeyhint="send"></textarea>
+        <div class="ask-foot">
+          <span class="ask-hint">Answers cite the rules they come from. Always check the citation.</span>
+          <button type="submit" id="send">Ask</button>
+        </div>
       </form>
       <div class="suggest" id="suggest"></div>
     </div>

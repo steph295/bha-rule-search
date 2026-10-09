@@ -36,13 +36,27 @@ function plainText(html) {
     .trim();
 }
 
+// Light stemmer so "abandoned", "abandonment" and "abandon" (or "race",
+// "races", "racing") meet in the middle. Applied identically to passages and
+// questions, so odd stems are harmless as long as they are consistent.
+function stem(w) {
+  if (/^\d/.test(w)) return w;
+  if (w.length > 4 && w.endsWith('ies')) w = w.slice(0, -3) + 'y';
+  else if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) w = w.slice(0, -1);
+  for (const suf of ['ment', 'ing', 'ed']) {
+    if (w.endsWith(suf) && w.length - suf.length >= 3) { w = w.slice(0, -suf.length); break; }
+  }
+  if (/([bdgmnprt])\1$/.test(w)) w = w.slice(0, -1); // whipp -> whip, stopp -> stop
+  if (w.length > 3 && w.endsWith('e')) w = w.slice(0, -1);
+  return w;
+}
+
 function tokenize(s) {
   const out = [];
   const words = String(s || '').toLowerCase().match(/[a-z0-9£]+/g) || [];
   for (const w of words) {
     if (STOP.has(w)) continue;
-    // light stemming: whips -> whip, races -> race (not "class", "process")
-    out.push(w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+    out.push(stem(w));
   }
   return out;
 }

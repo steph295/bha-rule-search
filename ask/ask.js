@@ -8,9 +8,9 @@
 
   var SUGGESTIONS = [
     'What is the penalty for excessive use of the whip?',
+    'When can a race be abandoned?',
     'How long must a trainer keep medication records?',
-    'What counts as a Prohibited Substance?',
-    'What happens if a jockey fails to weigh in?'
+    'What counts as a Prohibited Substance?'
   ];
   var TOPICS = [
     { t: 'Whip use & riding', d: 'Limits on the whip, careless riding, interference', q: 'What are the rules on use of the whip?' },
@@ -28,6 +28,16 @@
 
   var form = $('askForm'), input = $('q'), sendBtn = $('send');
   var hero = $('hero'), thread = $('thread'), composer = $('composer');
+
+  var hour = new Date().getHours();
+  $('greeting').textContent = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  // The box is a textarea so a longer question can wrap; Enter sends, Shift+Enter adds a line.
+  function fitInput() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
+  input.addEventListener('input', fitInput);
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); form.requestSubmit(); }
+  });
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -128,6 +138,7 @@
     composer.hidden = false;
     composer.appendChild(form);
     input.placeholder = 'Ask a follow-up…';
+    input.rows = 1; fitInput();
   }
 
   function reset() {
@@ -136,8 +147,8 @@
     thread.hidden = true; thread.innerHTML = '';
     composer.hidden = true;
     hero.querySelector('.hero-inner').insertBefore(form, $('suggest'));
-    input.placeholder = 'e.g. What is the penalty for excessive use of the whip?';
-    input.value = '';
+    input.placeholder = 'Ask about the Rules of Racing';
+    input.value = ''; input.rows = 2; fitInput();
     window.scrollTo(0, 0);
   }
 
@@ -158,7 +169,7 @@
     messages.push({ role: 'user', content: question });
     addMsg('user', esc(question));
     var bot = addMsg('bot', '<span class="typing"><i></i><i></i><i></i>&nbsp;Searching the Rules…</span>');
-    input.value = '';
+    input.value = ''; fitInput();
 
     fetch('/api/ask', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

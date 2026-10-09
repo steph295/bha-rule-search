@@ -156,7 +156,7 @@
     busy = true; sendBtn.disabled = true;
     enterChat();
     messages.push({ role: 'user', content: question });
-    addMsg('user', esc(question));
+    var userEl = addMsg('user', esc(question));
     var bot = addMsg('bot', '<span class="typing"><i></i><i></i><i></i>&nbsp;Searching the Rules…</span>');
     input.value = ''; fitInput();
 
@@ -176,6 +176,12 @@
         content: String(j.answer || '').replace(/⟦\d+⟧/g, ''),
         cited: (j.sources || []).map(function (src) { return { kind: src.kind, ref: src.ref, title: src.title, doc: src.doc }; })
       });
+      if (j.searchedFor) {
+        var note = document.createElement('div');
+        note.className = 'msg-note';
+        note.textContent = 'Searched for: ' + j.searchedFor;
+        userEl.appendChild(note);
+      }
       var plain = String(j.answer || '').replace(/⟦\d+⟧/g, '').trim();
       var actions = document.createElement('div');
       actions.className = 'msg-actions';

@@ -166,3 +166,22 @@ test('5. admin glossary additions and edits reach the index', () => {
   assert.match(idx.defByTerm.get('foo').text, /new meaning/);
   assert.match(idx.defByTerm.get('rc').text, /Racecourse Stewards/);
 });
+
+test('6. typos in a question still find the right rule (the model gets the question as typed)', async () => {
+  const typo = 'A jokcey was late getting into the paride ring. Which rule covers it?';
+  const c = fakeClient();
+  const r = await ask(c, [{ role: 'user', content: typo }]);
+  assert.equal(r.statusCode, 200);
+  assert.ok(byTitle(documents(c), /^E31 — /), 'Rule (E)31 is still found');
+  assert.match(c.calls.answerParams.messages[c.calls.answerParams.messages.length - 1].content.find((b) => b.type === 'text').text, /jokcey/, 'the question reaches the model unchanged');
+  assert.match(r.body.searchedFor, /jockey/, 'the corrected text is reported back');
+  const clean = await ask(fakeClient(), [{ role: 'user', content: Q1 }]);
+  assert.equal(clean.body.searchedFor, undefined, 'no note when nothing was corrected');
+});
+
+test('6b. spelling correction only touches words the rulebook has never seen', () => {
+  const idx = L.buildIndex({ rules: read('rules.json'), guides: read('guides.json'), definitions: read('definitions.json'), overrides: read('overrides.json') });
+  assert.deepEqual(L.correctQuery(idx, 'penalty for excessive use of the whip').changes, []);
+  assert.deepEqual(L.correctQuery(idx, 'Rule (E)31 Stewards').changes, []);
+  assert.deepEqual(L.correctQuery(idx, 'a trainner and the pentaly').changes.map((c) => c[1]), ['trainer', 'penalty']);
+});

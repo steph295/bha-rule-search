@@ -341,6 +341,61 @@ function search(index, query, k) {
   return out;
 }
 
+// ---- spell tolerance --------------------------------------------------------
+// A question with a typo ("jokcey", "abandonned") matches nothing in the rules,
+// so each word the index has never seen is swapped for the closest word it has
+// (one slip for short words, two for longer ones; transposed letters count as
+// one). Only the search uses the corrected text — the model still gets the
+// question as typed.
+
+function editDistance(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev2 = null;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      if (prev2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+      cur[j] = v;
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    prev2 = prev; prev = cur;
+  }
+  return prev[b.length];
+}
+
+function lexLess(a, b) {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+  return false;
+}
+
+function correctQuery(index, query) {
+  if (!index.vocab) index.vocab = Array.from(index.df.entries()).filter(([t, n]) => /^[a-z]{4,}$/.test(t) && n >= 2);
+  const changes = [];
+  const text = String(query || '').replace(/[A-Za-z]{5,}/g, (word) => {
+    const w = word.toLowerCase();
+    if (STOP.has(w) || index.df.has(stem(w)) || index.defByTerm.has(w)) return word;
+    const max = w.length >= 7 ? 2 : 1;
+    const sw = stem(w); // the vocabulary is stemmed, so compare like with like
+    let best = null;
+    for (const [t, n] of index.vocab) {
+      const d = editDistance(sw, t, max);
+      if (d > max) continue;
+      // equally close? prefer the same first letter, then the same length, then the commoner word
+      const rank = [d, t[0] === sw[0] ? 0 : 1, Math.abs(t.length - sw.length), -n];
+      if (!best || lexLess(rank, best.rank)) best = { t, rank };
+    }
+    if (!best) return word;
+    changes.push([word, best.t]);
+    return best.t;
+  });
+  return { text, changes };
+}
+
 // ---- relational expansion --------------------------------------------------
 
 function isBandLetter(entryPoint) { return /^[A-D]\b/.test(String(entryPoint || '').trim()); }
@@ -561,7 +616,7 @@ function parseResponse(response, hits) {
 }
 
 module.exports = {
-  buildIndex, search, expand, resolveCited, penaltyPassage, extractApplies, appliesNote,
+  buildIndex, search, correctQuery, expand, resolveCited, penaltyPassage, extractApplies, appliesNote,
   buildMessages, parseResponse, rewriteInput, fallbackQuery, citedLabel,
   plainText, tokenize, ruleRefs, fmtRef, SYSTEM_PROMPT, REWRITE_SYSTEM, sourceTitle
 };

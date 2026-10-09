@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const {
-  buildIndex, search, expand, resolveCited, buildMessages, parseResponse,
+  buildIndex, search, correctQuery, expand, resolveCited, buildMessages, parseResponse,
   rewriteInput, fallbackQuery, SYSTEM_PROMPT, REWRITE_SYSTEM
 } = require('./_ask-lib');
 
@@ -169,7 +169,9 @@ module.exports = async function handler(req, res) {
     const carried = resolveCited(index, cited, 6);
     // the standalone query plus the user's own words: the rewrite resolves what
     // "it" means, the original keeps any detail the rewrite dropped
-    const found = expand(index, query + ' ' + last, search(index, query + ' ' + last, TOP_K), carried);
+    // typos only affect the search; the model still sees the question as typed
+    const fixed = correctQuery(index, query + ' ' + last);
+    const found = expand(index, fixed.text, search(index, fixed.text, TOP_K), carried);
 
     if (!found.length) {
       res.status(200).json({
@@ -191,7 +193,10 @@ module.exports = async function handler(req, res) {
       res.status(200).json({ answer: 'I can’t help with that one here. For anything the Rules don’t answer directly, please contact the BHA.', sources: [] });
       return;
     }
-    res.status(200).json(parseResponse(response, found));
+    const out = parseResponse(response, found);
+    const fixedLast = correctQuery(index, last);
+    if (fixedLast.changes.length) out.searchedFor = fixedLast.text;
+    res.status(200).json(out);
   } catch (err) {
     console.error('ask failed:', err && err.status, err && err.message);
     if (err instanceof Anthropic.RateLimitError) {

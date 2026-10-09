@@ -36,6 +36,8 @@ function check(name, ok) { console.log((ok ? 'PASS' : 'FAIL') + '  ' + name); if
   check('Q2 states entry point B', /entry point/i.test(a2.answer) && /\bB\b/.test(a2.answer));
   check('Q2 explains what B means (Band B / £140)', /Band B|£\s?140/.test(a2.answer));
   check('Q2 is cited', /⟦\d+⟧/.test(a2.answer));
+  const bandSources = a2.sources.filter((s) => /Fixed Penalty Bands/i.test(s.title)).map((s) => s.n);
+  check('Q2 cites the Fixed Penalty Bands where it gives the amounts', !/£\s?140/.test(a2.answer) || (bandSources.length > 0 && bandSources.some((n) => a2.answer.indexOf('⟦' + n + '⟧') !== -1)));
   check('Q2 cites the penalty entry or the bands', a2.sources.some((s) => s.kind === 'penalty' || /Fixed Penalty Bands/i.test(s.title) || (s.ref === 'E31')));
   console.log('\n' + (failed ? failed + ' check(s) failed' : 'all checks passed'));
   process.exit(failed ? 1 : 0);

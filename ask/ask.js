@@ -12,17 +12,6 @@
     'How long must a trainer keep medication records?',
     'What counts as a Prohibited Substance?'
   ];
-  var TOPICS = [
-    { t: 'Whip use & riding', d: 'Limits on the whip, careless riding, interference', q: 'What are the rules on use of the whip?' },
-    { t: 'Anti-doping', d: 'Prohibited Substances, sampling, Adverse Analytical Findings', q: 'What happens after an Adverse Analytical Finding?' },
-    { t: 'Licensing', d: 'Who needs a licence and how applications work', q: 'Who needs to hold a licence to train horses?' },
-    { t: 'Welfare & medication', d: 'Duty of care, Equine Medication Record Books', q: 'What must go in an Equine Medication Record Book?' },
-    { t: 'Claiming & selling races', d: 'Claims, premiums, void claims and sales', q: 'How does a claim in a Claiming Race work?' },
-    { t: 'Weighing & results', d: 'Weighing in, weight discrepancies, changing placings', q: 'What are the rules on weighing in after a race?' },
-    { t: 'Entries & declarations', d: 'Entering, declaring to run, non-runners', q: 'What are the rules on declaring a horse to run?' },
-    { t: 'Penalties & sanctions', d: 'The Table of Penalties and how breaches are dealt with', q: 'Where can I find the penalty for a breach of the Rules?' }
-  ];
-
   var messages = []; // [{role, content, cited?}] — what's sent to the API (plain text, no citation markers)
   var busy = false;
 
@@ -49,13 +38,6 @@
     b.type = 'button'; b.textContent = q;
     b.addEventListener('click', function () { ask(q); });
     $('suggest').appendChild(b);
-  });
-  TOPICS.forEach(function (tp) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'topic';
-    b.innerHTML = '<b>' + esc(tp.t) + '</b><span>' + esc(tp.d) + '</span>';
-    b.addEventListener('click', function () { ask(tp.q); });
-    $('topicGrid').appendChild(b);
   });
 
   // ---- answer rendering ----

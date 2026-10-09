@@ -26,9 +26,6 @@ body {
 .top { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--line); }
 .brand img { height: 30px; display: block; }
 .top-title { font-weight: 600; color: var(--ink-soft); padding-left: 12px; border-left: 1px solid var(--line); }
-.top nav { margin-left: auto; }
-.top nav a { color: var(--blue-mid); font-weight: 600; font-size: 14px; text-decoration: none; }
-.top nav a:hover { text-decoration: underline; }
 
 main { flex: 1; }
 
@@ -65,20 +62,8 @@ main { flex: 1; }
 }
 .suggest button:hover { border-color: var(--blue-mid); color: var(--blue-dark); }
 
-/* ---- topics ---- */
-#topics { max-width: 868px; margin: 0 auto; padding: 44px 24px 56px; }
-#topics h2 { font-size: 20px; margin: 0 0 16px; color: var(--blue-dark); }
-.topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.topic {
-  text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-  padding: 16px 18px; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
-}
-.topic:hover { border-color: var(--blue-mid); box-shadow: 0 4px 14px rgba(0,47,113,.08); }
-.topic b { color: var(--blue-dark); font-size: 15px; }
-.topic span { color: var(--ink-soft); font-size: 13.5px; }
-
 /* ---- chat mode ---- */
-body.chatting #hero, body.chatting #topics { display: none; }
+body.chatting #hero { display: none; }
 body.chatting footer { padding-bottom: 150px; }
 #thread { max-width: 760px; width: 100%; margin: 0 auto; padding: 24px 20px 20px; }
 .thread-head { display: flex; justify-content: flex-end; margin-bottom: 8px; }

@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const {
-  buildIndex, searchBoth, expandVocabulary, correctQuery, expand, resolveCited, buildMessages, parseResponse,
+  buildIndex, searchBoth, outOfScope, OUT_OF_SCOPE_REPLY, expandVocabulary, correctQuery, expand, resolveCited, buildMessages, parseResponse,
   rewriteInput, fallbackQuery, SYSTEM_PROMPT, REWRITE_SYSTEM
 } = require('./_ask-lib');
 
@@ -156,6 +156,12 @@ module.exports = async function handler(req, res) {
   if (!history) { res.status(400).json({ error: 'Ask a question to get started.' }); return; }
   if (!process.env.ANTHROPIC_API_KEY && !deps.client) {
     res.status(503).json({ error: 'The assistant isn’t switched on yet.' });
+    return;
+  }
+
+  // critique / editing / opinion requests are declined without a search or a model call
+  if (outOfScope(history[history.length - 1].content)) {
+    res.status(200).json({ answer: OUT_OF_SCOPE_REPLY, sources: [] });
     return;
   }
 

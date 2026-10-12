@@ -103,6 +103,14 @@ answer with citations to the rule, code, guidance or definition it came from.
   Starting Procedures Code") brings that Code's best passages. The model is
   told which sections were read and must not say something is "not covered"
   unless it has read where it would be.
+- **Guardrails:** the assistant explains what the Rules say; it does not
+  review them. Requests to critique, edit or give opinions on the Rules
+  (what to delete, grammar, loopholes, "is this fair?"), to write something
+  unrelated, or to reveal its instructions are declined in `outOfScope()`
+  (`api/_ask-lib.js`) before any search or model call, and the system prompt
+  repeats the limit for wordings the filter misses. If a legitimate question is
+  ever declined, loosen the pattern there; a test checks that every example
+  question on the page gets through.
 - **Follow-ups:** a follow-up is rewritten into a standalone question using the
   conversation, and the rules the last two answers cited stay in scope. Every
   rule arrives with its Table of Penalties entry, the Fixed Penalty Bands and

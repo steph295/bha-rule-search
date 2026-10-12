@@ -230,3 +230,12 @@ test('7c. the Starting Procedures Code is indexed and searchable', () => {
   const sections = new Set(idx.docs.filter((d) => d.doc === 'Starting Procedures Code').map((d) => d.title));
   ['Arrival of the horses at the Start', 'Horses that refuse to be loaded', 'Starting procedure', 'Standing Starts'].forEach((t) => assert.ok(sections.has(t), t));
 });
+
+test('8. "won’t go into the stalls" (curly apostrophe, as typed on phones) finds the stalls provisions', async () => {
+  const c = fakeClient();
+  const r = await ask(c, [{ role: 'user', content: 'A horse won’t go into the stalls. Can I withdraw it?' }]);
+  assert.equal(r.statusCode, 200);
+  const docs = documents(c);
+  assert.ok(byTitle(docs, /^F9 — Withdrawal of horses at the start/), 'Rule (F)9: refuses to enter the stalls');
+  assert.ok(docs.some((d) => /Horses that refuse to be loaded/.test(d.title)), 'the Starting Procedures Code on refusals');
+});

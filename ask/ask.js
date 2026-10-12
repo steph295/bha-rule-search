@@ -6,12 +6,51 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
+  // Example questions, grouped by who is likely to ask them.
   var SUGGESTIONS = [
-    'What is the penalty for excessive use of the whip?',
-    'When can a race be abandoned?',
-    'How long must a trainer keep medication records?',
-    'What counts as a Prohibited Substance?'
+    { role: 'Stewards', qs: [
+      'A horse ran poorly last time and has won easily today. Do we need to ask for an explanation?',
+      'How many times can a jockey use the whip in a jump race?',
+      'What’s the penalty for careless riding, and does it go up if it’s their second offence?',
+      'A jockey stopped riding before the line and lost a place. Which rule is that?',
+      'A trainer has made a horse a non-runner. When can it run again?',
+      'What happens if a trainer doesn’t tell Weatherbys their horse has been gelded?',
+      'Can an objection be made after the horses have weighed in?'
+    ] },
+    { role: 'Starters', qs: [
+      'A jockey has fallen off before the start. What do I do?',
+      'A horse won’t go into the stalls. Can I withdraw it?',
+      'When should a red hood be taken off?',
+      'What happens if a horse breaks out of the stalls before the start?',
+      'A horse has lost a shoe at the start. Does it have to be withdrawn?'
+    ] },
+    { role: 'Clerk of Scales', qs: [
+      'A jockey weighed in 2lb over. Is that allowed?',
+      'A jockey can’t make the weight. Can the trainer change jockey?',
+      'Can an apprentice claim in a race restricted to riders with under 50 winners if they’ve had 50?',
+      'How much weight allowance does a Southern Hemisphere horse get?',
+      'A horse won yesterday after declaring for today. Does it carry a penalty?',
+      'A horse has a sponsor logo on the silks but no sponsorship agreement. Is that a breach?'
+    ] },
+    { role: 'Judges', qs: [
+      'Two horses can’t be separated on the photo finish. What’s the result?',
+      'How is the distance between horses decided when it’s very close?'
+    ] },
+    { role: 'Vets', qs: [
+      'A horse was declared with cheekpieces but has arrived without them. Can it run?',
+      'A horse has arrived without hind shoes. Does it have to be withdrawn?'
+    ] },
+    { role: 'Doctors', qs: [
+      'A jockey has a suspected concussion. What’s the protocol?',
+      'Which substances are banned for jockeys?'
+    ] },
+    { role: 'General Instructions', qs: [
+      'How many ambulances need to be on course before racing can start?',
+      'A horse has arrived by helicopter. When does it have to leave?',
+      'What radio channels need to be in place on race day?'
+    ] }
   ];
+
   var ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l1.9 5.1L17 11l-5.1 1.9L10 18l-1.9-5.1L3 11l5.1-1.9L10 4z"></path><path d="M18 3v4M16 5h4M19 15v3M17.5 16.5h3"></path></svg>';
   var ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
@@ -37,12 +76,27 @@
   }
 
   // ---- hero content ----
-  SUGGESTIONS.forEach(function (q) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.textContent = q;
-    b.addEventListener('click', function () { ask(q); });
-    $('suggest').appendChild(b);
+  // a row of role tabs, and the example questions for the chosen role beneath
+  var rolesEl = $('roles'), suggestEl = $('suggest');
+  function showRole(i) {
+    Array.prototype.forEach.call(rolesEl.children, function (b, j) {
+      b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false');
+    });
+    suggestEl.innerHTML = '';
+    SUGGESTIONS[i].qs.forEach(function (q) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = q;
+      b.addEventListener('click', function () { ask(q); });
+      suggestEl.appendChild(b);
+    });
+  }
+  SUGGESTIONS.forEach(function (g, i) {
+    var t = document.createElement('button');
+    t.type = 'button'; t.setAttribute('role', 'tab'); t.textContent = g.role;
+    t.addEventListener('click', function () { showRole(i); });
+    rolesEl.appendChild(t);
   });
+  showRole(0);
 
   // ---- answer rendering ----
   // Escaped text with a tiny subset of markdown (bold, "- " bullets); the

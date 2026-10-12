@@ -422,7 +422,7 @@ const VOCAB = [
   [/\b(?:got|gets|get|going|went|run|running|ran)\s+loose\b|\bloose\b|\briderless\b|\bwithout (?:a |its |their )?(?:rider|jockey)\b/i, 'loose horse riderless unseat'],
   [/\b(?:got|get|gets|getting|climb(?:ed|ing)?|put|putting)\s+(?:back\s+)?(?:on|up)\b|\bback on\b|\bre-?mount/i, 'remount remounted remounting'],
   [/\b(?:ran|run|runs|running)\s+(?:off|away)\b|\bbolt(?:ed|s|ing)?\b|\brunaway\b/i, 'bolt bolted break broken away'],
-  [/\b(?:didn'?t|did not|won'?t|will not|wouldn'?t|refus\w+)\s+(?:go|load|enter|get)\b/i, 'refuse refuses stalls load loaded withdrawn'],
+  [/\b(?:didn['’]?t|did not|won['’]?t|will not|wouldn['’]?t|refus\w+)\s+(?:go|load|enter|get)\b/i, 'refuse refuses stalls load loaded withdrawn'],
   [/\b(?:hurt|injur\w+|knocked out|concuss\w*|unconscious)\b/i, 'injured injury medical Racecourse Medical Officer assessed'],
   [/\b(?:late|missed?|missing)\b.{0,30}\b(?:start|post|off)\b|\bmiss(?:ed|ing)? the start\b/i, 'late start ready start on time withdrawn'],
   [/\b(?:got|get|gets|getting)\s+(?:off|down)\b|\bdismount\w*/i, 'dismount dismounted permission Starter'],

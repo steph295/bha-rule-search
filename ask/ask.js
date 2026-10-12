@@ -52,6 +52,7 @@
   ];
 
   var ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l1.9 5.1L17 11l-5.1 1.9L10 18l-1.9-5.1L3 11l5.1-1.9L10 4z"></path><path d="M18 3v4M16 5h4M19 15v3M17.5 16.5h3"></path></svg>';
+  var ICON_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M5 20c.6-3.7 3.5-5.8 7-5.8s6.4 2.1 7 5.8"></path></svg>';
   var ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
 
@@ -196,7 +197,7 @@
     el.className = 'msg ' + cls;
     // who is speaking is spelled out: an avatar and a name above every message
     var head = cls === 'user'
-      ? '<span class="avatar me" aria-hidden="true">ME</span><span class="who">Me</span>'
+      ? '<span class="avatar me" aria-hidden="true">' + ICON_USER + '</span><span class="who">You</span>'
       : '<span class="avatar ai" aria-hidden="true">' + ICON_SPARK + '</span><span class="who">Rules Assistant</span>';
     el.innerHTML = '<div class="msg-head">' + head + '</div><div class="msg-body">' + html + '</div>';
     thread.appendChild(el);

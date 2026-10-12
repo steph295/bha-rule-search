@@ -264,9 +264,8 @@ test('9b. critique, editing and opinion requests are declined; real questions ar
     'What is the difference between Rule F5 and F25?', 'Which substances are banned for jockeys?'
   ];
   fine.forEach((q) => assert.ok(!L.outOfScope(q), 'allowed: ' + q));
-  // every example question offered on the page must get through
-  const page = fs.readFileSync(path.join(root, 'ask', 'ask.js'), 'utf8');
-  const offered = [...page.matchAll(/^\s+'(.+)',?$/gm)].map((m) => m[1]).filter((q) => /\?$/.test(q));
+  // the example questions (kept in tests/example-questions.json; not on the page at the moment) must all get through
+  const offered = JSON.parse(fs.readFileSync(path.join(__dirname, 'example-questions.json'), 'utf8')).flatMap((g) => g.questions);
   assert.ok(offered.length >= 25, 'found the example questions: ' + offered.length);
   offered.forEach((q) => assert.ok(!L.outOfScope(q), 'example question allowed: ' + q));
 });

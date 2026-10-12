@@ -6,50 +6,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
-  // Example questions, grouped by who is likely to ask them.
-  var SUGGESTIONS = [
-    { role: 'Stewards', qs: [
-      'A horse ran poorly last time and has won easily today. Do we need to ask for an explanation?',
-      'How many times can a jockey use the whip in a jump race?',
-      'What’s the penalty for careless riding, and does it go up if it’s their second offence?',
-      'A jockey stopped riding before the line and lost a place. Which rule is that?',
-      'A trainer has made a horse a non-runner. When can it run again?',
-      'What happens if a trainer doesn’t tell Weatherbys their horse has been gelded?',
-      'Can an objection be made after the horses have weighed in?'
-    ] },
-    { role: 'Starters', qs: [
-      'A jockey has fallen off before the start. What do I do?',
-      'A horse won’t go into the stalls. Can I withdraw it?',
-      'When should a red hood be taken off?',
-      'What happens if a horse breaks out of the stalls before the start?',
-      'A horse has lost a shoe at the start. Does it have to be withdrawn?'
-    ] },
-    { role: 'Clerk of Scales', qs: [
-      'A jockey weighed in 2lb over. Is that allowed?',
-      'A jockey can’t make the weight. Can the trainer change jockey?',
-      'Can an apprentice claim in a race restricted to riders with under 50 winners if they’ve had 50?',
-      'How much weight allowance does a Southern Hemisphere horse get?',
-      'A horse won yesterday after declaring for today. Does it carry a penalty?',
-      'A horse has a sponsor logo on the silks but no sponsorship agreement. Is that a breach?'
-    ] },
-    { role: 'Judges', qs: [
-      'Two horses can’t be separated on the photo finish. What’s the result?',
-      'How is the distance between horses decided when it’s very close?'
-    ] },
-    { role: 'Vets', qs: [
-      'A horse was declared with cheekpieces but has arrived without them. Can it run?',
-      'A horse has arrived without hind shoes. Does it have to be withdrawn?'
-    ] },
-    { role: 'Doctors', qs: [
-      'A jockey has a suspected concussion. What’s the protocol?',
-      'Which substances are banned for jockeys?'
-    ] },
-    { role: 'General Instructions', qs: [
-      'How many ambulances need to be on course before racing can start?',
-      'A horse has arrived by helicopter. When does it have to leave?',
-      'What radio channels need to be in place on race day?'
-    ] }
-  ];
+
 
   var ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l1.9 5.1L17 11l-5.1 1.9L10 18l-1.9-5.1L3 11l5.1-1.9L10 4z"></path><path d="M18 3v4M16 5h4M19 15v3M17.5 16.5h3"></path></svg>';
   var ICON_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M5 20c.6-3.7 3.5-5.8 7-5.8s6.4 2.1 7 5.8"></path></svg>';
@@ -75,29 +32,6 @@
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-
-  // ---- hero content ----
-  // a row of role tabs, and the example questions for the chosen role beneath
-  var rolesEl = $('roles'), suggestEl = $('suggest');
-  function showRole(i) {
-    Array.prototype.forEach.call(rolesEl.children, function (b, j) {
-      b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false');
-    });
-    suggestEl.innerHTML = '';
-    SUGGESTIONS[i].qs.forEach(function (q) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.textContent = q;
-      b.addEventListener('click', function () { ask(q); });
-      suggestEl.appendChild(b);
-    });
-  }
-  SUGGESTIONS.forEach(function (g, i) {
-    var t = document.createElement('button');
-    t.type = 'button'; t.setAttribute('role', 'tab'); t.textContent = g.role;
-    t.addEventListener('click', function () { showRole(i); });
-    rolesEl.appendChild(t);
-  });
-  showRole(0);
 
   // ---- answer rendering ----
   // Escaped text with a tiny subset of markdown (bold, "- " bullets); the
@@ -186,7 +120,7 @@
     document.body.classList.remove('chatting');
     thread.hidden = true; thread.innerHTML = '';
     composer.hidden = true;
-    hero.querySelector('.hero-inner').insertBefore(form, $('suggest'));
+    hero.querySelector('.hero-inner').appendChild(form);
     input.placeholder = 'Ask about the Rules of Racing';
     input.value = ''; input.rows = 2; fitInput();
     window.scrollTo(0, 0);

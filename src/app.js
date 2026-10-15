@@ -289,8 +289,13 @@
     entries.forEach(function (e, i) {
       e.id = i;
       if (!e.plain) e.plain = P.toText(e.html);
+      // A rule's Table of Penalties rows ("Jockey goes into wrong stall") are part of
+      // what it is about, so they are searchable on the rule itself, not only on the Table.
+      var penaltyWords = e.penalties && e.penalties.rows
+        ? e.penalties.rows.map(function (r) { return String(r.summary || '').replace(/^[\s.\-]+/, ''); }).join(' ')
+        : '';
       e.text = (e.title + ' ' + (e.path || []).join(' ') + ' ' + e.doc + ' ' +
-        (e.code || '') + ' ' + e.plain).toLowerCase().replace(/\s+/g, ' ').trim();
+        (e.code || '') + ' ' + e.plain + ' ' + penaltyWords).toLowerCase().replace(/\s+/g, ' ').trim();
     });
   }
 

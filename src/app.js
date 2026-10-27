@@ -90,7 +90,7 @@
     try {
       var slim = {
         bookId: data.bookId, version: data.version, publishedAt: data.publishedAt,
-        year: data.year, sourceUpdatedAt: data.sourceUpdatedAt, manuals: data.manuals,
+        year: data.year, sourceUpdatedAt: data.sourceUpdatedAt, syncedAt: data.syncedAt || null, manuals: data.manuals,
         entries: data.entries.map(function (e) {
           return { id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc, letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false };
         })
@@ -729,6 +729,14 @@
     if (!d) { status.querySelector('.stxt').textContent = 'No data'; return; }
     var when = d.year || (d.publishedAt || '').slice(0, 10);
     status.querySelector('.stxt').textContent = 'Rules v' + d.version + ' · ' + when;
+    // "Rules last updated" = the effective date printed on the rulebook itself (BHA's own "15 October 2026");
+    // "synced" = when this copy was last pulled from rules.britishhorseracing.com.
+    var fresh = $('freshness');
+    if (fresh) {
+      var synced = d.syncedAt ? new Date(d.syncedAt) : null;
+      var syncedTxt = synced && !isNaN(synced) ? synced.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      fresh.textContent = 'Rules last updated: ' + when + ' (version ' + d.version + ')' + (syncedTxt ? ' · Data synced ' + syncedTxt : '');
+    }
     var lastCheck = 0;
     try { lastCheck = +localStorage.getItem(LS_CHECK) || 0; } catch (e) {}
     var verified = state.source === 'live' ||
@@ -2019,6 +2027,7 @@
       return getJSON('/api/books/' + book.id + '?with=sections', 90000).then(function (full) {
         var parsed = P.parseBook(full);
         parsed.sourceUpdatedAt = book.updated_at;
+        parsed.syncedAt = new Date().toISOString();
         var isUpdate = state.data && state.data.version !== parsed.version;
         adopt(parsed, 'live');
         saveCache(parsed);

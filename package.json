@@ -10,6 +10,6 @@
     "pdf-parse": "1.1.1"
   },
   "scripts": {
-    "test": "node --test tests/ask.test.js"
+    "test": "node --test tests/ask.test.js tests/refresh.test.js"
   }
 }

@@ -1,0 +1,58 @@
+# Keeps the site's rules in step with the official BHA Rules of Racing.
+#
+# Every day (and whenever you press "Run workflow" on the Actions tab) it:
+#   1. downloads the published rulebook from rules.britishhorseracing.com,
+#   2. refuses to continue — and fails, so GitHub emails you — if the download is
+#      missing, incomplete or looks broken (see tools/refresh-rules.js),
+#   3. rebuilds the search data (index.html, rules.json, definitions.json, rules-meta.json),
+#   4. commits and pushes ONLY if the rules actually changed.
+# The push redeploys the site, so the keyword search, the AI search and the
+# "Rules last updated" line all pick up the new rules.
+name: Refresh rules from BHA
+
+on:
+  schedule:
+    - cron: '23 5 * * *'   # daily, 05:23 UTC
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write           # needed to commit the refreshed data
+
+concurrency:
+  group: refresh-rules
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the latest rules (refuses a broken download)
+        id: refresh
+        run: node tools/refresh-rules.js
+
+      - name: Rebuild the search data
+        if: steps.refresh.outputs.changed == 'true'
+        run: node build.js
+
+      - name: Commit and push (only if something changed)
+        if: steps.refresh.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/book*.json index.html rules.json guides.json definitions.json rules-meta.json
+          if git diff --cached --quiet; then
+            echo "Nothing changed after the rebuild — not committing."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./rules-meta.json').version")
+          EFFECTIVE=$(node -p "require('./rules-meta.json').effective")
+          git commit -m "Rules refreshed from BHA: version ${VERSION} (effective ${EFFECTIVE})"
+          git pull --rebase --autostash origin main
+          git push origin HEAD:main

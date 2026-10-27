@@ -62,6 +62,27 @@ The status pill in the header shows the rulebook version; a green dot means
 it has been verified against the live site recently. Tap it for details,
 a manual "check for updates", and the paste fallback.
 
+## Keeping the rules up to date (automatic)
+
+`.github/workflows/refresh-rules.yml` runs **every day** (05:23 UTC) and on demand
+(Actions tab → "Refresh rules from BHA" → Run workflow). It:
+
+1. runs `tools/refresh-rules.js`, which downloads the published rulebook from
+   rules.britishhorseracing.com and **refuses it** — failing the run, so GitHub
+   emails you, and leaving the saved data untouched — if the download errors, isn't
+   JSON, has no version/effective date, or has fewer than 90% of the saved
+   sections / entries / numbered rules / definitions;
+2. if the *wording* changed (not just BHA's edit timestamps), saves it as
+   `data/book34.json` and rebuilds `index.html`, `rules.json`, `definitions.json` and
+   `rules-meta.json` with `node build.js`;
+3. commits and pushes only if something changed. The push redeploys the site.
+
+BHA edits the same book in place, so its "published" date (9 June) never moves; the
+book's own `year` field ("15 October 2026") and `version` ("2026.4.1") do. That is what
+the "Rules last updated" line shows, plus "Data synced" — the day this copy was last
+pulled from BHA (it only moves when the rules change). Run the same check by hand
+with `node tools/refresh-rules.js --check` (writes nothing).
+
 ## The guide library
 
 The second source is a page of ~50 PDFs, not an API. `tools/extract_guides.py`
@@ -165,7 +186,7 @@ Rebuild after editing sources:
 
 ```sh
 node build.js          # from the checked-in data/book34.json
-node build.js --fetch  # refetch the latest rulebook from the BHA API first
+node build.js --fetch  # refetch the latest rulebook (with the same safety checks as the daily Action)
 ```
 
 Refresh the guide library (re-downloads only what's missing):
@@ -174,6 +195,7 @@ Refresh the guide library (re-downloads only what's missing):
 python3 tools/extract_guides.py && node build.js
 ```
 
-The baked snapshot only matters for first paint — visitors get live updates
-automatically — but refreshing it occasionally (`--fetch` + commit) keeps the
-built-in copy current too.
+The baked snapshot is what the AI search and first paint use, and the daily GitHub
+Action keeps it current (see "Keeping the rules up to date"). The browser also
+checks BHA live in the background, but that goes through free public proxies and
+is best-effort only — the committed data is the source of truth.

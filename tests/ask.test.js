@@ -276,3 +276,19 @@ test('9c. the prompt keeps the model to explaining the Rules (backstop for wordi
   assert.match(L.SYSTEM_PROMPT, /never suggest rules to delete, change or add/);
   assert.match(L.SYSTEM_PROMPT, /when it changes the answer to the question asked/);
 });
+
+test('10. every source links to its chapter on the official Rules of Racing site', async () => {
+  const idx = L.buildIndex({ rules: read('rules.json'), guides: read('guides.json'), definitions: read('definitions.json'), overrides: read('overrides.json') });
+  assert.equal(idx.bookId, 34);
+  const e25 = idx.ruleDocsByRef.get('E25')[0];
+  assert.equal(e25.officialUrl, 'https://rules.britishhorseracing.com/#!/book/34/chapter/s3175-preparing-for-the-race');
+  assert.equal(L.penaltyPassage(idx, 'E25').officialUrl, e25.officialUrl, 'its Table of Penalties entry points at the rule\'s chapter');
+  const noLink = idx.docs.filter((d) => d.kind !== 'guide' && !/\/chapter\//.test(d.officialUrl || ''));
+  assert.equal(noLink.length, 0, 'rules, Codes and definitions all have a chapter link: ' + noLink.slice(0, 3).map((d) => d.title));
+  // and the answer returns them
+  const c = fakeClient();
+  c.messages.create = async (p) => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok', citations: [{ document_index: 0 }] }] });
+  c.beta.messages.create = c.messages.create;
+  const r = await ask(c, [{ role: 'user', content: 'jockey went into the wrong stall' }]);
+  assert.match(r.body.sources[0].officialUrl, /^https:\/\/rules\.britishhorseracing\.com\/#!\/book\/34\/(chapter\/s\d+-)?/);
+});

@@ -174,11 +174,20 @@ function appliesNote(applies, hasPenaltyRows) {
 
 // ---- building the index ----------------------------------------------------
 
+// Where to read the source on the official Rules of Racing site. Its links go to a chapter
+// (#!/book/<id>/chapter/<slug>) — the site has no link to a single paragraph.
+const OFFICIAL_SITE = 'https://rules.britishhorseracing.com';
+function officialUrl(bookId, chapterSlug) {
+  if (!bookId) return OFFICIAL_SITE;
+  return OFFICIAL_SITE + '/#!/book/' + bookId + (chapterSlug ? '/chapter/' + chapterSlug : '');
+}
+
 function buildIndex(data) {
   const rules = (data.rules && data.rules.entries) || [];
   const guides = (data.guides && data.guides.entries) || [];
   const defs = ((data.definitions && data.definitions.terms) || []).map((d) => ({ id: d.id, term: d.term, html: d.html }));
   const ov = data.overrides || {};
+  const bookId = (data.rules && data.rules.bookId) || null;
   const patches = ov.overrides || {};
   const added = ov.addedEntries || {};
   const deleted = ov.deletedEntries || {};
@@ -202,6 +211,7 @@ function buildIndex(data) {
       kind: e.kind === 'manual' ? 'rule' : 'code',
       ref: e.code || '', title: patch.title || e.title, doc: e.doc,
       group: Array.isArray(e.path) && e.path.length > 1 ? e.path[0] : null,
+      chapterSlug: e.chapterSlug || null,
       html: patch.html || e.html, isTable: e.doc === TABLE_DOC
     };
     if (e.penalties && e.penalties.rows && e.penalties.rows.length && e.code) {
@@ -224,7 +234,7 @@ function buildIndex(data) {
     });
   });
   defs.forEach((d) => {
-    sources.push({ kind: 'definition', ref: '', title: d.term, doc: 'Definitions', html: d.html, term: d.term });
+    sources.push({ kind: 'definition', ref: '', title: d.term, doc: 'Definitions', html: d.html, term: d.term, chapterSlug: (data.definitions && data.definitions.chapterSlug) || null });
   });
 
   const docs = [];
@@ -239,6 +249,8 @@ function buildIndex(data) {
       const d = {
         id: docs.length, kind: s.kind, ref: s.ref, title: s.title, doc: s.doc,
         url: s.url || null, page: s.page || null, term: s.term || null, group: s.group || null,
+        chapterSlug: s.chapterSlug || null,
+        officialUrl: s.kind === 'guide' ? null : officialUrl(bookId, s.chapterSlug),
         isTable: !!s.isTable, part: i, text: chunk,
         // title counted three times: a title match should outrank a stray body mention
         tokens: tokenize(s.title).concat(tokenize(s.title), tokenize(s.title), tokenize(s.doc), tokenize(chunk))
@@ -291,7 +303,7 @@ function buildIndex(data) {
   });
 
   return {
-    docs, df, avgLen: total / Math.max(1, docs.length), n: docs.length,
+    bookId, docs, df, avgLen: total / Math.max(1, docs.length), n: docs.length,
     byKey, ruleDocsByRef, penaltyByRef, defByTerm, bandDocs, bySection, byGroup, codeDocs,
     entryPointDef: defByTerm.get('entry point') || null
   };
@@ -505,7 +517,8 @@ function penaltyPassage(index, ref) {
   const applies = extractApplies('', p.rows);
   return {
     id: 'pen:' + ref, kind: 'penalty', ref, title: 'Table of Penalties — Rule ' + fmtRef(ref), doc: TABLE_DOC,
-    url: null, page: null, text: lines.join('\n'), part: 0, rows: p.rows, usesBand: band, codes: Array.from(codes),
+    url: null, page: null, officialUrl: officialUrl(index.bookId, ((index.ruleDocsByRef.get(ref) || [])[0] || {}).chapterSlug),
+    text: lines.join('\n'), part: 0, rows: p.rows, usesBand: band, codes: Array.from(codes),
     ctx: notes.join(' ') + (applies.tableRoles.length ? ' Persons named in these rows: ' + applies.tableRoles.map((t) => t.role + ' ("' + t.row + '")').join('; ') + '.' : '')
   };
 }
@@ -749,7 +762,7 @@ function parseResponse(response, hits) {
     const d = hits[di];
     return {
       n: i + 1, kind: d.kind, ref: d.ref, title: d.title, doc: d.doc,
-      url: d.url, page: d.page, text: d.text.length > 900 ? d.text.slice(0, 900) + '…' : d.text
+      url: d.url, page: d.page, officialUrl: d.officialUrl || null, text: d.text.length > 900 ? d.text.slice(0, 900) + '…' : d.text
     };
   });
   return { answer: text.trim(), sources: cited };

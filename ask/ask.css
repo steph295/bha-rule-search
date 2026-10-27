@@ -138,6 +138,8 @@ body.chatting { background: #fff; }
 #composer .btn-label { display: none; }
 #composer .btn-icon { display: block; width: 20px; height: 20px; }
 
+.freshness { margin: 0 0 6px; font-weight: 600; }
+.freshness:empty { display: none; }
 footer { color: var(--ink-soft); font-size: 12.5px; text-align: center; padding: 18px 24px 26px; max-width: 860px; margin: 0 auto; }
 
 @media (max-width: 560px) {

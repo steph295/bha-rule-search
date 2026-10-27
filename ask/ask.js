@@ -67,12 +67,17 @@
   var KIND_LABEL = { rule: 'Rule', code: 'Code', guide: 'Guidance', definition: 'Definition', penalty: 'Penalty table' };
   var KIND_CLASS = { rule: '', code: 'code', guide: 'guide', definition: 'def', penalty: 'code' };
 
+  // F5 -> (F)5, as the rulebook writes it
+  function officialRef(ref) { return esc(String(ref).replace(/^([A-M])(\d.*)$/, '($1)$2')); }
+
   function sourceCard(s) {
     var link = '';
     if (s.kind === 'guide' && s.url) {
       link = '<a class="src-link" href="' + esc(s.url + (s.page ? '#page=' + s.page : '')) + '" target="_blank" rel="noopener">Open the PDF' + (s.page ? ' (page ' + esc(s.page) + ')' : '') + ' ↗</a>';
     } else {
-      link = '<a class="src-link" href="https://rules.britishhorseracing.com" target="_blank" rel="noopener">Check on the official Rules of Racing ↗</a>';
+      // the official site links to a chapter, not a paragraph, so the label names the rule to look for there
+      var what = s.kind === 'rule' && s.ref ? 'Rule ' + officialRef(s.ref) : s.kind === 'penalty' && s.ref ? 'the Table of Penalties entry for Rule ' + officialRef(s.ref) : esc(s.doc || 'this source');
+      link = '<a class="src-link" href="' + esc(s.officialUrl || 'https://rules.britishhorseracing.com') + '" target="_blank" rel="noopener" title="Opens the chapter on rules.britishhorseracing.com — look for ' + what + ' there">Check ' + what + ' on the official Rules of Racing ↗</a>';
     }
     return '<div class="src-card" data-n="' + s.n + '" hidden>' +
       '<div class="src-top"><span class="badge ' + (KIND_CLASS[s.kind] || '') + '">' + esc((s.ref ? s.ref + ' · ' : '') + (KIND_LABEL[s.kind] || 'Source')) + '</span>' +
@@ -209,4 +214,13 @@
     if (document.body.classList.contains('chatting')) reset();
     input.focus();
   });
+
+  // "Rules last updated": the version and effective date printed on the rulebook, and when it was last synced
+  fetch('../rules-meta.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+    var el = $('freshness');
+    if (!m || !el) return;
+    var fmt = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); };
+    var synced = m.syncedAt ? fmt(m.syncedAt) : '';
+    el.textContent = 'Rules last updated: ' + (m.effective || '') + (m.version ? ' (version ' + m.version + ')' : '') + (synced ? ' · Data synced ' + synced : '');
+  }).catch(function () { /* the line simply stays empty */ });
 })();

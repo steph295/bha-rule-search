@@ -15,23 +15,17 @@ const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const API = 'https://rules.britishhorseracing.com';
 
+// --fetch uses the same checked download as the scheduled Action (tools/refresh-rules.js),
+// so a broken download can never replace the saved rulebook.
 async function fetchLatest() {
-  const books = await (await fetch(API + '/api/books/')).json();
-  const book = books
-    .filter(b => b.published && !b.archived && (b.library_id || 0) > 0)
-    .sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')))[0];
-  if (!book) throw new Error('no published rulebook found');
-  console.log(`Fetching book ${book.id} (v${book.version}, published ${book.published_at})…`);
-  const full = await (await fetch(`${API}/api/books/${book.id}?with=sections`)).json();
-  full._sourceUpdatedAt = book.updated_at;
-  fs.writeFileSync(path.join(DATA, `book${book.id}.json`), JSON.stringify(full));
-  return full;
+  await require('./tools/refresh-rules.js').refresh();
+  return loadLocal();
 }
 
 function loadLocal() {
   const files = fs.readdirSync(DATA).filter(f => /^book\d+\.json$/.test(f));
   if (!files.length) throw new Error('no data/book*.json found — run with --fetch');
-  const file = files.sort().pop();
+  const file = files.sort((a, b) => parseInt(a.slice(4), 10) - parseInt(b.slice(4), 10)).pop();
   console.log('Using', file);
   return JSON.parse(fs.readFileSync(path.join(DATA, file), 'utf8'));
 }
@@ -84,6 +78,7 @@ async function main() {
   const book = process.argv.includes('--fetch') ? await fetchLatest() : loadLocal();
   const parsed = P.parseBook(book);
   parsed.sourceUpdatedAt = book._sourceUpdatedAt || book.updated_at || null;
+  parsed.syncedAt = book._syncedAt || null; // when this copy was last pulled from BHA (set by tools/refresh-rules.js)
 
   // slim snapshot: search text is rebuilt in the browser from html
   const penaltyByCode = extractPenalties(parsed.entries);
@@ -93,10 +88,12 @@ async function main() {
     publishedAt: parsed.publishedAt,
     year: parsed.year,
     sourceUpdatedAt: parsed.sourceUpdatedAt,
+    syncedAt: parsed.syncedAt,
     manuals: parsed.manuals,
     entries: parsed.entries.map(e => ({
       id: e.id, code: e.code, num: e.num, kind: e.kind, doc: e.doc,
       letter: e.letter, title: e.title, path: e.path, html: e.html, isNew: e.isNew || false,
+      chapterSlug: e.chapterSlug || undefined,
       penalties: (e.code && penaltyByCode[e.code]) || undefined
     }))
   };
@@ -142,9 +139,18 @@ async function main() {
   // Glossary: real defined terms + definitions parsed straight out of the
   // rulebook's own "Definitions" chapter (see parser.js extractDefinitions).
   const definitions = P.extractDefinitions(book);
-  fs.writeFileSync(path.join(ROOT, 'definitions.json'), JSON.stringify({ bookId: parsed.bookId, terms: definitions }));
+  const defsChapter = (book.sections || []).filter(sec => sec.type === 'chapter' && String(sec.title || '').trim().toLowerCase() === 'definitions')[0];
+  fs.writeFileSync(path.join(ROOT, 'definitions.json'), JSON.stringify({ bookId: parsed.bookId, chapterSlug: defsChapter ? defsChapter.slug : null, terms: definitions }));
   const dkb = (fs.statSync(path.join(ROOT, 'definitions.json')).size / 1024).toFixed(0);
   console.log(`definitions.json written — ${dkb} KB, ${definitions.length} terms`);
+
+  // Tiny freshness file for pages that don't load the whole rulebook (the /ask page's
+  // "Rules last updated" line): which version, its effective date, and when we last synced it.
+  fs.writeFileSync(path.join(ROOT, 'rules-meta.json'), JSON.stringify({
+    bookId: parsed.bookId, version: parsed.version, effective: parsed.year,
+    sourceUpdatedAt: parsed.sourceUpdatedAt, syncedAt: parsed.syncedAt
+  }));
+  console.log(`rules-meta.json written — v${parsed.version}, effective ${parsed.year}, synced ${parsed.syncedAt || 'unknown'}`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

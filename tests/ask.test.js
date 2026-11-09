@@ -292,3 +292,22 @@ test('10. every source links to its chapter on the official Rules of Racing site
   const r = await ask(c, [{ role: 'user', content: 'jockey went into the wrong stall' }]);
   assert.match(r.body.sources[0].officialUrl, /^https:\/\/rules\.britishhorseracing\.com\/#!\/book\/34\/(chapter\/s\d+-)?/);
 });
+
+test('11. a Claude failure gives visitors a plain message and the diagnosis a reason', async () => {
+  const Anthropic = require('@anthropic-ai/sdk');
+  const failing = (status, message) => {
+    const c = fakeClient();
+    const boom = async () => { throw new Anthropic.APIError(status, { error: { message } }, message, new Headers()); };
+    c.messages.create = boom; c.beta.messages.create = boom;
+    return c;
+  };
+  const credit = await ask(failing(400, 'Your credit balance is too low to access the Anthropic API.'), [{ role: 'user', content: Q1 }]);
+  assert.equal(credit.statusCode, 503);
+  assert.equal(credit.body.reason, 'billing');
+  assert.doesNotMatch(credit.body.error, /credit|billing|key/i, 'visitors are not shown account details');
+  const badKey = await ask(failing(401, 'invalid x-api-key'), [{ role: 'user', content: Q1 }]);
+  assert.equal(badKey.body.reason, 'auth');
+  const down = await ask(failing(529, 'Overloaded'), [{ role: 'user', content: Q1 }]);
+  assert.equal(down.body.reason, 'upstream');
+  assert.equal(down.statusCode, 502);
+});

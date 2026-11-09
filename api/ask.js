@@ -207,12 +207,28 @@ module.exports = async function handler(req, res) {
     res.status(200).json(out);
   } catch (err) {
     console.error('ask failed:', err && err.status, err && err.message);
-    if (err instanceof Anthropic.RateLimitError) {
-      res.status(429).json({ error: 'The assistant is busy right now — please try again in a moment.' });
+    const why = failureReason(err);
+    // visitors get a plain message; `reason` is for whoever is diagnosing (curl the endpoint, or read the logs)
+    if (why === 'rate_limit') {
+      res.status(429).json({ error: 'The assistant is busy right now — please try again in a moment.', reason: why });
+    } else if (why === 'billing' || why === 'auth') {
+      res.status(503).json({ error: 'The assistant is temporarily unavailable. Please try again later.', reason: why });
     } else {
-      res.status(502).json({ error: 'Something went wrong getting an answer. Please try again.' });
+      res.status(502).json({ error: 'Something went wrong getting an answer. Please try again.', reason: why });
     }
   }
 };
+
+// What went wrong talking to Claude, in a word: billing (no credit / spend limit), auth (key missing,
+// revoked or not allowed), rate_limit, upstream (Anthropic overloaded or down) or other.
+function failureReason(err) {
+  const status = err && err.status;
+  const msg = String((err && err.message) || '');
+  if (err instanceof Anthropic.RateLimitError || status === 429) return 'rate_limit';
+  if (/credit balance|billing|payment|spend limit|usage limit|plans? & billing/i.test(msg) || status === 402) return 'billing';
+  if (status === 401 || status === 403 || /api[- ]?key|authentication|permission/i.test(msg)) return 'auth';
+  if (status >= 500 || /overloaded/i.test(msg)) return 'upstream';
+  return 'other';
+}
 
 module.exports._deps = deps;
